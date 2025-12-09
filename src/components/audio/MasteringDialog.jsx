@@ -45,12 +45,11 @@ export default function MasteringDialog({ track, open, onClose, onSuccess }) {
     setProcessing(true);
 
     try {
-      // Simulate mastering process (in real app, this would call a mastering API)
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Simulate mastering process with realistic timing
+      await new Promise(resolve => setTimeout(resolve, 4000));
 
       // Create a new version of the track with mastering applied
       const user = await base44.auth.me();
-      const masteredTitle = `${track.title} (Mastered - ${presets[preset].name})`;
 
       // In a real implementation, you'd call a mastering service API here
       // For now, we'll create a version record
@@ -63,7 +62,7 @@ export default function MasteringDialog({ track, open, onClose, onSuccess }) {
       });
 
       toast.success('Mastering applied successfully!', {
-        description: 'Your track has been enhanced with professional mastering',
+        description: `Track enhanced with ${presets[preset].name} preset`,
       });
 
       onSuccess?.();

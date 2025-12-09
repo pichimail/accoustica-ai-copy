@@ -34,32 +34,34 @@ export default function PersonaCreator({ track, open, onClose, onSuccess }) {
       const response = await base44.functions.invoke('generatePersona', {
         taskId: track.task_id,
         audioId: track.external_audio_id,
-        name,
-        description,
+        name: name.trim(),
+        description: description.trim(),
       });
 
       if (response.data.success) {
         // Save persona to database
         await base44.entities.Persona.create({
           persona_id: response.data.personaId,
-          name: response.data.name,
-          description: response.data.description,
+          name: name.trim(),
+          description: description.trim(),
           task_id: track.task_id,
           audio_id: track.external_audio_id,
           track_id: track.id,
         });
 
-        toast.success('Persona created successfully!');
+        toast.success('Persona created successfully!', {
+          description: `Created persona: ${name}`,
+        });
         onSuccess?.();
         onClose();
         setName('');
         setDescription('');
       } else {
-        toast.error('Failed to create persona');
+        toast.error(response.data.error || 'Failed to create persona');
       }
     } catch (error) {
       console.error('Persona creation error:', error);
-      toast.error(error.response?.data?.error || 'Failed to create persona');
+      toast.error(error.message || 'Failed to create persona');
     } finally {
       setIsCreating(false);
     }

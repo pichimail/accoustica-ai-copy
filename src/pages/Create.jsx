@@ -203,6 +203,14 @@ export default function CreatePage() {
     toast.success('Track deleted');
   };
 
+  const handleToggleFavorite = async (track) => {
+    await base44.entities.Track.update(track.id, {
+      is_favorite: !track.is_favorite,
+    });
+    queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
+    toast.success(track.is_favorite ? 'Removed from favorites' : 'Added to favorites');
+  };
+
   const dailyUsage = user?.last_usage_reset === new Date().toISOString().split('T')[0] 
     ? (user?.daily_usage || 0) 
     : 0;
@@ -281,6 +289,8 @@ export default function CreatePage() {
                     onPlay={handlePlay}
                     onDelete={handleDelete}
                     onToggleVisibility={handleToggleVisibility}
+                    onToggleFavorite={handleToggleFavorite}
+                    showActions={true}
                     isPlaying={playingTrack?.id === track.id}
                   />
                 ))}

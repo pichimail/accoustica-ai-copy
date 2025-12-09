@@ -59,11 +59,15 @@ export default function MusicVideoGenerator({ track, open, onClose }) {
     setProgress(0);
 
     try {
-      const response = await base44.functions.invoke('createMusicVideo', {
+      const response = await base44.functions.invoke('generateMusicVideoWithLyrics', {
         taskId: track.task_id,
         audioId: track.external_audio_id,
-        author: author || track.created_by,
-        domainName: window.location.hostname,
+        author: author || 'Accoustica',
+        domainName: 'accoustica.app',
+        prompt: prompt,
+        visualStyle: visualStyle,
+        aspectRatio: aspectRatio,
+        effects: effects,
       });
 
       if (response.data.success) {

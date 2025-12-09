@@ -112,11 +112,15 @@ export default function LibraryPage() {
   };
 
   const handleToggleFavorite = async (track) => {
-    await base44.entities.Track.update(track.id, {
-      is_favorite: !track.is_favorite,
-    });
-    queryClient.invalidateQueries({ queryKey: ['myTracks'] });
-    toast.success(track.is_favorite ? 'Removed from favorites' : 'Added to favorites');
+    try {
+      await base44.entities.Track.update(track.id, {
+        is_favorite: !track.is_favorite,
+      });
+      queryClient.invalidateQueries({ queryKey: ['myTracks'] });
+      toast.success(track.is_favorite ? 'Removed from favorites' : 'Added to favorites');
+    } catch (error) {
+      toast.error('Failed to update favorite status');
+    }
   };
 
   const handleEdit = (track) => {

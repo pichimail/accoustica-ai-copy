@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -13,19 +13,48 @@ export default function TrackEditDialog({ track, open, onClose, onSuccess }) {
   const [activeTab, setActiveTab] = useState('extend');
   const [loading, setLoading] = useState(false);
 
+  // Initialize state when track prop changes
+  useEffect(() => {
+    if (track) {
+      setExtendData({
+        prompt: '',
+        style: track.style || '',
+        title: track.title + ' (Extended)',
+        continueAt: track.duration || 0,
+      });
+      setReplaceData({
+        prompt: '',
+        tags: track.style || '',
+        title: track.title || '',
+        infillStartS: 0,
+        infillEndS: 10,
+        negativeTags: '',
+        fullLyrics: '',
+      });
+      setVocalsData({
+        type: 'vocals',
+        prompt: '',
+        title: track.title + ' (With Vocals)',
+        negativeTags: '',
+        style: track.style || '',
+        tags: '',
+      });
+    }
+  }, [track]);
+
   // Extend Music State
   const [extendData, setExtendData] = useState({
     prompt: '',
-    style: track?.style || '',
-    title: track?.title + ' (Extended)' || '',
-    continueAt: track?.duration || 0,
+    style: '',
+    title: '',
+    continueAt: 0,
   });
 
   // Replace Section State
   const [replaceData, setReplaceData] = useState({
     prompt: '',
-    tags: track?.style || '',
-    title: track?.title || '',
+    tags: '',
+    title: '',
     infillStartS: 0,
     infillEndS: 10,
     negativeTags: '',
@@ -36,9 +65,9 @@ export default function TrackEditDialog({ track, open, onClose, onSuccess }) {
   const [vocalsData, setVocalsData] = useState({
     type: 'vocals',
     prompt: '',
-    title: track?.title + ' (With Vocals)' || '',
+    title: '',
     negativeTags: '',
-    style: track?.style || '',
+    style: '',
     tags: '',
   });
 
