@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit } from 'lucide-react';
+import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit, Heart, Wand2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -33,6 +33,7 @@ export default function TrackCard({
   onDelete,
   onToggleVisibility,
   onEdit,
+  onToggleFavorite,
   isPlaying = false,
   showActions = true,
   showVisibility = true,
@@ -131,6 +132,20 @@ export default function TrackCard({
                   <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
                     {isReady && (
                       <>
+                        <DropdownMenuItem 
+                          onClick={() => onEdit?.(track)}
+                          className="text-violet-400 focus:text-violet-300 focus:bg-violet-500/10"
+                        >
+                          <Wand2 className="h-4 w-4 mr-2" />
+                          Edit Track
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => onToggleFavorite?.(track)}
+                          className="text-slate-300 focus:text-white focus:bg-slate-700"
+                        >
+                          <Heart className={cn("h-4 w-4 mr-2", track.is_favorite && "fill-red-500 text-red-500")} />
+                          {track.is_favorite ? 'Unfavorite' : 'Favorite'}
+                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => navigator.clipboard.writeText(window.location.origin + createPageUrl('PublicTrack') + `?id=${track.id}`)}
                           className="text-slate-300 focus:text-white focus:bg-slate-700"
