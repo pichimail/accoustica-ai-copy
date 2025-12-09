@@ -262,6 +262,18 @@ export default function TrackCard({
           </div>
         </div>
       </div>
+
+      {/* Dialogs */}
+      <VideoGeneratorDialog
+        track={track}
+        open={showVideoDialog}
+        onClose={() => setShowVideoDialog(false)}
+      />
+      <MasteringDialog
+        track={track}
+        open={showMasteringDialog}
+        onClose={() => setShowMasteringDialog(false)}
+      />
     </motion.div>
   );
 }

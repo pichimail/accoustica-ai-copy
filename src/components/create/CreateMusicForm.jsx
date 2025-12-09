@@ -5,10 +5,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Wand2, Music, ChevronDown, ChevronUp, Plus, X, Sparkles } from 'lucide-react';
+import { Wand2, Music, ChevronDown, ChevronUp, Plus, X, Sparkles, Upload } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import SongStructureBuilder from './SongStructureBuilder';
+import AudioUploader from './AudioUploader';
 
 export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitReached, remainingGenerations }) {
   const [mode, setMode] = useState('simple'); // 'simple' or 'advanced'
@@ -26,6 +28,10 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
   const [showLyrics, setShowLyrics] = useState(false);
   const [showStyles, setShowStyles] = useState(true);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [showStructure, setShowStructure] = useState(false);
+  const [showAudioUpload, setShowAudioUpload] = useState(false);
+  const [songStructure, setSongStructure] = useState(null);
+  const [audioAnalysis, setAudioAnalysis] = useState(null);
 
   const quickStyles = [
     'pop', 'rock', 'hip hop', 'electronic', 'jazz', 'classical',
@@ -283,6 +289,38 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                 ))}
               </div>
             </div>
+
+            {/* Audio Upload for Style Transfer */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowAudioUpload(!showAudioUpload)}
+                className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+              >
+                <Upload className="h-4 w-4" />
+                Upload Audio for Style Transfer
+              </button>
+              <AnimatePresence>
+                {showAudioUpload && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="mt-3"
+                  >
+                    <AudioUploader
+                      onAnalysisComplete={(analysis) => {
+                        setAudioAnalysis(analysis);
+                        setStyle(analysis.style_tags?.join(', ') || style);
+                      }}
+                      onStyleTransfer={(url, analysis) => {
+                        toast.success('Style applied to your track!');
+                      }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </>
         ) : (
           <>
@@ -496,6 +534,35 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                         className="cursor-pointer"
                       />
                     </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Song Structure Builder */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowStructure(!showStructure)}
+                className="flex items-center justify-between w-full mb-2"
+              >
+                <Label className="text-slate-300 cursor-pointer">Song Structure</Label>
+                {showStructure ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+              </button>
+              <AnimatePresence>
+                {showStructure && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                  >
+                    <SongStructureBuilder
+                      genre={style.split(',')[0]?.trim() || 'pop'}
+                      onApply={(structure) => {
+                        setSongStructure(structure);
+                        toast.success('Structure applied!');
+                      }}
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>
