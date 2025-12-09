@@ -219,96 +219,193 @@ export default function CreatePage() {
   const limitReached = remainingGenerations <= 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-violet-950">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Create Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-pink-400">Music</span>
-          </h1>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-            Transform your ideas into professional-quality music with AI
-          </p>
-        </motion.div>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-0 -left-4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
+          <div className="absolute top-0 -right-4 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
+          <div className="absolute -bottom-8 left-20 w-96 h-96 bg-violet-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
+        </div>
+      </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Left Column - Input */}
-          <div className="space-y-6">
-            <PromptInput
-              onSubmit={(data) => createTrackMutation.mutate(data)}
-              isLoading={createTrackMutation.isPending}
-              disabled={currentTrack?.status === 'generating'}
-              limitReached={limitReached}
-              remainingGenerations={remainingGenerations}
-            />
+      {/* Main Content */}
+      <div className="relative z-10">
+        <div className="max-w-[1600px] mx-auto px-6 py-12">
+          {/* Hero Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-16"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 mb-6"
+            >
+              <Sparkles className="h-4 w-4 text-violet-400" />
+              <span className="text-sm text-slate-300">AI-Powered Music Generation</span>
+            </motion.div>
+            
+            <h1 className="text-6xl md:text-7xl font-bold mb-6">
+              <span className="text-white">Create</span>
+              <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400 animate-gradient">
+                Your Sound
+              </span>
+            </h1>
+            
+            <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+              Transform your imagination into professional music. 
+              No instruments needed, just your creativity.
+            </p>
 
-            {/* Generation Status */}
-            <AnimatePresence>
-              {currentTrack && currentTrack.status !== 'ready' && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                >
-                  <GeneratingStatus status={currentTrack.status} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Right Column - Recent Tracks */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                <Music className="h-5 w-5 text-violet-400" />
-                Recent Creations
-              </h2>
-              <Link to={createPageUrl('Library')}>
-                <Button variant="ghost" className="text-slate-400 hover:text-white">
-                  View All <ArrowRight className="h-4 w-4 ml-1" />
-                </Button>
-              </Link>
-            </div>
-
-            {recentTracks.length === 0 ? (
-              <div className="bg-slate-800/30 rounded-2xl p-8 text-center border border-slate-700/50">
-                <Sparkles className="h-12 w-12 text-violet-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">No tracks yet</h3>
-                <p className="text-slate-400">Create your first track using the form</p>
+            {/* Stats Bar */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="flex items-center justify-center gap-8 mt-8"
+            >
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white">{remainingGenerations}</div>
+                <div className="text-sm text-slate-400">Generations Left</div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {recentTracks.map((track) => (
-                  <TrackCard
-                    key={track.id}
-                    track={track}
-                    onPlay={handlePlay}
-                    onDelete={handleDelete}
-                    onToggleVisibility={handleToggleVisibility}
-                    onToggleFavorite={handleToggleFavorite}
-                    showActions={true}
-                    isPlaying={playingTrack?.id === track.id}
-                  />
-                ))}
+              <div className="w-px h-12 bg-slate-700"></div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white">{recentTracks.length}</div>
+                <div className="text-sm text-slate-400">Tracks Created</div>
               </div>
-            )}
+            </motion.div>
+          </motion.div>
+
+          {/* Main Creation Area */}
+          <div className="grid lg:grid-cols-5 gap-8 mb-8">
+            {/* Creation Form - Takes 3 columns */}
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+              className="lg:col-span-3 space-y-6"
+            >
+              {/* Generation Status - Full Width */}
+              <AnimatePresence mode="wait">
+                {currentTrack && currentTrack.status !== 'ready' ? (
+                  <motion.div
+                    key="generating"
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                    className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-500/10 to-pink-500/10 backdrop-blur-xl border border-white/10 p-8"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-pink-500/20 animate-pulse"></div>
+                    <div className="relative z-10">
+                      <GeneratingStatus status={currentTrack.status} />
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="form"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <PromptInput
+                      onSubmit={(data) => createTrackMutation.mutate(data)}
+                      isLoading={createTrackMutation.isPending}
+                      disabled={currentTrack?.status === 'generating'}
+                      limitReached={limitReached}
+                      remainingGenerations={remainingGenerations}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+
+            {/* Recent Tracks - Takes 2 columns */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5 }}
+              className="lg:col-span-2"
+            >
+              <div className="sticky top-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
+                      <Music className="h-5 w-5 text-white" />
+                    </div>
+                    Recent
+                  </h2>
+                  <Link to={createPageUrl('Library')}>
+                    <Button 
+                      variant="ghost" 
+                      className="text-slate-400 hover:text-white hover:bg-white/5 rounded-xl"
+                    >
+                      View All 
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto pr-2 custom-scrollbar">
+                  <AnimatePresence mode="popLayout">
+                    {recentTracks.length === 0 ? (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        className="rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 p-8 text-center"
+                      >
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-violet-500/20 to-pink-500/20 flex items-center justify-center">
+                          <Sparkles className="h-8 w-8 text-violet-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-white mb-2">Start Creating</h3>
+                        <p className="text-slate-400 text-sm">Your musical journey begins here</p>
+                      </motion.div>
+                    ) : (
+                      recentTracks.map((track, index) => (
+                        <motion.div
+                          key={track.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          transition={{ delay: index * 0.1 }}
+                        >
+                          <TrackCard
+                            track={track}
+                            onPlay={handlePlay}
+                            onDelete={handleDelete}
+                            onToggleVisibility={handleToggleVisibility}
+                            onToggleFavorite={handleToggleFavorite}
+                            showActions={true}
+                            isPlaying={playingTrack?.id === track.id}
+                          />
+                        </motion.div>
+                      ))
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
+      </div>
 
-        {/* Bottom Player */}
-        <AnimatePresence>
-          {playingTrack && (
-            <motion.div
-              initial={{ opacity: 0, y: 100 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 100 }}
-              className="fixed bottom-0 left-0 right-0 p-4 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800"
-            >
-              <div className="max-w-4xl mx-auto">
+      {/* Bottom Player */}
+      <AnimatePresence>
+        {playingTrack && (
+          <motion.div
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            transition={{ type: "spring", damping: 25 }}
+            className="fixed bottom-0 left-0 right-0 z-50"
+          >
+            <div className="bg-slate-900/95 backdrop-blur-2xl border-t border-white/10 shadow-2xl">
+              <div className="max-w-[1600px] mx-auto px-6 py-4">
                 <AudioPlayer
                   src={playingTrack.audio_url || playingTrack.stream_audio_url}
                   title={playingTrack.title}
@@ -316,10 +413,49 @@ export default function CreatePage() {
                   coverImage={playingTrack.cover_image_url}
                 />
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <style jsx>{`
+        @keyframes blob {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+        @keyframes gradient {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient 3s ease infinite;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(139, 92, 246, 0.5);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(139, 92, 246, 0.7);
+        }
+      `}</style>
     </div>
   );
 }
