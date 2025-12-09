@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
                 customMode: true,
                 instrumental: instrumental,
                 model: 'V4_5',
-                callBackUrl: 'https://webhook.site/unique-url-here',
+                callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`,
                 style: style || 'AI Generated Music',
                 title: title || 'Untitled Track',
             }),

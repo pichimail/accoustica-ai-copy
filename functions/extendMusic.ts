@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
             audioId,
             defaultParamFlag,
             model,
-            callBackUrl: 'https://webhook.site/unique-url-here',
+            callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`,
         };
 
         if (defaultParamFlag) {

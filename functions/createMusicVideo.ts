@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
         const body = {
             taskId,
             audioId,
-            callBackUrl: 'https://webhook.site/unique-url-here',
+            callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/videoCallback`,
         };
 
         if (author) body.author = author;

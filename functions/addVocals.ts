@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
             negativeTags,
             style,
             model,
-            callBackUrl: 'https://webhook.site/unique-url-here',
+            callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`,
         };
 
         if (vocalGender) body.vocalGender = vocalGender;

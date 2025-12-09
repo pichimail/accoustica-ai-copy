@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
             title,
             infillStartS,
             infillEndS,
-            callBackUrl: 'https://webhook.site/unique-url-here',
+            callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`,
         };
 
         if (negativeTags) body.negativeTags = negativeTags;
