@@ -44,38 +44,56 @@ Deno.serve(async (req) => {
         }
 
         const taskStatus = data.data.status;
-        let trackUpdate = {};
-
-        if (taskStatus === 'SUCCESS' && data.data.response?.sunoData?.[0]) {
-            const sunoTrack = data.data.response.sunoData[0];
-            trackUpdate = {
-                status: 'ready',
-                audio_url: sunoTrack.audioUrl,
-                stream_audio_url: sunoTrack.streamAudioUrl,
-                cover_image_url: sunoTrack.imageUrl,
-                duration: Math.round(sunoTrack.duration),
-                tags: sunoTrack.tags,
-                external_audio_id: sunoTrack.id,
-                title: sunoTrack.title || trackUpdate.title,
-            };
-        } else if (taskStatus === 'FAILED') {
-            trackUpdate = {
-                status: 'failed',
-                error_message: 'Music generation failed',
-            };
-        } else if (taskStatus === 'PROCESSING' || taskStatus === 'PENDING') {
-            trackUpdate = {
-                status: 'generating',
-            };
+        
+        // Get all tracks with this task_id
+        const tracks = await base44.asServiceRole.entities.Track.filter({ task_id: taskId });
+        
+        // Update tracks based on status
+        let updatedTracks = [];
+        
+        if (taskStatus === 'SUCCESS' && data.data.response?.sunoData) {
+            const audioDataArray = data.data.response.sunoData;
+            
+            // Update each track with corresponding audio data
+            for (let i = 0; i < audioDataArray.length && i < tracks.length; i++) {
+                const audioData = audioDataArray[i];
+                const track = tracks[i];
+                
+                const updatedTrack = await base44.asServiceRole.entities.Track.update(track.id, {
+                    status: 'ready',
+                    audio_url: audioData.audioUrl,
+                    stream_audio_url: audioData.streamAudioUrl,
+                    cover_image_url: audioData.imageUrl,
+                    duration: Math.round(audioData.duration || 0),
+                    model_version: audioData.modelName,
+                    tags: audioData.tags,
+                    external_audio_id: audioData.id,
+                    lyrics: audioData.prompt,
+                    title: audioData.title || track.title,
+                });
+                updatedTracks.push(updatedTrack);
+            }
+        } else if (taskStatus === 'GENERATE_AUDIO_FAILED' || taskStatus === 'CREATE_TASK_FAILED' || taskStatus === 'SENSITIVE_WORD_ERROR' || taskStatus === 'FAILED') {
+            for (const track of tracks) {
+                const updatedTrack = await base44.asServiceRole.entities.Track.update(track.id, {
+                    status: 'failed',
+                    error_message: data.data.errorMessage || 'Generation failed',
+                });
+                updatedTracks.push(updatedTrack);
+            }
+        } else {
+            for (const track of tracks) {
+                const updatedTrack = await base44.asServiceRole.entities.Track.update(track.id, {
+                    status: 'generating',
+                });
+                updatedTracks.push(updatedTrack);
+            }
         }
-
-        // Update track in database
-        const updatedTrack = await base44.entities.Track.update(trackId, trackUpdate);
 
         return Response.json({
             success: true,
             status: taskStatus,
-            track: updatedTrack,
+            tracks: updatedTracks,
         });
 
     } catch (error) {
