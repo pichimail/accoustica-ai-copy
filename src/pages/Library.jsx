@@ -8,6 +8,8 @@ import ShareTrackDialog from '@/components/collaboration/ShareTrackDialog';
 import VersionHistory from '@/components/collaboration/VersionHistory';
 import MusicVideoGenerator from '@/components/video/MusicVideoGenerator';
 import MasteringDialog from '@/components/audio/MasteringDialog';
+import StemSeparationDialog from '@/components/audio/StemSeparationDialog';
+import PersonaCreator from '@/components/audio/PersonaCreator';
 import AudioPlayer from '@/components/audio/AudioPlayer';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +38,8 @@ export default function LibraryPage() {
   const [versionHistoryTrack, setVersionHistoryTrack] = useState(null);
   const [videoGeneratingTrack, setVideoGeneratingTrack] = useState(null);
   const [masteringTrack, setMasteringTrack] = useState(null);
+  const [stemSeparationTrack, setStemSeparationTrack] = useState(null);
+  const [personaCreationTrack, setPersonaCreationTrack] = useState(null);
   const [genreFilter, setGenreFilter] = useState('all');
   const [instrumentalFilter, setInstrumentalFilter] = useState('all');
   const queryClient = useQueryClient();
@@ -133,6 +137,14 @@ export default function LibraryPage() {
 
   const handleMaster = (track) => {
     setMasteringTrack(track);
+  };
+
+  const handleSeparateStems = (track) => {
+    setStemSeparationTrack(track);
+  };
+
+  const handleCreatePersona = (track) => {
+    setPersonaCreationTrack(track);
   };
 
   const stats = {
@@ -327,6 +339,8 @@ export default function LibraryPage() {
                     onViewVersions={handleViewVersions}
                     onGenerateVideo={handleGenerateVideo}
                     onMaster={handleMaster}
+                    onSeparateStems={handleSeparateStems}
+                    onCreatePersona={handleCreatePersona}
                     isPlaying={playingTrack?.id === track.id}
                   />
                 </motion.div>
@@ -395,6 +409,21 @@ export default function LibraryPage() {
         onClose={() => setMasteringTrack(null)}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ['myTracks'] })}
       />
-    </div>
-  );
-}
+
+      {/* Stem Separation Dialog */}
+      <StemSeparationDialog
+        track={stemSeparationTrack}
+        open={!!stemSeparationTrack}
+        onClose={() => setStemSeparationTrack(null)}
+      />
+
+      {/* Persona Creator */}
+      <PersonaCreator
+        track={personaCreationTrack}
+        open={!!personaCreationTrack}
+        onClose={() => setPersonaCreationTrack(null)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['myTracks'] })}
+      />
+      </div>
+      );
+      }

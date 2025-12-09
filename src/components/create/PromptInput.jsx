@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Sparkles, Music, Wand2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import StyleBooster from '@/components/audio/StyleBooster';
 import {
   Select,
   SelectContent,
@@ -130,6 +131,10 @@ export default function PromptInput({
             className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-violet-500"
             maxLength={200}
           />
+          
+          {/* Style Booster */}
+          <StyleBooster onStyleBoosted={(boostedStyle) => setStyle(boostedStyle)} />
+          
           <div className="flex flex-wrap gap-2 mt-2">
             {genres.slice(0, 8).map((genre) => (
               <button

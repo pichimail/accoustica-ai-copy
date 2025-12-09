@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit, Heart, Wand2, Users, GitBranch, Video, Volume2 } from 'lucide-react';
+import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit, Heart, Wand2, Users, GitBranch, Video, Volume2, Disc, User } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -38,6 +38,8 @@ export default function TrackCard({
   onViewVersions,
   onGenerateVideo,
   onMaster,
+  onSeparateStems,
+  onCreatePersona,
   isPlaying = false,
   showActions = true,
   showVisibility = true,
@@ -170,6 +172,20 @@ export default function TrackCard({
                         >
                           <Volume2 className="h-4 w-4 mr-2" />
                           AI Mastering
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => onSeparateStems?.(track)}
+                          className="text-cyan-400 focus:text-cyan-300 focus:bg-cyan-500/10"
+                        >
+                          <Disc className="h-4 w-4 mr-2" />
+                          Separate Stems
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => onCreatePersona?.(track)}
+                          className="text-amber-400 focus:text-amber-300 focus:bg-amber-500/10"
+                        >
+                          <User className="h-4 w-4 mr-2" />
+                          Create Persona
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => onToggleFavorite?.(track)}
