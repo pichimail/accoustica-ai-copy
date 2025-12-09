@@ -3,9 +3,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { ChevronDown, ChevronUp, X, Plus, Music, Mic2, Lightbulb, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, X, Plus, Music, Mic2, Lightbulb, Sparkles, Music2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from "@/lib/utils";
+import SongStructureBuilder from './SongStructureBuilder';
 
 const genres = [
   'rap rock', 'r&b', 'techno', 'indie rock', 'pop', 'metal', 
@@ -25,6 +26,7 @@ export default function MobileCreateForm({ onSubmit, isLoading, disabled, limitR
     styles: false,
     advanced: false
   });
+  const [showStructureBuilder, setShowStructureBuilder] = useState(false);
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
@@ -113,9 +115,12 @@ export default function MobileCreateForm({ onSubmit, isLoading, disabled, limitR
                 <Plus className="h-4 w-4" />
                 Audio
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full text-sm text-gray-300">
-                <Plus className="h-4 w-4" />
-                Lyrics
+              <button 
+                onClick={() => setShowStructureBuilder(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full text-sm text-gray-300"
+              >
+                <Music2 className="h-4 w-4" />
+                Structure
               </button>
               <button 
                 onClick={() => setIsInstrumental(!isInstrumental)}
@@ -289,6 +294,20 @@ export default function MobileCreateForm({ onSubmit, isLoading, disabled, limitR
           </div>
         )}
       </div>
+
+      {/* Song Structure Builder Dialog */}
+      <SongStructureBuilder
+        open={showStructureBuilder}
+        onOpenChange={setShowStructureBuilder}
+        onApply={(structurePrompt) => {
+          if (mode === 'simple') {
+            setDescription(prev => prev + '\n\n' + structurePrompt);
+          } else {
+            setLyrics(prev => prev + '\n\n' + structurePrompt);
+          }
+        }}
+        genre={styles[0] || 'pop'}
+      />
 
       {/* Bottom Create Button */}
       <div className="p-4 pb-24">
