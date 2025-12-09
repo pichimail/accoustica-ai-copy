@@ -6,6 +6,7 @@ import PromptInput from '@/components/create/PromptInput';
 import GeneratingStatus from '@/components/tracks/GeneratingStatus';
 import TrackCard from '@/components/tracks/TrackCard';
 import AudioPlayer from '@/components/audio/AudioPlayer';
+import FullscreenPlayer from '@/components/audio/FullscreenPlayer';
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Music, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
