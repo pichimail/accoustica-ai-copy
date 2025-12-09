@@ -11,10 +11,10 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { taskId, trackId } = await req.json();
+        const { taskId } = await req.json();
 
-        if (!taskId || !trackId) {
-            return Response.json({ error: 'taskId and trackId are required' }, { status: 400 });
+        if (!taskId) {
+            return Response.json({ error: 'taskId is required' }, { status: 400 });
         }
 
         const apiKey = Deno.env.get('SUNO_API_KEY');

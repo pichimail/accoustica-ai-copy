@@ -97,14 +97,9 @@ export default function CreatePage() {
         throw new Error(response.data.error || 'Failed to start generation');
       }
 
-      // Fetch the created track
-      const track = await base44.entities.Track.get(response.data.trackId);
-      setCurrentTrack(track);
-
       // Poll for status updates
       const taskId = response.data.taskId;
-      const trackId = response.data.trackId;
-      pollMusicStatus(taskId, trackId);
+      pollMusicStatus(taskId);
 
       return track;
     },
@@ -122,39 +117,56 @@ export default function CreatePage() {
   });
 
   // Poll music generation status
-  const pollMusicStatus = async (taskId, trackId) => {
+  const pollMusicStatus = async (taskId) => {
     const maxAttempts = 60; // 5 minutes max (60 * 5 seconds)
     let attempts = 0;
+    let hasShownFirstTrack = false;
 
     const poll = async () => {
       try {
         attempts++;
-        
+
         const statusResponse = await base44.functions.invoke('checkMusicStatus', {
           taskId,
-          trackId,
         });
 
         if (statusResponse.data.success) {
-          const updatedTrack = statusResponse.data.track;
-          setCurrentTrack(updatedTrack);
+          const updatedTracks = statusResponse.data.tracks || [];
 
-          if (updatedTrack.status === 'ready') {
+          // Show progress for first track that's still generating
+          const generatingTrack = updatedTracks.find(t => t.status === 'generating' || t.status === 'queued');
+          if (generatingTrack) {
+            setCurrentTrack(generatingTrack);
+          }
+
+          // Check if all tracks are ready
+          const allReady = updatedTracks.length > 0 && updatedTracks.every(t => t.status === 'ready');
+          const anyFailed = updatedTracks.some(t => t.status === 'failed');
+
+          if (allReady) {
             queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
-            toast.success('Track generated successfully!');
+            toast.success(`${updatedTracks.length} tracks generated successfully!`);
             setCurrentTrack(null);
             return;
-          } else if (updatedTrack.status === 'failed') {
+          } else if (anyFailed) {
             queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
-            toast.error('Track generation failed');
+            const failedCount = updatedTracks.filter(t => t.status === 'failed').length;
+            toast.error(`${failedCount} track(s) failed to generate`);
             setCurrentTrack(null);
             return;
+          }
+
+          // Show notification when first track completes
+          if (!hasShownFirstTrack && updatedTracks.some(t => t.status === 'ready')) {
+            hasShownFirstTrack = true;
+            toast.success('First track ready! Generating second track...');
+            queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
           }
         }
 
         // Continue polling if not finished and under max attempts
         if (attempts < maxAttempts) {
-          setTimeout(poll, 5000);
+          setTimeout(poll, 3000); // Poll every 3 seconds for faster updates
         } else {
           toast.error('Generation timeout - check your library later');
           setCurrentTrack(null);

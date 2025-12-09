@@ -50,8 +50,17 @@ Deno.serve(async (req) => {
             }, { status: 400 });
         }
 
-        // Create Track record in database
-        const track = await base44.entities.Track.create({
+        // Create 2 Track records in database (Suno generates 2 variations by default)
+        const track1 = await base44.entities.Track.create({
+            title: title || 'Untitled Track',
+            prompt: prompt,
+            style: style || 'AI Generated',
+            task_id: data.data.taskId,
+            status: 'queued',
+            is_instrumental: instrumental,
+        });
+
+        const track2 = await base44.entities.Track.create({
             title: title || 'Untitled Track',
             prompt: prompt,
             style: style || 'AI Generated',
@@ -63,7 +72,7 @@ Deno.serve(async (req) => {
         return Response.json({
             success: true,
             taskId: data.data.taskId,
-            trackId: track.id,
+            trackIds: [track1.id, track2.id],
         });
 
     } catch (error) {
