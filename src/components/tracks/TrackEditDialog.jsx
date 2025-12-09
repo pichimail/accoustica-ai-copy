@@ -60,6 +60,15 @@ export default function TrackEditDialog({ track, open, onClose, onSuccess }) {
       });
 
       if (response.data.success) {
+        const user = await base44.auth.me();
+        await base44.entities.TrackVersion.create({
+          track_id: response.data.taskId,
+          parent_track_id: track.id,
+          changes_description: `Extended from ${extendData.continueAt}s: ${extendData.prompt}`,
+          edit_type: 'extend',
+          edited_by: user.email,
+        });
+
         toast.success('Extension started! Check your library shortly.');
         onSuccess?.();
         onClose();
@@ -94,6 +103,15 @@ export default function TrackEditDialog({ track, open, onClose, onSuccess }) {
       });
 
       if (response.data.success) {
+        const user = await base44.auth.me();
+        await base44.entities.TrackVersion.create({
+          track_id: response.data.taskId,
+          parent_track_id: track.id,
+          changes_description: `Replaced section ${replaceData.infillStartS}s-${replaceData.infillEndS}s: ${replaceData.prompt}`,
+          edit_type: 'replace',
+          edited_by: user.email,
+        });
+
         toast.success('Section replacement started! Check your library shortly.');
         onSuccess?.();
         onClose();
@@ -134,6 +152,17 @@ export default function TrackEditDialog({ track, open, onClose, onSuccess }) {
       const response = await base44.functions.invoke(functionName, payload);
 
       if (response.data.success) {
+        const user = await base44.auth.me();
+        await base44.entities.TrackVersion.create({
+          track_id: response.data.taskId,
+          parent_track_id: track.id,
+          changes_description: vocalsData.type === 'vocals' 
+            ? `Added vocals: ${vocalsData.prompt}`
+            : 'Added instrumental layer',
+          edit_type: vocalsData.type === 'vocals' ? 'add_vocals' : 'add_instrumental',
+          edited_by: user.email,
+        });
+
         toast.success(`${vocalsData.type === 'vocals' ? 'Vocals' : 'Instrumental'} addition started!`);
         onSuccess?.();
         onClose();

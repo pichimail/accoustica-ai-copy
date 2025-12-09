@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import TrackCard from '@/components/tracks/TrackCard';
 import TrackEditDialog from '@/components/tracks/TrackEditDialog';
+import ShareTrackDialog from '@/components/collaboration/ShareTrackDialog';
+import VersionHistory from '@/components/collaboration/VersionHistory';
 import AudioPlayer from '@/components/audio/AudioPlayer';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +30,10 @@ export default function LibraryPage() {
   const [sortBy, setSortBy] = useState('-created_date');
   const [playingTrack, setPlayingTrack] = useState(null);
   const [editingTrack, setEditingTrack] = useState(null);
+  const [sharingTrack, setSharingTrack] = useState(null);
+  const [versionHistoryTrack, setVersionHistoryTrack] = useState(null);
+  const [genreFilter, setGenreFilter] = useState('all');
+  const [instrumentalFilter, setInstrumentalFilter] = useState('all');
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -55,6 +61,8 @@ export default function LibraryPage() {
     },
   });
 
+  const uniqueGenres = [...new Set(tracks.map(t => t.style).filter(Boolean))];
+
   const filteredTracks = tracks.filter(track => {
     const matchesSearch = track.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           track.prompt?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -66,7 +74,12 @@ export default function LibraryPage() {
                               (visibilityFilter === 'private' && !track.is_public) ||
                               (visibilityFilter === 'favorites' && track.is_favorite);
     
-    return matchesSearch && matchesStatus && matchesVisibility;
+    const matchesGenre = genreFilter === 'all' || track.style === genreFilter;
+    const matchesInstrumental = instrumentalFilter === 'all' ||
+                               (instrumentalFilter === 'instrumental' && track.is_instrumental) ||
+                               (instrumentalFilter === 'vocals' && !track.is_instrumental);
+    
+    return matchesSearch && matchesStatus && matchesVisibility && matchesGenre && matchesInstrumental;
   });
 
   const handlePlay = (track) => {
@@ -100,6 +113,14 @@ export default function LibraryPage() {
 
   const handleEdit = (track) => {
     setEditingTrack(track);
+  };
+
+  const handleShare = (track) => {
+    setSharingTrack(track);
+  };
+
+  const handleViewVersions = (track) => {
+    setVersionHistoryTrack(track);
   };
 
   const stats = {
@@ -166,51 +187,84 @@ export default function LibraryPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="flex flex-col md:flex-row gap-4 mb-6"
+          className="space-y-4 mb-6"
         >
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Search tracks..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-            />
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search tracks..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+              />
+            </div>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full md:w-40 bg-slate-800/50 border-slate-700 text-white">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="-created_date" className="text-slate-300 focus:text-white focus:bg-slate-700">Newest First</SelectItem>
+                <SelectItem value="created_date" className="text-slate-300 focus:text-white focus:bg-slate-700">Oldest First</SelectItem>
+                <SelectItem value="title" className="text-slate-300 focus:text-white focus:bg-slate-700">Title A-Z</SelectItem>
+                <SelectItem value="-duration" className="text-slate-300 focus:text-white focus:bg-slate-700">Longest</SelectItem>
+                <SelectItem value="duration" className="text-slate-300 focus:text-white focus:bg-slate-700">Shortest</SelectItem>
+                <SelectItem value="-plays" className="text-slate-300 focus:text-white focus:bg-slate-700">Most Played</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full md:w-40 bg-slate-800/50 border-slate-700 text-white">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-700">
-              <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-slate-700">All Status</SelectItem>
-              <SelectItem value="ready" className="text-slate-300 focus:text-white focus:bg-slate-700">Ready</SelectItem>
-              <SelectItem value="generating" className="text-slate-300 focus:text-white focus:bg-slate-700">Generating</SelectItem>
-              <SelectItem value="queued" className="text-slate-300 focus:text-white focus:bg-slate-700">Queued</SelectItem>
-              <SelectItem value="failed" className="text-slate-300 focus:text-white focus:bg-slate-700">Failed</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={visibilityFilter} onValueChange={setVisibilityFilter}>
-            <SelectTrigger className="w-full md:w-40 bg-slate-800/50 border-slate-700 text-white">
-              <SelectValue placeholder="Visibility" />
-            </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-700">
-              <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-slate-700">All</SelectItem>
-              <SelectItem value="public" className="text-slate-300 focus:text-white focus:bg-slate-700">Public</SelectItem>
-              <SelectItem value="private" className="text-slate-300 focus:text-white focus:bg-slate-700">Private</SelectItem>
-              <SelectItem value="favorites" className="text-slate-300 focus:text-white focus:bg-slate-700">Favorites</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-full md:w-40 bg-slate-800/50 border-slate-700 text-white">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-700">
-              <SelectItem value="-created_date" className="text-slate-300 focus:text-white focus:bg-slate-700">Newest First</SelectItem>
-              <SelectItem value="created_date" className="text-slate-300 focus:text-white focus:bg-slate-700">Oldest First</SelectItem>
-              <SelectItem value="title" className="text-slate-300 focus:text-white focus:bg-slate-700">Title A-Z</SelectItem>
-              <SelectItem value="-plays" className="text-slate-300 focus:text-white focus:bg-slate-700">Most Played</SelectItem>
-            </SelectContent>
-          </Select>
+
+          <div className="flex flex-wrap gap-3">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-32 bg-slate-800/50 border-slate-700 text-white text-sm">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-slate-700">All Status</SelectItem>
+                <SelectItem value="ready" className="text-slate-300 focus:text-white focus:bg-slate-700">Ready</SelectItem>
+                <SelectItem value="generating" className="text-slate-300 focus:text-white focus:bg-slate-700">Generating</SelectItem>
+                <SelectItem value="queued" className="text-slate-300 focus:text-white focus:bg-slate-700">Queued</SelectItem>
+                <SelectItem value="failed" className="text-slate-300 focus:text-white focus:bg-slate-700">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={visibilityFilter} onValueChange={setVisibilityFilter}>
+              <SelectTrigger className="w-32 bg-slate-800/50 border-slate-700 text-white text-sm">
+                <SelectValue placeholder="Visibility" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-slate-700">All</SelectItem>
+                <SelectItem value="public" className="text-slate-300 focus:text-white focus:bg-slate-700">Public</SelectItem>
+                <SelectItem value="private" className="text-slate-300 focus:text-white focus:bg-slate-700">Private</SelectItem>
+                <SelectItem value="favorites" className="text-slate-300 focus:text-white focus:bg-slate-700">Favorites</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={genreFilter} onValueChange={setGenreFilter}>
+              <SelectTrigger className="w-32 bg-slate-800/50 border-slate-700 text-white text-sm">
+                <SelectValue placeholder="Genre" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-slate-700">All Genres</SelectItem>
+                {uniqueGenres.map(genre => (
+                  <SelectItem key={genre} value={genre} className="text-slate-300 focus:text-white focus:bg-slate-700">
+                    {genre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={instrumentalFilter} onValueChange={setInstrumentalFilter}>
+              <SelectTrigger className="w-32 bg-slate-800/50 border-slate-700 text-white text-sm">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-slate-700">All Types</SelectItem>
+                <SelectItem value="vocals" className="text-slate-300 focus:text-white focus:bg-slate-700">With Vocals</SelectItem>
+                <SelectItem value="instrumental" className="text-slate-300 focus:text-white focus:bg-slate-700">Instrumental</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </motion.div>
 
         {/* Tracks Grid */}
@@ -257,6 +311,8 @@ export default function LibraryPage() {
                     onToggleVisibility={handleToggleVisibility}
                     onToggleFavorite={handleToggleFavorite}
                     onEdit={handleEdit}
+                    onShare={handleShare}
+                    onViewVersions={handleViewVersions}
                     isPlaying={playingTrack?.id === track.id}
                   />
                 </motion.div>
@@ -293,6 +349,22 @@ export default function LibraryPage() {
         open={!!editingTrack}
         onClose={() => setEditingTrack(null)}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ['myTracks'] })}
+      />
+
+      {/* Share Dialog */}
+      <ShareTrackDialog
+        track={sharingTrack}
+        open={!!sharingTrack}
+        onClose={() => setSharingTrack(null)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['myTracks'] })}
+      />
+
+      {/* Version History */}
+      <VersionHistory
+        track={versionHistoryTrack}
+        open={!!versionHistoryTrack}
+        onClose={() => setVersionHistoryTrack(null)}
+        onPlay={handlePlay}
       />
     </div>
   );

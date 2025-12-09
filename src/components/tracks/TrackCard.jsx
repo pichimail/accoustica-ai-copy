@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit, Heart, Wand2 } from 'lucide-react';
+import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit, Heart, Wand2, Users, GitBranch } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -34,6 +34,8 @@ export default function TrackCard({
   onToggleVisibility,
   onEdit,
   onToggleFavorite,
+  onShare,
+  onViewVersions,
   isPlaying = false,
   showActions = true,
   showVisibility = true,
@@ -138,6 +140,20 @@ export default function TrackCard({
                         >
                           <Wand2 className="h-4 w-4 mr-2" />
                           Edit Track
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => onShare?.(track)}
+                          className="text-slate-300 focus:text-white focus:bg-slate-700"
+                        >
+                          <Users className="h-4 w-4 mr-2" />
+                          Share & Collaborate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => onViewVersions?.(track)}
+                          className="text-slate-300 focus:text-white focus:bg-slate-700"
+                        >
+                          <GitBranch className="h-4 w-4 mr-2" />
+                          Version History
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => onToggleFavorite?.(track)}
