@@ -12,16 +12,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { 
   Sparkles, Music, Globe, User, LogOut, Menu, X, 
-  Plus, Library, LayoutDashboard, Settings, Crown
+  Plus, Library, Crown, Home, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from 'framer-motion';
 
 const publicPages = ['Home', 'PublicTrack', 'Discover'];
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -39,11 +40,8 @@ export default function Layout({ children, currentPageName }) {
     base44.auth.logout(createPageUrl('Home'));
   };
 
-  const isPublicPage = publicPages.includes(currentPageName);
-  const isAdminPage = currentPageName?.startsWith('Admin');
-
   const navLinks = [
-    { name: 'Home', icon: Sparkles, page: 'Home' },
+    { name: 'Home', icon: Home, page: 'Home' },
     { name: 'Create', icon: Plus, page: 'Create', requireAuth: true },
     { name: 'Library', icon: Library, page: 'Library', requireAuth: true },
     { name: 'Discover', icon: Globe, page: 'Discover' },
@@ -55,7 +53,7 @@ export default function Layout({ children, currentPageName }) {
     return true;
   });
 
-  // Hide layout on public track page for cleaner embed experience
+  // Hide layout on public track page
   if (currentPageName === 'PublicTrack') {
     return <>{children}</>;
   }
@@ -63,153 +61,175 @@ export default function Layout({ children, currentPageName }) {
   const avatarUrl = user?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.full_name || 'User'}`;
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link to={createPageUrl('Home')} className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-white" />
-              </div>
-              <span className="font-bold text-white text-lg hidden sm:block">Accoustica</span>
-            </Link>
-
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
-              {filteredNavLinks.map((link) => (
-                <Link key={link.page} to={createPageUrl(link.page)}>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "text-slate-400 hover:text-white hover:bg-slate-800",
-                      currentPageName === link.page && "text-white bg-slate-800"
-                    )}
-                  >
-                    <link.icon className="h-4 w-4 mr-2" />
-                    {link.name}
-                  </Button>
-                </Link>
-              ))}
-            </nav>
-
-            {/* User Menu */}
-            <div className="flex items-center gap-3">
-              {isLoading ? (
-                <div className="w-8 h-8 rounded-full bg-slate-700 animate-pulse" />
-              ) : user ? (
-                <>
-                  <Link to={createPageUrl('Create')} className="hidden md:block">
-                    <Button className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create
-                    </Button>
-                  </Link>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-800 transition-colors">
-                        <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-700">
-                          <img 
-                            src={avatarUrl} 
-                            alt={user.full_name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 bg-slate-800 border-slate-700">
-                      <div className="px-3 py-2">
-                        <p className="font-medium text-white">{user.full_name}</p>
-                        <p className="text-sm text-slate-400">{user.email}</p>
-                      </div>
-                      <DropdownMenuSeparator className="bg-slate-700" />
-                      <DropdownMenuItem asChild className="text-slate-300 focus:text-white focus:bg-slate-700">
-                        <Link to={createPageUrl('Profile')}>
-                          <User className="h-4 w-4 mr-2" />
-                          Profile
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild className="text-slate-300 focus:text-white focus:bg-slate-700">
-                        <Link to={createPageUrl('Library')}>
-                          <Library className="h-4 w-4 mr-2" />
-                          My Library
-                        </Link>
-                      </DropdownMenuItem>
-                      {user.role === 'admin' && (
-                        <>
-                          <DropdownMenuSeparator className="bg-slate-700" />
-                          <DropdownMenuItem asChild className="text-violet-400 focus:text-violet-300 focus:bg-slate-700">
-                            <Link to={createPageUrl('AdminDashboard')}>
-                              <Crown className="h-4 w-4 mr-2" />
-                              Admin Dashboard
-                            </Link>
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      <DropdownMenuSeparator className="bg-slate-700" />
-                      <DropdownMenuItem 
-                        onClick={handleLogout}
-                        className="text-red-400 focus:text-red-300 focus:bg-red-500/10"
-                      >
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Log Out
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              ) : (
-                <Button 
-                  onClick={() => base44.auth.redirectToLogin(createPageUrl('Create'))}
-                  className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white"
-                >
-                  Get Started
-                </Button>
-              )}
-
-              {/* Mobile Menu Button */}
-              <button
-                className="md:hidden p-2 text-slate-400 hover:text-white"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              >
-                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-              </button>
+    <div className="min-h-screen bg-slate-950 flex flex-col">
+      {/* Mobile Top Bar */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800/50 safe-top">
+        <div className="flex items-center justify-between px-4 h-16">
+          <Link to={createPageUrl('Home')} className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-white" />
             </div>
+            <span className="font-bold text-white text-base">Accoustica</span>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            {user && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-700">
+                    <img src={avatarUrl} alt={user.full_name} className="w-full h-full object-cover" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-slate-800 border-slate-700">
+                  <div className="px-3 py-2">
+                    <p className="font-medium text-white text-sm">{user.full_name}</p>
+                    <p className="text-xs text-slate-400">{user.email}</p>
+                  </div>
+                  <DropdownMenuSeparator className="bg-slate-700" />
+                  <DropdownMenuItem asChild className="text-slate-300 focus:text-white focus:bg-slate-700">
+                    <Link to={createPageUrl('Profile')}>
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  {user.role === 'admin' && (
+                    <DropdownMenuItem asChild className="text-violet-400 focus:text-violet-300 focus:bg-slate-700">
+                      <Link to={createPageUrl('AdminDashboard')}>
+                        <Crown className="h-4 w-4 mr-2" />
+                        Admin
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator className="bg-slate-700" />
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-400 focus:text-red-300 focus:bg-red-500/10">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Log Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-slate-900 border-t border-slate-800">
-            <div className="px-4 py-4 space-y-1">
-              {filteredNavLinks.map((link) => (
-                <Link 
-                  key={link.page} 
-                  to={createPageUrl(link.page)}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "w-full justify-start text-slate-400 hover:text-white hover:bg-slate-800",
-                      currentPageName === link.page && "text-white bg-slate-800"
-                    )}
-                  >
-                    <link.icon className="h-4 w-4 mr-2" />
-                    {link.name}
-                  </Button>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
       </header>
 
+      {/* Desktop Sidebar */}
+      <aside className={cn(
+        "hidden lg:flex fixed left-0 top-0 h-screen bg-slate-900/95 backdrop-blur-xl border-r border-slate-800/50 z-40 transition-all duration-300",
+        sidebarOpen ? "w-64" : "w-20"
+      )}>
+        <div className="flex flex-col w-full">
+          {/* Logo & Toggle */}
+          <div className="flex items-center justify-between p-4 border-b border-slate-800/50">
+            {sidebarOpen ? (
+              <>
+                <Link to={createPageUrl('Home')} className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 flex items-center justify-center">
+                    <Sparkles className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="font-bold text-white text-lg">Accoustica</span>
+                </Link>
+                <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-white">
+                  <PanelLeftClose className="h-5 w-5" />
+                </button>
+              </>
+            ) : (
+              <button onClick={() => setSidebarOpen(true)} className="mx-auto text-slate-400 hover:text-white">
+                <PanelLeftOpen className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 px-3 py-4 space-y-1">
+            {filteredNavLinks.map((link) => (
+              <Link key={link.page} to={createPageUrl(link.page)}>
+                <button className={cn(
+                  "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all",
+                  currentPageName === link.page 
+                    ? "bg-gradient-to-r from-violet-500 to-pink-500 text-white shadow-lg shadow-violet-500/25" 
+                    : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                )}>
+                  <link.icon className="h-5 w-5 flex-shrink-0" />
+                  {sidebarOpen && <span className="font-medium">{link.name}</span>}
+                </button>
+              </Link>
+            ))}
+          </nav>
+
+          {/* User Profile */}
+          {user && (
+            <div className="p-3 border-t border-slate-800/50">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className={cn(
+                    "w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800/50 transition-all",
+                    !sidebarOpen && "justify-center"
+                  )}>
+                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-700 flex-shrink-0">
+                      <img src={avatarUrl} alt={user.full_name} className="w-full h-full object-cover" />
+                    </div>
+                    {sidebarOpen && (
+                      <div className="flex-1 text-left overflow-hidden">
+                        <p className="text-white text-sm font-medium truncate">{user.full_name}</p>
+                        <p className="text-slate-400 text-xs truncate">{user.email}</p>
+                      </div>
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-slate-800 border-slate-700">
+                  <DropdownMenuItem asChild className="text-slate-300 focus:text-white focus:bg-slate-700">
+                    <Link to={createPageUrl('Profile')}>
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  {user.role === 'admin' && (
+                    <DropdownMenuItem asChild className="text-violet-400 focus:text-violet-300 focus:bg-slate-700">
+                      <Link to={createPageUrl('AdminDashboard')}>
+                        <Crown className="h-4 w-4 mr-2" />
+                        Admin Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator className="bg-slate-700" />
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-400 focus:text-red-300 focus:bg-red-500/10">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Log Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+        </div>
+      </aside>
+
       {/* Main Content */}
-      <main>
+      <main className={cn(
+        "flex-1 lg:transition-all lg:duration-300",
+        "pt-16 pb-20 lg:pt-0 lg:pb-0", // Mobile padding
+        sidebarOpen ? "lg:ml-64" : "lg:ml-20"
+      )}>
         {children}
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/50 safe-bottom">
+        <div className="grid grid-cols-5 gap-1 px-2 py-2">
+          {filteredNavLinks.map((link) => (
+            <Link key={link.page} to={createPageUrl(link.page)}>
+              <button className={cn(
+                "w-full flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all",
+                currentPageName === link.page
+                  ? "bg-gradient-to-r from-violet-500 to-pink-500 text-white shadow-lg shadow-violet-500/25"
+                  : "text-slate-400 active:bg-slate-800/50"
+              )}>
+                <link.icon className="h-5 w-5" />
+                <span className="text-[10px] font-medium">{link.name}</span>
+              </button>
+            </Link>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }
