@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
                 prompt: prompt,
                 customMode: true,
                 instrumental: instrumental,
-                model: 'V4_5',
+                model: 'V5',
                 callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`,
                 style: style || 'AI Generated Music',
                 title: title || 'Untitled Track',
