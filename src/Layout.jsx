@@ -47,6 +47,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Create', icon: Plus, page: 'Create', requireAuth: true },
     { name: 'Library', icon: Library, page: 'Library', requireAuth: true },
     { name: 'Discover', icon: Globe, page: 'Discover' },
+    { name: 'Studio', icon: Music, page: 'CollaborativeStudio', requireAuth: true },
   ];
 
   const filteredNavLinks = navLinks.filter(link => {

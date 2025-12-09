@@ -6,6 +6,8 @@ import TrackCard from '@/components/tracks/TrackCard';
 import TrackEditDialog from '@/components/tracks/TrackEditDialog';
 import ShareTrackDialog from '@/components/collaboration/ShareTrackDialog';
 import VersionHistory from '@/components/collaboration/VersionHistory';
+import MusicVideoGenerator from '@/components/video/MusicVideoGenerator';
+import MasteringDialog from '@/components/audio/MasteringDialog';
 import AudioPlayer from '@/components/audio/AudioPlayer';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +34,8 @@ export default function LibraryPage() {
   const [editingTrack, setEditingTrack] = useState(null);
   const [sharingTrack, setSharingTrack] = useState(null);
   const [versionHistoryTrack, setVersionHistoryTrack] = useState(null);
+  const [videoGeneratingTrack, setVideoGeneratingTrack] = useState(null);
+  const [masteringTrack, setMasteringTrack] = useState(null);
   const [genreFilter, setGenreFilter] = useState('all');
   const [instrumentalFilter, setInstrumentalFilter] = useState('all');
   const queryClient = useQueryClient();
@@ -121,6 +125,14 @@ export default function LibraryPage() {
 
   const handleViewVersions = (track) => {
     setVersionHistoryTrack(track);
+  };
+
+  const handleGenerateVideo = (track) => {
+    setVideoGeneratingTrack(track);
+  };
+
+  const handleMaster = (track) => {
+    setMasteringTrack(track);
   };
 
   const stats = {
@@ -313,6 +325,8 @@ export default function LibraryPage() {
                     onEdit={handleEdit}
                     onShare={handleShare}
                     onViewVersions={handleViewVersions}
+                    onGenerateVideo={handleGenerateVideo}
+                    onMaster={handleMaster}
                     isPlaying={playingTrack?.id === track.id}
                   />
                 </motion.div>
@@ -365,6 +379,21 @@ export default function LibraryPage() {
         open={!!versionHistoryTrack}
         onClose={() => setVersionHistoryTrack(null)}
         onPlay={handlePlay}
+      />
+
+      {/* Music Video Generator */}
+      <MusicVideoGenerator
+        track={videoGeneratingTrack}
+        open={!!videoGeneratingTrack}
+        onClose={() => setVideoGeneratingTrack(null)}
+      />
+
+      {/* Mastering Dialog */}
+      <MasteringDialog
+        track={masteringTrack}
+        open={!!masteringTrack}
+        onClose={() => setMasteringTrack(null)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['myTracks'] })}
       />
     </div>
   );

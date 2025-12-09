@@ -9,6 +9,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminUsers from './pages/AdminUsers';
 import AdminPlans from './pages/AdminPlans';
 import AdminTracks from './pages/AdminTracks';
+import CollaborativeStudio from './pages/CollaborativeStudio';
 import __Layout from './Layout.jsx';
 
 
@@ -24,6 +25,7 @@ export const PAGES = {
     "AdminUsers": AdminUsers,
     "AdminPlans": AdminPlans,
     "AdminTracks": AdminTracks,
+    "CollaborativeStudio": CollaborativeStudio,
 }
 
 export const pagesConfig = {
