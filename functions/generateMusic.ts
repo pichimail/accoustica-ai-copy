@@ -22,9 +22,6 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500 });
         }
 
-        // Determine if custom mode based on whether style is provided
-        const customMode = !!style;
-
         // Call Suno API to generate music
         const response = await fetch(`${SUNO_API_BASE}/generate`, {
             method: 'POST',
@@ -34,12 +31,12 @@ Deno.serve(async (req) => {
             },
             body: JSON.stringify({
                 prompt: prompt,
-                customMode: customMode,
+                customMode: true,
                 instrumental: instrumental,
                 model: 'V4_5',
-                callBackUrl: '',
-                ...(customMode && { style: style }),
-                ...(title && { title: title }),
+                callBackUrl: 'https://webhook.site/unique-url-here',
+                style: style || 'AI Generated Music',
+                title: title || 'Untitled Track',
             }),
         });
 
