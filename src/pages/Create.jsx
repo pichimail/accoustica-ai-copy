@@ -15,6 +15,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function CreatePage() {
   const [currentTrack, setCurrentTrack] = useState(null);
   const [playingTrack, setPlayingTrack] = useState(null);
+  const [fullscreenPlayerOpen, setFullscreenPlayerOpen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = React.useRef(null);
   const [user, setUser] = useState(null);
   const [userPlan, setUserPlan] = useState(null);
   const queryClient = useQueryClient();
@@ -185,6 +190,41 @@ export default function CreatePage() {
   const handlePlay = (track) => {
     setPlayingTrack(track);
   };
+
+  const togglePlayPause = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleSeek = (value) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = value[0];
+    setCurrentTime(value[0]);
+  };
+
+  React.useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateDuration = () => setDuration(audio.duration);
+    const handleEnded = () => setIsPlaying(false);
+
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('loadedmetadata', updateDuration);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('loadedmetadata', updateDuration);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [playingTrack]);
 
   const handleToggleVisibility = async (track) => {
     await base44.entities.Track.update(track.id, {
@@ -402,21 +442,41 @@ export default function CreatePage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
             transition={{ type: "spring", damping: 25 }}
-            className="fixed bottom-0 left-0 right-0 z-50"
+            className="fixed bottom-0 left-0 right-0 z-50 pb-20 lg:pb-0"
           >
             <div className="bg-slate-900/95 backdrop-blur-2xl border-t border-white/10 shadow-2xl">
               <div className="max-w-[1600px] mx-auto px-6 py-4">
+                <audio 
+                  ref={audioRef} 
+                  src={playingTrack.audio_url || playingTrack.stream_audio_url}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                />
                 <AudioPlayer
                   src={playingTrack.audio_url || playingTrack.stream_audio_url}
                   title={playingTrack.title}
                   artist={playingTrack.style}
                   coverImage={playingTrack.cover_image_url}
+                  onOpenFullscreen={() => setFullscreenPlayerOpen(true)}
                 />
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Fullscreen Mobile Player */}
+      <FullscreenPlayer
+        track={playingTrack}
+        isOpen={fullscreenPlayerOpen}
+        onClose={() => setFullscreenPlayerOpen(false)}
+        isPlaying={isPlaying}
+        onTogglePlay={togglePlayPause}
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={handleSeek}
+        audioRef={audioRef}
+      />
 
       <style jsx>{`
         @keyframes blob {
