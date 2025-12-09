@@ -76,17 +76,7 @@ export default function CreatePage() {
         throw new Error('Daily generation limit reached');
       }
 
-      // Create the track record
-      const track = await base44.entities.Track.create({
-        title: data.title,
-        prompt: data.prompt,
-        style: data.style,
-        is_instrumental: data.is_instrumental,
-        status: 'generating',
-        is_public: false,
-      });
-
-      // Update user usage
+      // Update user usage first
       await base44.auth.updateMe({
         daily_usage: dailyUsage + 1,
         last_usage_reset: today,
@@ -95,13 +85,30 @@ export default function CreatePage() {
         last_active: new Date().toISOString(),
       });
 
-      // Simulate API call and status updates
-      simulateGeneration(track.id);
+      // Call backend function to generate music with Suno API
+      const response = await base44.functions.invoke('generateMusic', {
+        prompt: data.prompt,
+        style: data.style,
+        title: data.title,
+        instrumental: data.is_instrumental || false,
+      });
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to start generation');
+      }
+
+      // Fetch the created track
+      const track = await base44.entities.Track.get(response.data.trackId);
+      setCurrentTrack(track);
+
+      // Poll for status updates
+      const taskId = response.data.taskId;
+      const trackId = response.data.trackId;
+      pollMusicStatus(taskId, trackId);
 
       return track;
     },
-    onSuccess: (track) => {
-      setCurrentTrack(track);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
       toast.success('Generation started!', {
         description: 'Your track is being created...',
@@ -114,22 +121,53 @@ export default function CreatePage() {
     },
   });
 
-  // Simulate generation process (in production, this would poll the actual API)
-  const simulateGeneration = async (trackId) => {
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 15000));
+  // Poll music generation status
+  const pollMusicStatus = async (taskId, trackId) => {
+    const maxAttempts = 60; // 5 minutes max (60 * 5 seconds)
+    let attempts = 0;
 
-    // Update track as ready with sample data
-    await base44.entities.Track.update(trackId, {
-      status: 'ready',
-      duration: Math.floor(Math.random() * 120) + 60,
-      audio_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-      cover_image_url: `https://images.unsplash.com/photo-${1470225620780 + Math.floor(Math.random() * 1000)}-dba8ba36b745?w=400&h=400&fit=crop`,
-      tags: 'AI Generated',
-    });
+    const poll = async () => {
+      try {
+        attempts++;
+        
+        const statusResponse = await base44.functions.invoke('checkMusicStatus', {
+          taskId,
+          trackId,
+        });
 
-    queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
-    setCurrentTrack(null);
+        if (statusResponse.data.success) {
+          const updatedTrack = statusResponse.data.track;
+          setCurrentTrack(updatedTrack);
+
+          if (updatedTrack.status === 'ready') {
+            queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
+            toast.success('Track generated successfully!');
+            setCurrentTrack(null);
+            return;
+          } else if (updatedTrack.status === 'failed') {
+            queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
+            toast.error('Track generation failed');
+            setCurrentTrack(null);
+            return;
+          }
+        }
+
+        // Continue polling if not finished and under max attempts
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 5000);
+        } else {
+          toast.error('Generation timeout - check your library later');
+          setCurrentTrack(null);
+        }
+      } catch (error) {
+        console.error('Error polling status:', error);
+        toast.error('Failed to check generation status');
+        setCurrentTrack(null);
+      }
+    };
+
+    // Start polling
+    poll();
   };
 
   const handlePlay = (track) => {
