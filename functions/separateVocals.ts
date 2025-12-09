@@ -11,16 +11,25 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { taskId, audioId, type = 'separate_vocal' } = await req.json();
+        const { 
+            taskId, 
+            audioId, 
+            trackId,
+            type = 'separate_vocal' 
+        } = await req.json();
 
-        if (!taskId || !audioId) {
-            return Response.json({ error: 'taskId and audioId are required' }, { status: 400 });
+        if (!taskId || !audioId || !trackId) {
+            return Response.json({ 
+                error: 'taskId, audioId, and trackId are required' 
+            }, { status: 400 });
         }
 
         const apiKey = Deno.env.get('SUNO_API_KEY');
         if (!apiKey) {
             return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500 });
         }
+
+        const callbackUrl = `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/stemCallback`;
 
         const response = await fetch(`${SUNO_API_BASE}/vocal-removal/generate`, {
             method: 'POST',
@@ -32,7 +41,7 @@ Deno.serve(async (req) => {
                 taskId,
                 audioId,
                 type,
-                callBackUrl: 'https://webhook.site/unique-url-here',
+                callBackUrl: callbackUrl,
             }),
         });
 
@@ -46,9 +55,18 @@ Deno.serve(async (req) => {
             }, { status: 400 });
         }
 
+        // Create StemSeparation record
+        const separation = await base44.entities.StemSeparation.create({
+            track_id: trackId,
+            task_id: data.data.taskId,
+            separation_type: type,
+            status: 'pending',
+        });
+
         return Response.json({
             success: true,
             taskId: data.data.taskId,
+            separationId: separation.id,
         });
 
     } catch (error) {
