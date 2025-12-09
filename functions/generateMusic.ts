@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { prompt, style, title, instrumental = false, model_version = 'v5' } = await req.json();
+        const { prompt, style, title, instrumental = false } = await req.json();
 
         if (!prompt) {
             return Response.json({ error: 'Prompt is required' }, { status: 400 });
@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
                 prompt: prompt,
                 customMode: true,
                 instrumental: instrumental,
-                model: model_version === 'v5' ? 'V4_5' : 'V3_5', // Default v5 uses V4_5 model
+                model: 'V4_5',
                 callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`,
                 style: style || 'AI Generated Music',
                 title: title || 'Untitled Track',

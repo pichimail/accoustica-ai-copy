@@ -3,98 +3,101 @@ import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Film, Sparkles, Mountain, Building2, Disc, Play, Download, Share2, RotateCw, Loader2, Zap, Palette, Square, Plus, X } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Video, Loader2, Download, ExternalLink, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
-const visualStyles = [
-  { name: 'Cinematic', icon: Film, description: 'Movie-like quality', tag: 'dramatic lighting, depth of field' },
-  { name: 'Abstract', icon: Sparkles, description: 'Artistic visuals', tag: 'surreal, flowing shapes' },
-  { name: 'Nature', icon: Mountain, description: 'Natural landscapes', tag: 'organic, peaceful' },
-  { name: 'Urban', icon: Building2, description: 'City scenes', tag: 'modern, architectural' },
-  { name: 'Retro', icon: Disc, description: 'Vintage aesthetics', tag: 'nostalgic, grainy' },
-  { name: 'Sci-Fi', icon: Zap, description: 'Futuristic tech', tag: 'neon, cyberpunk' },
-  { name: 'Anime', icon: Palette, description: 'Japanese animation', tag: 'vibrant, stylized' },
-  { name: 'Minimalist', icon: Square, description: 'Clean, simple', tag: 'geometric, modern' },
-];
-
-const videoEffects = [
-  { id: 'glitch', name: 'Glitch', description: 'Digital distortion' },
-  { id: 'vhs', name: 'VHS', description: 'Retro tape effect' },
-  { id: 'bloom', name: 'Bloom', description: 'Soft glow' },
-  { id: 'chromatic', name: 'Chromatic', description: 'Color split' },
-  { id: 'particles', name: 'Particles', description: 'Floating elements' },
-  { id: 'kaleidoscope', name: 'Kaleidoscope', description: 'Mirror patterns' },
-];
-
-const aspectRatios = [
-  { value: '16:9', label: '16:9', description: 'Landscape' },
-  { value: '9:16', label: '9:16', description: 'Portrait' },
-  { value: '1:1', label: '1:1', description: 'Square' },
-  { value: '21:9', label: '21:9', description: 'Ultrawide' },
-];
-
-export default function MusicVideoGenerator({ track, open, onOpenChange }) {
-  const [description, setDescription] = useState('');
-  const [visualStyle, setVisualStyle] = useState('cinematic');
+export default function MusicVideoGenerator({ track, open, onClose }) {
+  const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState('16:9');
-  const [videoLength, setVideoLength] = useState('full');
+  const [visualStyle, setVisualStyle] = useState('cinematic');
   const [effects, setEffects] = useState([]);
-  const [scenePrompts, setScenePrompts] = useState([]);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [author, setAuthor] = useState('');
+  const [generating, setGenerating] = useState(false);
   const [videoUrl, setVideoUrl] = useState(null);
+  const [taskId, setTaskId] = useState(null);
   const [progress, setProgress] = useState(0);
-  const [currentScene, setCurrentScene] = useState(0);
+
+  const visualStyles = {
+    cinematic: 'Cinematic - Movie-quality visuals',
+    abstract: 'Abstract - Artistic patterns and shapes',
+    nature: 'Nature - Landscapes and natural scenes',
+    urban: 'Urban - City and street scenes',
+    cosmic: 'Cosmic - Space and galaxy themes',
+    retro: 'Retro - Vintage 80s/90s aesthetics',
+    minimalist: 'Minimalist - Clean and simple',
+    psychedelic: 'Psychedelic - Trippy and colorful',
+  };
+
+  const availableEffects = [
+    { id: 'particles', name: 'Particle Effects' },
+    { id: 'glow', name: 'Glow & Bloom' },
+    { id: 'vignette', name: 'Vignette' },
+    { id: 'colorGrade', name: 'Color Grading' },
+    { id: 'motionBlur', name: 'Motion Blur' },
+    { id: 'filmGrain', name: 'Film Grain' },
+  ];
+
+  const toggleEffect = (effectId) => {
+    setEffects(prev => 
+      prev.includes(effectId) 
+        ? prev.filter(e => e !== effectId)
+        : [...prev, effectId]
+    );
+  };
 
   const handleGenerate = async () => {
-    if (!description.trim()) {
-      toast.error('Please describe your video vision');
+    if (!prompt.trim()) {
+      toast.error('Please describe the video you want to create');
       return;
     }
 
-    setIsGenerating(true);
-    setProgress(0);
+    setGenerating(true);
     setVideoUrl(null);
+    setProgress(0);
 
     try {
       const response = await base44.functions.invoke('generateMusicVideoWithLyrics', {
         taskId: track.task_id,
         audioId: track.external_audio_id,
-        author: 'Accoustica',
+        author: author || 'Accoustica',
         domainName: 'accoustica.app',
-        description,
-        visualStyle,
-        aspectRatio,
-        videoLength,
-        effects,
-        scenePrompts,
+        prompt: prompt,
+        visualStyle: visualStyle,
+        aspectRatio: aspectRatio,
+        effects: effects,
       });
 
       if (response.data.success) {
-        pollVideoStatus(response.data.taskId);
+        const newTaskId = response.data.taskId;
+        setTaskId(newTaskId);
+        toast.success('Video generation started!');
+        
+        // Poll for completion
+        pollVideoStatus(newTaskId);
       } else {
-        toast.error(response.data.error || 'Failed to start generation');
-        setIsGenerating(false);
+        toast.error(response.data.error || 'Failed to generate video');
+        setGenerating(false);
       }
     } catch (error) {
-      toast.error('Generation failed: ' + error.message);
-      setIsGenerating(false);
+      toast.error('Failed to generate video: ' + error.message);
+      setGenerating(false);
     }
   };
 
-  const pollVideoStatus = async (taskId) => {
+  const pollVideoStatus = async (id) => {
     const maxAttempts = 60;
     let attempts = 0;
 
     const poll = async () => {
-      attempts++;
-      setProgress(Math.min(95, (attempts / maxAttempts) * 100));
-
       try {
+        attempts++;
+        setProgress(Math.min(95, (attempts / maxAttempts) * 100));
+        
         const statusResponse = await base44.functions.invoke('checkMusicVideoStatus', {
-          taskId,
+          taskId: id,
         });
 
         if (statusResponse.data.success) {
@@ -103,12 +106,12 @@ export default function MusicVideoGenerator({ track, open, onOpenChange }) {
           if (status === 'SUCCESS' && statusResponse.data.videoUrl) {
             setVideoUrl(statusResponse.data.videoUrl);
             setProgress(100);
-            setIsGenerating(false);
+            setGenerating(false);
             toast.success('Video generated successfully!');
             return;
           } else if (status && status.includes('FAILED')) {
             toast.error('Video generation failed');
-            setIsGenerating(false);
+            setGenerating(false);
             return;
           }
         }
@@ -117,11 +120,11 @@ export default function MusicVideoGenerator({ track, open, onOpenChange }) {
           setTimeout(poll, 5000);
         } else {
           toast.error('Video generation timeout');
-          setIsGenerating(false);
+          setGenerating(false);
         }
       } catch (error) {
         console.error('Polling error:', error);
-        setIsGenerating(false);
+        setGenerating(false);
       }
     };
 
@@ -131,240 +134,232 @@ export default function MusicVideoGenerator({ track, open, onOpenChange }) {
   if (!track) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800">
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="bg-slate-900 border-slate-700 max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-white">
-            <Film className="h-5 w-5 text-violet-400" />
-            AI Video Studio: {track.title}
+          <DialogTitle className="text-white flex items-center gap-2">
+            <Video className="h-5 w-5 text-violet-400" />
+            Generate Music Video: {track.title}
           </DialogTitle>
         </DialogHeader>
 
-        {!videoUrl ? (
-          <div className="space-y-6 mb-6">
-            <div>
-              <label className="text-sm font-medium text-white mb-2 block">Video Description</label>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="A journey through neon-lit cityscapes at night, transitioning to peaceful sunrise over mountains..."
-                className="min-h-[100px] bg-slate-800/50 border-slate-700"
-                disabled={isGenerating}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-4">
+          {!videoUrl ? (
+            <>
+              {/* Video Description */}
               <div>
-                <label className="text-sm font-medium text-white mb-2 block">Aspect Ratio</label>
+                <Label className="text-slate-300">Scene & Visual Description</Label>
+                <Textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Describe specific scenes, visual style, colors, camera movements, and atmosphere you want... e.g., 'Start with a sunrise over mountains, transition to abstract geometric patterns pulsing with the beat, end with starry night sky'"
+                  className="bg-slate-800 border-slate-700 text-white h-32"
+                  disabled={generating}
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  More detailed descriptions produce better results
+                </p>
+              </div>
+
+              {/* Visual Style Selection */}
+              <div>
+                <Label className="text-slate-300 mb-2 block">Visual Style</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  {aspectRatios.map((ratio) => (
+                  {Object.entries(visualStyles).map(([key, label]) => (
                     <button
-                      key={ratio.value}
-                      onClick={() => setAspectRatio(ratio.value)}
-                      disabled={isGenerating}
-                      className={cn(
-                        "p-3 rounded-lg border-2 transition-all text-center",
-                        aspectRatio === ratio.value
-                          ? "border-violet-500 bg-violet-500/10"
-                          : "border-slate-700 bg-slate-800/30 hover:border-slate-600"
-                      )}
+                      key={key}
+                      type="button"
+                      onClick={() => setVisualStyle(key)}
+                      disabled={generating}
+                      className={`p-2 rounded-lg border text-left text-sm transition-all ${
+                        visualStyle === key
+                          ? 'bg-violet-500/20 border-violet-500/50 text-white'
+                          : 'bg-slate-800/50 border-slate-700 text-slate-300 hover:border-slate-600'
+                      }`}
                     >
-                      <div className="font-medium text-white text-sm">{ratio.label}</div>
-                      <div className="text-xs text-slate-500">{ratio.description}</div>
+                      {label}
                     </button>
                   ))}
                 </div>
               </div>
 
+              {/* Aspect Ratio */}
               <div>
-                <label className="text-sm font-medium text-white mb-2 block">Video Length</label>
-                <div className="space-y-2">
-                  {['full', '30sec', '60sec'].map((length) => (
+                <Label className="text-slate-300 mb-2 block">Aspect Ratio</Label>
+                <div className="flex gap-2">
+                  {['16:9', '9:16', '1:1', '4:3'].map((ratio) => (
                     <button
-                      key={length}
-                      onClick={() => setVideoLength(length)}
-                      disabled={isGenerating}
-                      className={cn(
-                        "w-full p-2 rounded-lg border-2 transition-all text-sm",
-                        videoLength === length
-                          ? "border-violet-500 bg-violet-500/10 text-white"
-                          : "border-slate-700 bg-slate-800/30 hover:border-slate-600 text-slate-400"
-                      )}
+                      key={ratio}
+                      type="button"
+                      onClick={() => setAspectRatio(ratio)}
+                      disabled={generating}
+                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
+                        aspectRatio === ratio
+                          ? 'bg-violet-500/20 border-violet-500/50 text-white'
+                          : 'bg-slate-800/50 border-slate-700 text-slate-300 hover:border-slate-600'
+                      }`}
                     >
-                      {length === 'full' ? 'Full Song' : length}
+                      {ratio}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  {aspectRatio === '16:9' && 'Standard widescreen (YouTube, Desktop)'}
+                  {aspectRatio === '9:16' && 'Vertical (TikTok, Instagram Stories)'}
+                  {aspectRatio === '1:1' && 'Square (Instagram Feed)'}
+                  {aspectRatio === '4:3' && 'Classic (Traditional TV)'}
+                </p>
+              </div>
+
+              {/* Visual Effects */}
+              <div>
+                <Label className="text-slate-300 mb-2 block">Visual Effects (Optional)</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {availableEffects.map((effect) => (
+                    <button
+                      key={effect.id}
+                      type="button"
+                      onClick={() => toggleEffect(effect.id)}
+                      disabled={generating}
+                      className={`p-2 rounded-lg border text-xs transition-all ${
+                        effects.includes(effect.id)
+                          ? 'bg-pink-500/20 border-pink-500/50 text-pink-300'
+                          : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                      }`}
+                    >
+                      {effect.name}
                     </button>
                   ))}
                 </div>
               </div>
-            </div>
 
-            <div>
-              <label className="text-sm font-medium text-white mb-3 block">Visual Style</label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {visualStyles.map((style) => {
-                  const Icon = style.icon;
-                  return (
-                    <button
-                      key={style.name}
-                      onClick={() => setVisualStyle(style.name.toLowerCase())}
-                      disabled={isGenerating}
-                      className={cn(
-                        "p-3 rounded-xl border-2 transition-all text-left",
-                        visualStyle === style.name.toLowerCase()
-                          ? "border-violet-500 bg-violet-500/10"
-                          : "border-slate-700 bg-slate-800/30 hover:border-slate-600"
-                      )}
-                    >
-                      <Icon className="h-5 w-5 text-violet-400 mb-2" />
-                      <div className="font-medium text-white text-xs">{style.name}</div>
-                      <div className="text-xs text-slate-500 mt-1">{style.description}</div>
-                    </button>
-                  );
-                })}
+              {/* Author Credit */}
+              <div>
+                <Label className="text-slate-300">Artist Credit (Optional)</Label>
+                <input
+                  type="text"
+                  value={author}
+                  onChange={(e) => setAuthor(e.target.value)}
+                  placeholder="Your artist name..."
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                  disabled={generating}
+                  maxLength={50}
+                />
               </div>
-            </div>
 
-            <div>
-              <label className="text-sm font-medium text-white mb-3 block">Visual Effects (Optional)</label>
-              <div className="grid grid-cols-3 gap-2">
-                {videoEffects.map((effect) => (
-                  <button
-                    key={effect.id}
-                    onClick={() => {
-                      if (effects.includes(effect.id)) {
-                        setEffects(effects.filter(e => e !== effect.id));
-                      } else {
-                        setEffects([...effects, effect.id]);
-                      }
-                    }}
-                    disabled={isGenerating}
-                    className={cn(
-                      "p-2 rounded-lg border transition-all text-xs",
-                      effects.includes(effect.id)
-                        ? "border-pink-500 bg-pink-500/10 text-white"
-                        : "border-slate-700 bg-slate-800/30 hover:border-slate-600 text-slate-400"
-                    )}
-                  >
-                    <div className="font-medium">{effect.name}</div>
-                    <div className="text-xs opacity-70">{effect.description}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
+              <Button
+                onClick={handleGenerate}
+                disabled={generating || !prompt.trim()}
+                className="w-full bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating Video...
+                  </>
+                ) : (
+                  <>
+                    <Video className="h-4 w-4 mr-2" />
+                    Generate Music Video
+                  </>
+                )}
+              </Button>
 
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-medium text-white">Scene Prompts (Optional)</label>
-                <button
-                  onClick={() => setScenePrompts([...scenePrompts, ''])}
-                  disabled={isGenerating}
-                  className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-1"
+              {/* Progress Visualization */}
+              {generating && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="bg-slate-800/50 rounded-lg p-6 text-center space-y-4"
                 >
-                  <Plus className="h-3 w-3" />
-                  Add Scene
-                </button>
-              </div>
-              {scenePrompts.length > 0 && (
-                <div className="space-y-2">
-                  {scenePrompts.map((prompt, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input
-                        value={prompt}
-                        onChange={(e) => {
-                          const newPrompts = [...scenePrompts];
-                          newPrompts[index] = e.target.value;
-                          setScenePrompts(newPrompts);
-                        }}
-                        placeholder={`Scene ${index + 1} description...`}
-                        className="bg-slate-800/50 border-slate-700 text-sm"
-                        disabled={isGenerating}
+                  <Loader2 className="h-10 w-10 text-violet-400 animate-spin mx-auto" />
+                  <div className="space-y-2">
+                    <p className="text-white font-medium">Creating your music video...</p>
+                    <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                      <motion.div 
+                        className="h-full bg-gradient-to-r from-violet-500 to-pink-500"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                        transition={{ duration: 0.5 }}
                       />
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => setScenePrompts(scenePrompts.filter((_, i) => i !== index))}
-                        disabled={isGenerating}
-                        className="text-slate-400 hover:text-red-400"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
                     </div>
-                  ))}
-                </div>
+                    <p className="text-slate-400 text-xs">
+                      {progress < 30 && 'Analyzing audio and generating scenes...'}
+                      {progress >= 30 && progress < 60 && 'Rendering visual effects...'}
+                      {progress >= 60 && progress < 90 && 'Synchronizing with audio...'}
+                      {progress >= 90 && 'Finalizing video...'}
+                    </p>
+                  </div>
+                </motion.div>
               )}
-            </div>
-
-            {isGenerating && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-4"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-white">Generating video...</span>
-                  <span className="text-sm text-violet-400">{Math.round(progress)}%</span>
-                </div>
-                <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                  <motion.div
-                    animate={{ width: `${progress}%` }}
-                    className="h-full bg-gradient-to-r from-violet-500 to-pink-500"
-                  />
-                </div>
-              </motion.div>
-            )}
-
-            <Button
-              onClick={handleGenerate}
-              disabled={isGenerating || !description.trim()}
-              className="w-full bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
+            </>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="space-y-4"
             >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Film className="h-4 w-4 mr-2" />
-                  Generate Video
-                </>
-              )}
-            </Button>
-          </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-4"
-          >
-            <video src={videoUrl} controls className="w-full rounded-lg" />
-            <div className="flex gap-2">
-              <Button
-                onClick={() => {
-                  const a = document.createElement('a');
-                  a.href = videoUrl;
-                  a.download = `${track.title}-video.mp4`;
-                  a.click();
-                }}
-                className="flex-1"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download
-              </Button>
-              <Button
-                onClick={() => {
-                  navigator.clipboard.writeText(videoUrl);
-                  toast.success('Link copied!');
-                }}
-                variant="outline"
-                className="flex-1"
-              >
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-            </div>
-          </motion.div>
-        )}
+              <div className="bg-slate-800/50 rounded-lg overflow-hidden">
+                <video
+                  src={videoUrl}
+                  controls
+                  className="w-full"
+                  poster={track.cover_image_url}
+                >
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => window.open(videoUrl, '_blank')}
+                  className="flex-1 bg-violet-600 hover:bg-violet-700"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open in New Tab
+                </Button>
+                <Button
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = videoUrl;
+                    a.download = `${track.title}-video.mp4`;
+                    a.click();
+                  }}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </Button>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    navigator.clipboard.writeText(videoUrl);
+                    toast.success('Video URL copied to clipboard');
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Share Link
+                </Button>
+                <Button
+                  onClick={() => {
+                    setVideoUrl(null);
+                    setPrompt('');
+                    setProgress(0);
+                    setGenerating(false);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Generate Another
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

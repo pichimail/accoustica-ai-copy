@@ -55,8 +55,8 @@ export default function Layout({ children, currentPageName }) {
     return true;
   });
 
-  // Hide layout on public track page and Create page (mobile has its own nav)
-  if (currentPageName === 'PublicTrack' || currentPageName === 'Create') {
+  // Hide layout on public track page for cleaner embed experience
+  if (currentPageName === 'PublicTrack') {
     return <>{children}</>;
   }
 
