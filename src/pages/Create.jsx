@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import PromptInput from '@/components/create/PromptInput';
+import CreateMusicForm from '@/components/create/CreateMusicForm';
 import GeneratingStatus from '@/components/tracks/GeneratingStatus';
 import TrackCard from '@/components/tracks/TrackCard';
 import AudioPlayer from '@/components/audio/AudioPlayer';
@@ -353,7 +353,7 @@ export default function CreatePage() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                   >
-                    <PromptInput
+                    <CreateMusicForm
                       onSubmit={(data) => createTrackMutation.mutate(data)}
                       isLoading={createTrackMutation.isPending}
                       disabled={currentTrack?.status === 'generating'}

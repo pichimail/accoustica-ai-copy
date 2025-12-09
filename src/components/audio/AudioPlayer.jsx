@@ -187,20 +187,16 @@ export default function AudioPlayer({
 
   return (
     <div className={cn(
-      "relative rounded-3xl overflow-hidden border border-white/10",
-      "bg-gradient-to-br from-slate-900/95 via-purple-900/30 to-slate-900/95 backdrop-blur-2xl",
+      "relative rounded-2xl overflow-hidden bg-slate-900/95 backdrop-blur-xl border border-slate-800",
       className
     )}>
-      {/* Gradient Border Effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 via-blue-500 via-purple-500 via-pink-500 to-orange-500 opacity-50 blur-xl"></div>
-      
-      <div className="relative z-10 p-6">
+      <div className="relative z-10 px-4 py-3">
         <audio ref={audioRef} src={src} preload="metadata" />
         
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-4">
+        <div className="flex items-center gap-4">
+          {/* Album Art */}
           {coverImage && (
-            <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 shadow-xl">
+            <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
               <img 
                 src={coverImage} 
                 alt={title} 
@@ -209,156 +205,113 @@ export default function AudioPlayer({
             </div>
           )}
           
+          {/* Track Info & Progress */}
           <div className="flex-1 min-w-0">
-            {title && (
-              <h4 className="text-white font-semibold truncate text-lg">{title}</h4>
-            )}
-            {artist && (
-              <p className="text-slate-400 text-sm truncate">{artist}</p>
-            )}
-          </div>
-
-          {/* Fullscreen Button (Mobile) */}
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={onOpenFullscreen}
-            className="lg:hidden text-slate-400 hover:text-white hover:bg-white/10"
-          >
-            <Maximize2 className="h-5 w-5" />
-          </Button>
-        </div>
-
-        {/* Waveform Visualizer */}
-        <div className="relative h-24 mb-4 rounded-xl bg-black/20 backdrop-blur-sm border border-white/5 overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-center gap-[2px] px-4">
-            {visualizerData.map((value, index) => {
-              const progress = currentTime / duration;
-              const barProgress = index / visualizerData.length;
-              const isPast = barProgress <= progress;
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex-1 min-w-0 mr-4">
+                {title && (
+                  <h4 className="text-white font-medium truncate text-sm">{title}</h4>
+                )}
+                {artist && (
+                  <p className="text-slate-400 text-xs truncate">{artist}</p>
+                )}
+              </div>
               
-              return (
-                <motion.div
-                  key={index}
-                  className="flex-1 rounded-full"
-                  style={{
-                    height: `${Math.max(20, value * 100)}%`,
-                    background: isPast 
-                      ? 'linear-gradient(to top, #06b6d4, #3b82f6, #8b5cf6, #ec4899, #f97316)'
-                      : 'rgba(100, 116, 139, 0.3)',
-                    boxShadow: isPast ? '0 0 10px rgba(139, 92, 246, 0.5)' : 'none',
-                  }}
-                  animate={{
-                    height: `${Math.max(20, value * 100)}%`,
-                  }}
-                  transition={{ duration: 0.1 }}
-                />
-              );
-            })}
+              {/* Fullscreen Button (Mobile) */}
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={onOpenFullscreen}
+                className="lg:hidden h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Compact Waveform */}
+            <div className="relative h-8 mb-2 rounded-lg bg-slate-800/50 overflow-hidden">
+              <div className="absolute inset-0 flex items-center justify-center gap-[1px] px-2">
+                {visualizerData.map((value, index) => {
+                  const progress = currentTime / duration;
+                  const barProgress = index / visualizerData.length;
+                  const isPast = barProgress <= progress;
+                  
+                  return (
+                    <motion.div
+                      key={index}
+                      className="flex-1 rounded-full"
+                      style={{
+                        height: `${Math.max(15, value * 80)}%`,
+                        background: isPast 
+                          ? 'linear-gradient(to top, #06b6d4, #3b82f6, #8b5cf6, #ec4899)'
+                          : 'rgba(100, 116, 139, 0.3)',
+                      }}
+                      animate={{
+                        height: `${Math.max(15, value * 80)}%`,
+                      }}
+                      transition={{ duration: 0.1 }}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Progress Slider */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-slate-400 w-9 text-right">
+                {formatTime(currentTime)}
+              </span>
+              <Slider
+                value={[currentTime]}
+                max={duration || 100}
+                step={0.1}
+                onValueChange={handleSeek}
+                className="flex-1 cursor-pointer h-1"
+              />
+              <span className="text-[10px] text-slate-400 w-9">
+                {formatTime(duration)}
+              </span>
+            </div>
           </div>
 
-          {/* Time markers */}
-          <div className="absolute bottom-2 left-4 right-4 flex justify-between text-[10px] text-slate-500">
-            {[0, 0.25, 0.5, 0.75, 1].map((point, i) => (
-              <span key={i}>{formatTime(duration * point)}</span>
-            ))}
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="flex items-center gap-3 mb-6">
-          <span className="text-xs text-slate-400 w-12 text-right">
-            {formatTime(currentTime)}
-          </span>
-          <Slider
-            value={[currentTime]}
-            max={duration || 100}
-            step={0.1}
-            onValueChange={handleSeek}
-            className="flex-1 cursor-pointer"
-          />
-          <span className="text-xs text-slate-400 w-12">
-            {formatTime(duration)}
-          </span>
-        </div>
-        
-        {/* Controls */}
-        <div className="flex items-center justify-between">
-          {/* Left Controls */}
-          <div className="flex items-center gap-2">
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={toggleMute}
-              className="h-9 w-9 text-slate-400 hover:text-white hover:bg-white/10"
-            >
-              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </Button>
-            <Slider
-              value={[isMuted ? 0 : volume]}
-              max={1}
-              step={0.01}
-              onValueChange={handleVolumeChange}
-              className="w-24 cursor-pointer hidden md:block"
-            />
-          </div>
-          
-          {/* Center Controls */}
-          <div className="flex items-center gap-2">
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => setIsShuffle(!isShuffle)}
-              className={cn(
-                "h-9 w-9 hover:bg-white/10",
-                isShuffle ? "text-cyan-400" : "text-slate-400 hover:text-white"
-              )}
-            >
-              <Shuffle className="h-4 w-4" />
-            </Button>
-
+          {/* Controls */}
+          <div className="flex items-center gap-1">
             <Button
               size="icon"
               variant="ghost"
               onClick={skipBackward}
-              className="h-9 w-9 text-slate-400 hover:text-white hover:bg-white/10"
+              className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 hidden sm:flex"
             >
-              <SkipBack className="h-4 w-4" />
+              <SkipBack className="h-3 w-3" />
             </Button>
 
             <Button
               size="icon"
               onClick={togglePlay}
               disabled={!src}
-              className="h-14 w-14 rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 hover:from-cyan-600 hover:via-blue-600 hover:to-purple-600 text-white shadow-lg shadow-purple-500/50"
+              className="h-10 w-10 rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 hover:from-cyan-600 hover:via-blue-600 hover:to-purple-600 text-white"
             >
-              {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-1" />}
+              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
             </Button>
 
             <Button
               size="icon"
               variant="ghost"
               onClick={skipForward}
-              className="h-9 w-9 text-slate-400 hover:text-white hover:bg-white/10"
+              className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 hidden sm:flex"
             >
-              <SkipForward className="h-4 w-4" />
+              <SkipForward className="h-3 w-3" />
             </Button>
 
             <Button
               size="icon"
               variant="ghost"
-              onClick={toggleRepeat}
-              className={cn(
-                "h-9 w-9 hover:bg-white/10",
-                repeatMode !== 'off' ? "text-cyan-400" : "text-slate-400 hover:text-white"
-              )}
+              onClick={toggleMute}
+              className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 hidden md:flex"
             >
-              {repeatMode === 'one' ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
+              {isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
             </Button>
           </div>
-
-          {/* Right spacer for balance */}
-          <div className="w-32 hidden md:block" />
         </div>
       </div>
     </div>
