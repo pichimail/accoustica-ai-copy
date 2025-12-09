@@ -48,7 +48,7 @@ export default function LibraryPage() {
     },
     enabled: !!user?.email,
     refetchInterval: (data) => {
-      const hasGenerating = data?.some(t => t.status === 'generating' || t.status === 'queued');
+      const hasGenerating = Array.isArray(data) && data.some(t => t.status === 'generating' || t.status === 'queued');
       return hasGenerating ? 5000 : false;
     },
   });

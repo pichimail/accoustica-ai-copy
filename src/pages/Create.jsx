@@ -59,7 +59,7 @@ export default function CreatePage() {
     enabled: !!user?.email,
     refetchInterval: (data) => {
       // Refetch every 5 seconds if any track is generating
-      const hasGenerating = data?.some(t => t.status === 'generating' || t.status === 'queued');
+      const hasGenerating = Array.isArray(data) && data.some(t => t.status === 'generating' || t.status === 'queued');
       return hasGenerating ? 5000 : false;
     },
   });
