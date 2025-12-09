@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import TrackCard from '@/components/tracks/TrackCard';
+import TrackEditDialog from '@/components/tracks/TrackEditDialog';
 import AudioPlayer from '@/components/audio/AudioPlayer';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ export default function LibraryPage() {
   const [visibilityFilter, setVisibilityFilter] = useState('all');
   const [sortBy, setSortBy] = useState('-created_date');
   const [playingTrack, setPlayingTrack] = useState(null);
+  const [editingTrack, setEditingTrack] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -61,7 +63,8 @@ export default function LibraryPage() {
     const matchesStatus = statusFilter === 'all' || track.status === statusFilter;
     const matchesVisibility = visibilityFilter === 'all' || 
                               (visibilityFilter === 'public' && track.is_public) ||
-                              (visibilityFilter === 'private' && !track.is_public);
+                              (visibilityFilter === 'private' && !track.is_public) ||
+                              (visibilityFilter === 'favorites' && track.is_favorite);
     
     return matchesSearch && matchesStatus && matchesVisibility;
   });
@@ -87,10 +90,23 @@ export default function LibraryPage() {
     toast.success('Track deleted');
   };
 
+  const handleToggleFavorite = async (track) => {
+    await base44.entities.Track.update(track.id, {
+      is_favorite: !track.is_favorite,
+    });
+    queryClient.invalidateQueries({ queryKey: ['myTracks'] });
+    toast.success(track.is_favorite ? 'Removed from favorites' : 'Added to favorites');
+  };
+
+  const handleEdit = (track) => {
+    setEditingTrack(track);
+  };
+
   const stats = {
     total: tracks.length,
     ready: tracks.filter(t => t.status === 'ready').length,
     public: tracks.filter(t => t.is_public).length,
+    favorites: tracks.filter(t => t.is_favorite).length,
     generating: tracks.filter(t => t.status === 'generating' || t.status === 'queued').length,
   };
 
@@ -136,8 +152,8 @@ export default function LibraryPage() {
             <p className="text-2xl font-bold text-green-400 mt-1">{stats.ready}</p>
           </div>
           <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50">
-            <p className="text-slate-400 text-sm">Public</p>
-            <p className="text-2xl font-bold text-violet-400 mt-1">{stats.public}</p>
+            <p className="text-slate-400 text-sm">Favorites</p>
+            <p className="text-2xl font-bold text-red-400 mt-1">{stats.favorites}</p>
           </div>
           <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50">
             <p className="text-slate-400 text-sm">Generating</p>
@@ -179,12 +195,9 @@ export default function LibraryPage() {
             </SelectTrigger>
             <SelectContent className="bg-slate-800 border-slate-700">
               <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-slate-700">All</SelectItem>
-              <SelectItem value="public" className="text-slate-300 focus:text-white focus:bg-slate-700">
-                <span className="flex items-center gap-2"><Eye className="h-3 w-3" /> Public</span>
-              </SelectItem>
-              <SelectItem value="private" className="text-slate-300 focus:text-white focus:bg-slate-700">
-                <span className="flex items-center gap-2"><EyeOff className="h-3 w-3" /> Private</span>
-              </SelectItem>
+              <SelectItem value="public" className="text-slate-300 focus:text-white focus:bg-slate-700">Public</SelectItem>
+              <SelectItem value="private" className="text-slate-300 focus:text-white focus:bg-slate-700">Private</SelectItem>
+              <SelectItem value="favorites" className="text-slate-300 focus:text-white focus:bg-slate-700">Favorites</SelectItem>
             </SelectContent>
           </Select>
           <Select value={sortBy} onValueChange={setSortBy}>
@@ -242,6 +255,8 @@ export default function LibraryPage() {
                     onPlay={handlePlay}
                     onDelete={handleDelete}
                     onToggleVisibility={handleToggleVisibility}
+                    onToggleFavorite={handleToggleFavorite}
+                    onEdit={handleEdit}
                     isPlaying={playingTrack?.id === track.id}
                   />
                 </motion.div>
@@ -271,6 +286,14 @@ export default function LibraryPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Edit Dialog */}
+      <TrackEditDialog
+        track={editingTrack}
+        open={!!editingTrack}
+        onClose={() => setEditingTrack(null)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['myTracks'] })}
+      />
     </div>
   );
 }
