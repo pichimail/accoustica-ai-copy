@@ -37,6 +37,7 @@ Deno.serve(async (req) => {
                 customMode: customMode,
                 instrumental: instrumental,
                 model: 'V4_5',
+                callBackUrl: '',
                 ...(customMode && { style: style }),
                 ...(title && { title: title }),
             }),
