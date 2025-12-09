@@ -5,6 +5,10 @@ import TrackView from './pages/TrackView';
 import PublicTrack from './pages/PublicTrack';
 import Profile from './pages/Profile';
 import Home from './pages/Home';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminUsers from './pages/AdminUsers';
+import AdminPlans from './pages/AdminPlans';
+import AdminTracks from './pages/AdminTracks';
 import __Layout from './Layout.jsx';
 
 
@@ -16,6 +20,10 @@ export const PAGES = {
     "PublicTrack": PublicTrack,
     "Profile": Profile,
     "Home": Home,
+    "AdminDashboard": AdminDashboard,
+    "AdminUsers": AdminUsers,
+    "AdminPlans": AdminPlans,
+    "AdminTracks": AdminTracks,
 }
 
 export const pagesConfig = {
