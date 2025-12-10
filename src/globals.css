@@ -108,6 +108,22 @@ button:focus-visible {
   @apply outline-none ring-2 ring-violet-500/50 ring-offset-2 ring-offset-slate-900;
 }
 
+/* Frosted glass hover effects */
+.glass-hover {
+  @apply hover:bg-white/5 hover:backdrop-blur-xl hover:border-white/20 transition-all duration-300;
+}
+
+/* Button hover states with glass effect */
+button:not(:disabled):hover,
+a:hover {
+  @apply backdrop-blur-sm;
+}
+
+/* Override default white hover colors */
+.hover-glass {
+  @apply hover:bg-violet-500/10 hover:text-violet-300 transition-all duration-200;
+}
+
 /* Smooth transitions */
 * {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);

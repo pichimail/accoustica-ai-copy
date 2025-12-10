@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Wand2, Music, ChevronDown, ChevronUp, Plus, X, Sparkles, Upload } from 'lucide-react';
+import { Wand2, Music, ChevronDown, ChevronUp, Plus, X, Sparkles, Upload, Dices } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -32,6 +32,8 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
   const [showAudioUpload, setShowAudioUpload] = useState(false);
   const [songStructure, setSongStructure] = useState(null);
   const [audioAnalysis, setAudioAnalysis] = useState(null);
+  const [generatingRandom, setGeneratingRandom] = useState(false);
+  const [selectedInspiration, setSelectedInspiration] = useState(null);
 
   const quickStyles = [
     'pop', 'rock', 'hip hop', 'electronic', 'jazz', 'classical',
@@ -53,6 +55,23 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
     }
   };
 
+  const handleInspirationClick = (tag) => {
+    // If clicking selected tag, deselect it
+    if (selectedInspiration === tag) {
+      setSelectedInspiration(null);
+      handleStyleToggle(tag);
+    } else {
+      // Select new tag and add to style
+      if (selectedInspiration) {
+        handleStyleToggle(selectedInspiration); // Remove old
+      }
+      setSelectedInspiration(tag);
+      if (!style.includes(tag)) {
+        handleStyleToggle(tag);
+      }
+    }
+  };
+
   const handleGenerateLyrics = async () => {
     if (!prompt.trim()) {
       toast.error('Please enter a song description first');
@@ -62,19 +81,37 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
     setGeneratingLyrics(true);
     try {
       const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `Generate song lyrics based on this description: "${prompt}". 
-        Make them creative, emotional, and suitable for music. 
+        prompt: `Generate song lyrics that match this song description: "${prompt}". 
+        Style: ${style || 'Any style'}
+        Make them creative, emotional, and suitable for the described theme and style. 
         Format: Verse, Chorus, Verse, Chorus, Bridge, Chorus structure.
         Keep it concise and impactful.`,
         add_context_from_internet: false,
       });
 
       setLyrics(response);
-      toast.success('Lyrics generated!');
+      toast.success('Lyrics generated based on description!');
     } catch (error) {
       toast.error('Failed to generate lyrics');
     } finally {
       setGeneratingLyrics(false);
+    }
+  };
+
+  const handleRandomDescription = async () => {
+    setGeneratingRandom(true);
+    try {
+      const response = await base44.integrations.Core.InvokeLLM({
+        prompt: `Generate a creative and unique song description for AI music generation. Include mood, style, instruments, and theme. Make it detailed and inspiring. Return only the description, nothing else.`,
+        add_context_from_internet: false,
+      });
+
+      setPrompt(response);
+      toast.success('Random description generated!');
+    } catch (error) {
+      toast.error('Failed to generate description');
+    } finally {
+      setGeneratingRandom(false);
     }
   };
 
@@ -175,26 +212,44 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
         {mode === 'simple' ? (
           <>
             {/* Simple Mode: Song Description */}
-            <div>
+            <div className="relative">
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-slate-300">Song Description</Label>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleCorrectPrompt}
-                  disabled={generatingLyrics || !prompt.trim()}
-                  className="h-7 text-xs text-violet-400 hover:text-violet-300"
-                >
-                  <Wand2 className="h-3 w-3 mr-1" />
-                  AI Improve
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleRandomDescription}
+                    disabled={generatingRandom}
+                    className="h-7 text-xs text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
+                    title="Generate random description"
+                  >
+                    <motion.div
+                      animate={generatingRandom ? { rotate: 360 } : {}}
+                      transition={{ duration: 0.6, repeat: generatingRandom ? Infinity : 0, ease: "linear" }}
+                    >
+                      <Dices className="h-3 w-3" />
+                    </motion.div>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCorrectPrompt}
+                    disabled={generatingLyrics || !prompt.trim()}
+                    className="h-7 text-xs text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
+                  >
+                    <Wand2 className="h-3 w-3 mr-1" />
+                    AI Improve
+                  </Button>
+                </div>
               </div>
               <Textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Describe the song you want to create..."
-                className="bg-slate-800 border-slate-700 text-white min-h-[120px] resize-none"
+                className="bg-slate-800/50 backdrop-blur-xl border-slate-700 text-white min-h-[120px] resize-none hover:border-violet-500/30 focus:border-violet-500/50 transition-all"
                 disabled={disabled || isLoading}
               />
             </div>
@@ -205,7 +260,8 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                 type="button"
                 size="sm"
                 variant="outline"
-                className="border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-white"
+                onClick={() => setShowAudioUpload(!showAudioUpload)}
+                className="border-violet-500/30 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 hover:text-violet-200 hover:border-violet-400/50 backdrop-blur-xl transition-all"
               >
                 <Plus className="h-3 w-3 mr-1" />
                 Audio
@@ -215,7 +271,7 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                 size="sm"
                 variant="outline"
                 onClick={() => setShowLyrics(!showLyrics)}
-                className="border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-white"
+                className="border-pink-500/30 bg-pink-500/10 text-pink-300 hover:bg-pink-500/20 hover:text-pink-200 hover:border-pink-400/50 backdrop-blur-xl transition-all"
               >
                 <Plus className="h-3 w-3 mr-1" />
                 Lyrics
@@ -224,10 +280,10 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                 type="button"
                 onClick={() => setIsInstrumental(!isInstrumental)}
                 className={cn(
-                  "ml-auto px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                  "ml-auto px-3 py-1.5 rounded-lg text-xs font-medium transition-all backdrop-blur-xl",
                   isInstrumental
-                    ? "bg-slate-700 text-white"
-                    : "bg-slate-800/50 text-slate-400 hover:text-white"
+                    ? "bg-violet-500/20 text-violet-300 border border-violet-500/30"
+                    : "bg-slate-800/50 text-slate-400 hover:text-violet-300 hover:bg-violet-500/10 border border-slate-700"
                 )}
               >
                 Instrumental
@@ -249,65 +305,71 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                       size="sm"
                       variant="ghost"
                       onClick={handleGenerateLyrics}
-                      disabled={generatingLyrics}
-                      className="h-7 text-xs text-violet-400 hover:text-violet-300"
+                      disabled={generatingLyrics || !prompt.trim()}
+                      className="h-7 text-xs text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
                     >
                       <Sparkles className="h-3 w-3 mr-1" />
-                      Generate
+                      {generatingLyrics ? 'Generating...' : 'Generate'}
                     </Button>
                   </div>
                   <Textarea
                     value={lyrics}
                     onChange={(e) => setLyrics(e.target.value)}
-                    placeholder="Write lyrics or generate with AI..."
-                    className="bg-slate-800 border-slate-700 text-white min-h-[100px] text-sm"
+                    placeholder="Write lyrics or generate with AI based on your description..."
+                    className="bg-slate-800/50 backdrop-blur-xl border-slate-700 text-white min-h-[100px] text-sm hover:border-violet-500/30 focus:border-violet-500/50 transition-all"
                     disabled={disabled || isLoading}
                   />
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Inspiration Tags */}
+            {/* Inspiration Tags - Single Line Slider */}
             <div>
               <Label className="text-slate-300 mb-3 block">Inspiration</Label>
-              <div className="flex flex-wrap gap-2">
-                {inspirationTags.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => handleStyleToggle(tag)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-medium transition-all border",
-                      style.includes(tag)
-                        ? "bg-slate-700 border-slate-600 text-white"
-                        : "bg-slate-800/50 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600"
-                    )}
-                  >
-                    <Plus className="h-3 w-3 inline mr-1" />
-                    {tag}
-                  </button>
-                ))}
+              <div className="relative overflow-hidden">
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-violet-500/20 scrollbar-track-transparent">
+                  <AnimatePresence mode="popLayout">
+                    {inspirationTags
+                      .filter(tag => !selectedInspiration || selectedInspiration === tag)
+                      .map((tag) => (
+                        <motion.button
+                          key={tag}
+                          type="button"
+                          onClick={() => handleInspirationClick(tag)}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          layout
+                          className={cn(
+                            "px-4 py-2 rounded-full text-xs font-medium transition-all border whitespace-nowrap backdrop-blur-xl",
+                            selectedInspiration === tag
+                              ? "bg-gradient-to-r from-violet-500/30 to-pink-500/30 border-violet-400/50 text-white shadow-lg scale-110"
+                              : "bg-slate-800/50 border-slate-700 text-slate-400 hover:text-violet-300 hover:border-violet-500/30 hover:bg-violet-500/10"
+                          )}
+                        >
+                          {selectedInspiration === tag ? (
+                            <X className="h-3 w-3 inline mr-1" />
+                          ) : (
+                            <Plus className="h-3 w-3 inline mr-1" />
+                          )}
+                          {tag}
+                        </motion.button>
+                      ))}
+                  </AnimatePresence>
+                </div>
               </div>
             </div>
 
             {/* Audio Upload for Style Transfer */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowAudioUpload(!showAudioUpload)}
-                className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
-              >
-                <Upload className="h-4 w-4" />
-                Upload Audio for Style Transfer
-              </button>
-              <AnimatePresence>
-                {showAudioUpload && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="mt-3"
-                  >
+            <AnimatePresence>
+              {showAudioUpload && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="space-y-2"
+                >
+                  <Label className="text-slate-300 text-sm">Audio Style Transfer</Label>
                     <AudioUploader
                       onAnalysisComplete={(analysis) => {
                         setAudioAnalysis(analysis);
