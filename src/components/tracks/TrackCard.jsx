@@ -2,6 +2,7 @@ import React from 'react';
 import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit, Heart, Wand2, Users, GitBranch, Video, Volume2, Disc, User } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,10 +41,11 @@ export default function TrackCard({
   onMaster,
   onSeparateStems,
   onCreatePersona,
-  isPlaying = false,
   showActions = true,
   showVisibility = true,
 }) {
+  const { currentTrack, isPlaying: globalIsPlaying, playTrack } = useAudioPlayer();
+  const isPlaying = currentTrack?.id === track.id && globalIsPlaying;
   const formatDuration = (seconds) => {
     if (!seconds) return '--:--';
     const mins = Math.floor(seconds / 60);
@@ -70,29 +72,34 @@ export default function TrackCard({
       className="group relative bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden hover:border-violet-500/50 transition-all duration-300"
     >
       <div className="flex">
-        {/* Cover Image */}
-        <div className="relative w-24 h-24 md:w-28 md:h-28 flex-shrink-0">
+        {/* Cover Image - Clickable */}
+        <div 
+          className="relative w-24 h-24 md:w-28 md:h-28 flex-shrink-0 cursor-pointer group"
+          onClick={() => {
+            if (isReady) {
+              playTrack(track);
+              onPlay?.(track);
+            }
+          }}
+        >
           <img
             src={coverImage}
             alt={track.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform group-hover:scale-105"
           />
           <div className={cn(
-            "absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity",
+            "absolute inset-0 flex items-center justify-center bg-black/40 transition-opacity",
+            isPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100",
             !isReady && "cursor-not-allowed"
           )}>
             {isReady && (
-              <Button
-                size="icon"
-                onClick={() => onPlay?.(track)}
-                className="h-10 w-10 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm"
-              >
+              <div className="h-12 w-12 rounded-full bg-white/90 hover:bg-white flex items-center justify-center backdrop-blur-sm shadow-lg">
                 {isPlaying ? (
-                  <Pause className="h-4 w-4 text-white" />
+                  <Pause className="h-5 w-5 text-slate-900" />
                 ) : (
-                  <Play className="h-4 w-4 text-white ml-0.5" />
+                  <Play className="h-5 w-5 text-slate-900 ml-0.5" />
                 )}
-              </Button>
+              </div>
             )}
           </div>
           {track.status !== 'ready' && (

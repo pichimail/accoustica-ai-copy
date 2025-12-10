@@ -197,7 +197,7 @@ export default function CreatePage() {
   };
 
   const handlePlay = (track) => {
-    setPlayingTrack(track);
+    // Now handled by global player
   };
 
   const togglePlayPause = () => {
@@ -407,8 +407,7 @@ export default function CreatePage() {
                         onToggleVisibility={handleToggleVisibility}
                         onToggleFavorite={handleToggleFavorite}
                         showActions={true}
-                        isPlaying={playingTrack?.id === track.id}
-                      />
+                        />
                     </motion.div>
                   ))}
                 </AnimatePresence>
@@ -418,49 +417,7 @@ export default function CreatePage() {
         </div>
       </div>
 
-      {/* Bottom Player */}
-      <AnimatePresence>
-        {playingTrack && (
-          <motion.div
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            transition={{ type: "spring", damping: 25 }}
-            className="fixed bottom-0 left-0 right-0 z-50 pb-20 lg:pb-0"
-          >
-            <div className="bg-slate-900/95 backdrop-blur-2xl border-t border-white/10 shadow-2xl">
-              <div className="max-w-[1600px] mx-auto px-6 py-4">
-                <audio 
-                  ref={audioRef} 
-                  src={playingTrack.audio_url || playingTrack.stream_audio_url}
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
-                />
-                <AudioPlayer
-                  src={playingTrack.audio_url || playingTrack.stream_audio_url}
-                  title={playingTrack.title}
-                  artist={playingTrack.style}
-                  coverImage={playingTrack.cover_image_url}
-                  onOpenFullscreen={() => setFullscreenPlayerOpen(true)}
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Fullscreen Mobile Player */}
-      <FullscreenPlayer
-        track={playingTrack}
-        isOpen={fullscreenPlayerOpen}
-        onClose={() => setFullscreenPlayerOpen(false)}
-        isPlaying={isPlaying}
-        onTogglePlay={togglePlayPause}
-        currentTime={currentTime}
-        duration={duration}
-        onSeek={handleSeek}
-        audioRef={audioRef}
-      />
 
       {/* Onboarding Flow */}
       <OnboardingFlow 

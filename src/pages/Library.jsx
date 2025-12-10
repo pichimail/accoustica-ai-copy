@@ -91,7 +91,8 @@ export default function LibraryPage() {
   });
 
   const handlePlay = (track) => {
-    setPlayingTrack(track);
+    // This is now handled by the global player context
+    // setPlayingTrack is kept for backward compatibility but not used
   };
 
   const handleToggleVisibility = async (track) => {
@@ -345,7 +346,6 @@ export default function LibraryPage() {
                     onMaster={handleMaster}
                     onSeparateStems={handleSeparateStems}
                     onCreatePersona={handleCreatePersona}
-                    isPlaying={playingTrack?.id === track.id}
                   />
                 </motion.div>
               ))}
@@ -354,26 +354,7 @@ export default function LibraryPage() {
         )}
       </div>
 
-      {/* Bottom Player */}
-      <AnimatePresence>
-        {playingTrack && (
-          <motion.div
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            className="fixed bottom-0 left-0 right-0 p-4 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800"
-          >
-            <div className="max-w-4xl mx-auto">
-              <AudioPlayer
-                src={playingTrack.audio_url || playingTrack.stream_audio_url}
-                title={playingTrack.title}
-                artist={playingTrack.style}
-                coverImage={playingTrack.cover_image_url}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       {/* Edit Dialog */}
       <TrackEditDialog

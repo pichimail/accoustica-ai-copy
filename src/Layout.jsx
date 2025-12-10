@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from 'framer-motion';
+import { AudioPlayerProvider } from '@/components/audio/AudioPlayerContext';
+import GlobalAudioPlayer from '@/components/audio/GlobalAudioPlayer';
 
 const publicPages = ['Home', 'PublicTrack', 'Discover'];
 
@@ -62,6 +64,7 @@ export default function Layout({ children, currentPageName }) {
   const avatarUrl = user?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.full_name || 'User'}`;
 
   return (
+    <AudioPlayerProvider>
     <div className="min-h-screen bg-slate-950 flex flex-col">
       {/* Mobile Top Bar */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800/50 safe-top">
@@ -215,8 +218,11 @@ export default function Layout({ children, currentPageName }) {
         {children}
       </main>
 
+      {/* Global Audio Player */}
+      <GlobalAudioPlayer />
+
       {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/50 safe-bottom">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/50 safe-bottom">
         <div className="grid grid-cols-5 gap-1 px-2 py-2">
           {filteredNavLinks.map((link) => (
             <Link key={link.page} to={createPageUrl(link.page)}>
@@ -234,5 +240,6 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </nav>
     </div>
+    </AudioPlayerProvider>
   );
 }
