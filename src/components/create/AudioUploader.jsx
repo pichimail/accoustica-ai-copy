@@ -38,27 +38,20 @@ export default function AudioUploader({ onAnalysisComplete, onStyleTransfer }) {
 
     setAnalyzing(true);
     try {
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `Analyze this audio file and extract: genre, mood, tempo (BPM), key, energy level (1-10), style tags. Return as JSON.`,
-        file_urls: [uploadedFile.url],
-        response_json_schema: {
-          type: "object",
-          properties: {
-            genre: { type: "string" },
-            mood: { type: "string" },
-            tempo: { type: "number" },
-            key: { type: "string" },
-            energy: { type: "number" },
-            style_tags: { type: "array", items: { type: "string" } }
-          }
-        }
+      const response = await base44.functions.invoke('analyzeAudio', { 
+        audio_url: uploadedFile.url 
       });
 
-      setAnalysis(response);
-      onAnalysisComplete?.(response);
-      toast.success('Audio analyzed!');
+      if (response.data.success) {
+        setAnalysis(response.data.analysis);
+        onAnalysisComplete?.(response.data.analysis);
+        toast.success('Audio analyzed successfully!');
+      } else {
+        throw new Error(response.data.error || 'Analysis failed');
+      }
     } catch (error) {
-      toast.error('Analysis failed');
+      console.error('Analysis error:', error);
+      toast.error('Failed to analyze audio');
     } finally {
       setAnalyzing(false);
     }
@@ -154,17 +147,28 @@ export default function AudioUploader({ onAnalysisComplete, onStyleTransfer }) {
                 </div>
                 <div className="bg-slate-800 p-2 rounded">
                   <span className="text-slate-500">Energy:</span>
-                  <p className="text-white font-medium">{analysis.energy}/10</p>
+                  <p className="text-white font-medium">{analysis.energy_level}/10</p>
+                </div>
+                <div className="bg-slate-800 p-2 rounded">
+                  <span className="text-slate-500">Key:</span>
+                  <p className="text-white font-medium">{analysis.key}</p>
+                </div>
+                <div className="bg-slate-800 p-2 rounded">
+                  <span className="text-slate-500">Vocals:</span>
+                  <p className="text-white font-medium text-[10px]">{analysis.vocal_style}</p>
                 </div>
               </div>
 
-              {analysis.style_tags && (
-                <div className="flex flex-wrap gap-1">
-                  {analysis.style_tags.map((tag, i) => (
-                    <span key={i} className="px-2 py-1 bg-violet-500/20 text-violet-300 text-xs rounded">
-                      {tag}
-                    </span>
-                  ))}
+              {analysis.style_tags && analysis.style_tags.length > 0 && (
+                <div>
+                  <p className="text-slate-500 text-xs mb-1">Style Tags:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {analysis.style_tags.map((tag, i) => (
+                      <span key={i} className="px-2 py-1 bg-violet-500/20 text-violet-300 text-xs rounded">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
 

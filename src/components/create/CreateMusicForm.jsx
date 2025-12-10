@@ -311,10 +311,28 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                     <AudioUploader
                       onAnalysisComplete={(analysis) => {
                         setAudioAnalysis(analysis);
-                        setStyle(analysis.style_tags?.join(', ') || style);
+                        // Pre-fill form fields with AI analysis
+                        if (analysis) {
+                          const styleSuggestion = [
+                            analysis.genre,
+                            analysis.mood,
+                            ...(analysis.style_tags || [])
+                          ].filter(Boolean).join(', ');
+                          
+                          setStyle(styleSuggestion);
+                          
+                          // Generate a detailed prompt based on analysis
+                          const autoPrompt = `Create a ${analysis.genre} track with ${analysis.mood} mood, ${analysis.tempo} BPM, in the key of ${analysis.key}. Energy level: ${analysis.energy_level}/10. ${analysis.instruments ? 'Featuring: ' + analysis.instruments + '.' : ''} ${analysis.vocal_style !== 'instrumental' ? 'Vocals: ' + analysis.vocal_style : 'Instrumental only'}`;
+                          
+                          if (!prompt) {
+                            setPrompt(autoPrompt);
+                          }
+                          
+                          toast.success('Analysis applied to form!');
+                        }
                       }}
                       onStyleTransfer={(url, analysis) => {
-                        toast.success('Style applied to your track!');
+                        toast.success('Style will be transferred to your track!');
                       }}
                     />
                   </motion.div>
