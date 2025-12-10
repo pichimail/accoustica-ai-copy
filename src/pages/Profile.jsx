@@ -10,14 +10,17 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { 
   User, Music, TrendingUp, Calendar, Award, 
-  Settings, Zap, Crown, Clock, Target 
+  Settings, Zap, Crown, Clock, Target, Heart 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { cn } from "@/lib/utils";
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [userPlan, setUserPlan] = useState(null);
-  const [activeTab, setActiveTab] = useState('stats');
+  const [activeTab, setActiveTab] = useState('activity');
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -48,7 +51,33 @@ export default function ProfilePage() {
     queryKey: ['userTracks', user?.email],
     queryFn: async () => {
       if (!user?.email) return [];
-      return await base44.entities.Track.filter({ created_by: user.email });
+      return await base44.entities.Track.filter({ created_by: user.email }, '-created_date', 100);
+    },
+    enabled: !!user?.email,
+  });
+
+  const { data: recentTracks = [] } = useQuery({
+    queryKey: ['recentTracks', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return [];
+      return await base44.entities.Track.filter(
+        { created_by: user.email },
+        '-created_date',
+        10
+      );
+    },
+    enabled: !!user?.email,
+  });
+
+  const { data: favoriteTracks = [] } = useQuery({
+    queryKey: ['favoriteTracks', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return [];
+      return await base44.entities.Track.filter(
+        { created_by: user.email, is_favorite: true },
+        '-updated_date',
+        20
+      );
     },
     enabled: !!user?.email,
   });
@@ -200,6 +229,10 @@ export default function ProfilePage() {
                 <Clock className="h-4 w-4 mr-2" />
                 Recent Activity
               </TabsTrigger>
+              <TabsTrigger value="favorites" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
+                <Heart className="h-4 w-4 mr-2" />
+                Favorites
+              </TabsTrigger>
               <TabsTrigger value="achievements" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
                 <Award className="h-4 w-4 mr-2" />
                 Achievements
@@ -217,34 +250,83 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {recentActivity.length === 0 ? (
+                    {recentTracks.length === 0 ? (
                       <p className="text-slate-400 text-center py-8">No activity yet</p>
                     ) : (
-                      recentActivity.map((activity, index) => (
-                        <div 
-                          key={index}
-                          className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Music className="h-4 w-4 text-violet-400" />
-                            <div>
-                              <p className="text-white font-medium">{activity.title}</p>
-                              <p className="text-xs text-slate-400">{activity.date}</p>
-                            </div>
-                          </div>
-                          <Badge 
-                            variant="outline" 
-                            className={
-                              activity.status === 'ready' 
-                                ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                                : activity.status === 'generating'
-                                ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                            }
+                      recentTracks.map((track) => (
+                        <Link key={track.id} to={createPageUrl('TrackView') + `?id=${track.id}`}>
+                          <motion.div
+                            whileHover={{ scale: 1.02 }}
+                            className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 hover:border-violet-500/50 transition-all cursor-pointer"
                           >
-                            {activity.status}
-                          </Badge>
-                        </div>
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-700 flex-shrink-0">
+                                <img 
+                                  src={track.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop'} 
+                                  alt={track.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-white truncate">{track.title}</h4>
+                                <p className="text-sm text-slate-400">{track.style}</p>
+                              </div>
+                              <Badge className={cn(
+                                track.status === 'ready' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                              )}>
+                                {track.status}
+                              </Badge>
+                            </div>
+                          </motion.div>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="favorites">
+              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
+                <CardHeader>
+                  <CardTitle className="text-white">Favorite Tracks</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {favoriteTracks.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Heart className="h-12 w-12 text-slate-600 mx-auto mb-3" />
+                        <p className="text-slate-400">No favorite tracks yet</p>
+                        <p className="text-sm text-slate-500 mt-2">Mark tracks as favorites to see them here</p>
+                      </div>
+                    ) : (
+                      favoriteTracks.map((track) => (
+                        <Link key={track.id} to={createPageUrl('TrackView') + `?id=${track.id}`}>
+                          <motion.div
+                            whileHover={{ scale: 1.02 }}
+                            className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 hover:border-violet-500/50 transition-all cursor-pointer"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-700 flex-shrink-0">
+                                <img 
+                                  src={track.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop'} 
+                                  alt={track.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <Heart className="h-4 w-4 text-red-500 fill-red-500" />
+                                  <h4 className="font-medium text-white truncate">{track.title}</h4>
+                                </div>
+                                <p className="text-sm text-slate-400">{track.style}</p>
+                              </div>
+                              <div className="text-sm text-slate-400">
+                                {track.plays || 0} plays
+                              </div>
+                            </div>
+                          </motion.div>
+                        </Link>
                       ))
                     )}
                   </div>
