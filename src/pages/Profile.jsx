@@ -17,6 +17,7 @@ import { motion } from 'framer-motion';
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [userPlan, setUserPlan] = useState(null);
+  const [activeTab, setActiveTab] = useState('stats');
 
   useEffect(() => {
     const fetchUser = async () => {
