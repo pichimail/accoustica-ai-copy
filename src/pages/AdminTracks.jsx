@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +22,7 @@ import {
 } from "@/components/ui/table";
 import { 
   Music, Search, ArrowLeft, Trash2, Eye, EyeOff,
-  Play, Loader2, ExternalLink
+  Play, Pause, Loader2, ExternalLink
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -35,6 +36,7 @@ export default function AdminTracksPage() {
   const [visibilityFilter, setVisibilityFilter] = useState('all');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { currentTrack, isPlaying: globalIsPlaying, playTrack } = useAudioPlayer();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -64,7 +66,8 @@ export default function AdminTracksPage() {
 
   const toggleVisibilityMutation = useMutation({
     mutationFn: async ({ id, isPublic }) => {
-      await base44.entities.Track.update(id, { is_public: !isPublic });
+      // Admin can toggle visibility without user consent
+      await base44.asServiceRole.entities.Track.update(id, { is_public: !isPublic });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminTracks'] });
@@ -213,12 +216,28 @@ export default function AdminTracksPage() {
                     <TableRow key={track.id} className="border-slate-700">
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-700 flex-shrink-0">
+                          <div 
+                            className="relative w-12 h-12 rounded-lg overflow-hidden bg-slate-700 flex-shrink-0 cursor-pointer group"
+                            onClick={() => {
+                              if (track.status === 'ready') {
+                                playTrack(track);
+                              }
+                            }}
+                          >
                             <img
                               src={track.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop'}
                               alt={track.title}
                               className="w-full h-full object-cover"
                             />
+                            {track.status === 'ready' && (
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                {currentTrack?.id === track.id && globalIsPlaying ? (
+                                  <Pause className="h-5 w-5 text-white" />
+                                ) : (
+                                  <Play className="h-5 w-5 text-white ml-0.5" />
+                                )}
+                              </div>
+                            )}
                           </div>
                           <div className="min-w-0">
                             <p className="font-medium text-white truncate max-w-[200px]">{track.title}</p>
@@ -235,15 +254,20 @@ export default function AdminTracksPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {track.is_public ? (
-                          <span className="flex items-center gap-1 text-green-400">
-                            <Eye className="h-4 w-4" /> Public
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-slate-400">
-                            <EyeOff className="h-4 w-4" /> Private
-                          </span>
-                        )}
+                        <button
+                          onClick={() => toggleVisibilityMutation.mutate({ id: track.id, isPublic: track.is_public })}
+                          className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+                        >
+                          {track.is_public ? (
+                            <span className="flex items-center gap-1 text-green-400">
+                              <Eye className="h-4 w-4" /> Public
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-slate-400">
+                              <EyeOff className="h-4 w-4" /> Private
+                            </span>
+                          )}
+                        </button>
                       </TableCell>
                       <TableCell>
                         <span className="text-slate-300">{formatDuration(track.duration)}</span>
@@ -261,14 +285,6 @@ export default function AdminTracksPage() {
                               <ExternalLink className="h-4 w-4" />
                             </Button>
                           </Link>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => toggleVisibilityMutation.mutate({ id: track.id, isPublic: track.is_public })}
-                            className="text-slate-400 hover:text-white"
-                          >
-                            {track.is_public ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </Button>
                           <Button
                             size="sm"
                             variant="ghost"

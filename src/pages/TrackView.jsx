@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import AudioPlayer from '@/components/audio/AudioPlayer';
+import MinimalWaveformPlayer from '@/components/audio/MinimalWaveformPlayer';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -191,13 +191,11 @@ export default function TrackViewPage() {
             </div>
           </div>
 
-          {/* Player */}
+          {/* Minimal Player */}
           <div className="px-6 pb-6 md:px-8 md:pb-8">
-            <AudioPlayer
+            <MinimalWaveformPlayer
               src={track.audio_url || track.stream_audio_url}
-              title={track.title}
-              artist={track.style}
-              coverImage={coverImage}
+              className="w-full"
             />
           </div>
 
