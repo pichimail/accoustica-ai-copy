@@ -7,7 +7,7 @@ import TrackEditDialog from '@/components/tracks/TrackEditDialog';
 import ShareTrackDialog from '@/components/collaboration/ShareTrackDialog';
 import VersionHistory from '@/components/collaboration/VersionHistory';
 import MusicVideoGenerator from '@/components/video/MusicVideoGenerator';
-import MasteringDialog from '@/components/audio/MasteringDialog';
+import EnhancedMasteringDialog from '@/components/mastering/EnhancedMasteringDialog';
 import StemSeparationDialog from '@/components/audio/StemSeparationDialog';
 import PersonaCreator from '@/components/audio/PersonaCreator';
 import AudioPlayer from '@/components/audio/AudioPlayer';
@@ -406,8 +406,8 @@ export default function LibraryPage() {
         onClose={() => setVideoGeneratingTrack(null)}
       />
 
-      {/* Mastering Dialog */}
-      <MasteringDialog
+      {/* Enhanced Mastering Dialog */}
+      <EnhancedMasteringDialog
         track={masteringTrack}
         open={!!masteringTrack}
         onClose={() => setMasteringTrack(null)}

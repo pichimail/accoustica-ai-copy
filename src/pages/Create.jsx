@@ -7,6 +7,7 @@ import GeneratingStatus from '@/components/tracks/GeneratingStatus';
 import TrackCard from '@/components/tracks/TrackCard';
 import AudioPlayer from '@/components/audio/AudioPlayer';
 import FullscreenPlayer from '@/components/audio/FullscreenPlayer';
+import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Music, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -23,13 +24,20 @@ export default function CreatePage() {
   const audioRef = React.useRef(null);
   const [user, setUser] = useState(null);
   const [userPlan, setUserPlan] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const queryClient = useQueryClient();
 
-  // Fetch user data
+  // Fetch user data and check onboarding
   useEffect(() => {
     const fetchUser = async () => {
       const userData = await base44.auth.me();
       setUser(userData);
+      
+      // Check if user needs onboarding
+      const progress = await base44.entities.OnboardingProgress.filter({ created_by: userData.email });
+      if (progress.length === 0 || (!progress[0].is_completed && !progress[0].skipped)) {
+        setShowOnboarding(true);
+      }
     };
     fetchUser();
   }, []);
@@ -452,6 +460,12 @@ export default function CreatePage() {
         duration={duration}
         onSeek={handleSeek}
         audioRef={audioRef}
+      />
+
+      {/* Onboarding Flow */}
+      <OnboardingFlow 
+        open={showOnboarding} 
+        onComplete={() => setShowOnboarding(false)} 
       />
 
       <style jsx>{`

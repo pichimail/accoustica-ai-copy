@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import AudioPlayer from '@/components/audio/AudioPlayer';
 import CommentsPanel from '@/components/collaboration/CommentsPanel';
+import AICollaborationPanel from '@/components/studio/AICollaborationPanel';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
@@ -252,8 +253,9 @@ export default function CollaborativeStudio() {
             </div>
           </div>
 
-          {/* Comments Timeline */}
-          <div className="mt-6">
+          {/* AI Tools & Comments */}
+          <div className="mt-6 space-y-4">
+            <AICollaborationPanel track={track} />
             <CommentsPanel track={track} currentTime={currentTime} user={user} />
           </div>
         </div>
