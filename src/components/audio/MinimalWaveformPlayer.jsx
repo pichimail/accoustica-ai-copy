@@ -3,7 +3,7 @@ import { Play, Pause } from 'lucide-react';
 import { Slider } from "@/components/ui/slider";
 import { motion } from 'framer-motion';
 
-export default function MinimalWaveformPlayer({ src, className }) {
+export default function MinimalWaveformPlayer({ src, className, minimal = false }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -143,20 +143,20 @@ export default function MinimalWaveformPlayer({ src, className }) {
         <button
           onClick={togglePlay}
           disabled={!src}
-          className="h-12 w-12 rounded-full bg-white hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0 shadow-lg transition-transform hover:scale-105"
+          className="h-14 w-14 rounded-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0 shadow-lg transition-all hover:scale-105"
         >
           {isPlaying ? (
-            <Pause className="h-5 w-5 text-slate-900" />
+            <Pause className="h-6 w-6 text-white" />
           ) : (
-            <Play className="h-5 w-5 text-slate-900 ml-0.5" />
+            <Play className="h-6 w-6 text-white ml-0.5" />
           )}
         </button>
 
-        {/* Waveform & Progress */}
+        {/* Waveform Only */}
         <div className="flex-1 min-w-0">
-          {/* Waveform Visualizer */}
-          <div className="relative h-16 rounded-lg bg-slate-800/50 overflow-hidden mb-2">
-            <div className="absolute inset-0 flex items-center justify-center gap-[2px] px-3">
+          {/* Animated Waveform Visualizer */}
+          <div className="relative h-20 rounded-xl bg-gradient-to-br from-slate-800/80 to-slate-900/80 overflow-hidden border border-violet-500/20">
+            <div className="absolute inset-0 flex items-center justify-center gap-[3px] px-4">
               {visualizerData.map((value, index) => {
                 const progress = currentTime / duration;
                 const barProgress = index / visualizerData.length;
@@ -167,36 +167,20 @@ export default function MinimalWaveformPlayer({ src, className }) {
                     key={index}
                     className="flex-1 rounded-full"
                     style={{
-                      height: `${Math.max(20, value * 90)}%`,
+                      height: `${Math.max(25, value * 95)}%`,
                       background: isPast
                         ? 'linear-gradient(to top, #8b5cf6, #a78bfa, #c4b5fd)'
-                        : 'rgba(100, 116, 139, 0.3)',
+                        : 'rgba(100, 116, 139, 0.4)',
+                      boxShadow: isPast ? '0 0 8px rgba(139, 92, 246, 0.4)' : 'none',
                     }}
                     animate={{
-                      height: `${Math.max(20, value * 90)}%`,
+                      height: `${Math.max(25, value * 95)}%`,
                     }}
-                    transition={{ duration: 0.1 }}
+                    transition={{ duration: 0.15, ease: 'easeOut' }}
                   />
                 );
               })}
             </div>
-          </div>
-
-          {/* Time & Progress Slider */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-400 w-10 text-right">
-              {formatTime(currentTime)}
-            </span>
-            <Slider
-              value={[currentTime]}
-              max={duration || 100}
-              step={0.1}
-              onValueChange={handleSeek}
-              className="flex-1 cursor-pointer"
-            />
-            <span className="text-xs text-slate-400 w-10">
-              {formatTime(duration)}
-            </span>
           </div>
         </div>
       </div>
