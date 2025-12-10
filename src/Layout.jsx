@@ -46,6 +46,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Library', icon: Library, page: 'Library', requireAuth: true },
     { name: 'Discover', icon: Globe, page: 'Discover' },
     { name: 'Studio', icon: Music, page: 'CollaborativeStudio', requireAuth: true },
+    { name: 'Profile', icon: User, page: 'Profile', requireAuth: true },
   ];
 
   const filteredNavLinks = navLinks.filter(link => {
@@ -66,10 +67,11 @@ export default function Layout({ children, currentPageName }) {
       <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800/50 safe-top">
         <div className="flex items-center justify-between px-4 h-16">
           <Link to={createPageUrl('Home')} className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-white" />
-            </div>
-            <span className="font-bold text-white text-base">Accoustica</span>
+            <img 
+              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6937c84c50aa245e9602d1ce/016bba8f4_accostica-logo-366x111.png" 
+              alt="Accoustica" 
+              className="h-8"
+            />
           </Link>
 
           <div className="flex items-center gap-2">
@@ -123,10 +125,11 @@ export default function Layout({ children, currentPageName }) {
             {sidebarOpen ? (
               <>
                 <Link to={createPageUrl('Home')} className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 flex items-center justify-center">
-                    <Sparkles className="h-5 w-5 text-white" />
-                  </div>
-                  <span className="font-bold text-white text-lg">Accoustica</span>
+                  <img 
+                    src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6937c84c50aa245e9602d1ce/016bba8f4_accostica-logo-366x111.png" 
+                    alt="Accoustica" 
+                    className="h-10"
+                  />
                 </Link>
                 <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-white">
                   <PanelLeftClose className="h-5 w-5" />

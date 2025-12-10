@@ -225,14 +225,24 @@ export default function CollaborativeStudio() {
           <div className="flex-1 flex items-center justify-center">
             <div className="w-full max-w-3xl">
               {track.status === 'ready' ? (
-                <AudioPlayer
-                  ref={audioRef}
-                  src={track.audio_url || track.stream_audio_url}
-                  title={track.title}
-                  artist={track.style}
-                  coverImage={track.cover_image_url}
-                  onTimeUpdate={(time) => setCurrentTime(time)}
-                />
+                <div className="w-full space-y-6">
+                  {/* Album Art */}
+                  <div className="w-full aspect-square max-w-md mx-auto rounded-2xl overflow-hidden shadow-2xl">
+                    <img 
+                      src={track.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop'} 
+                      alt={track.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  {/* Audio Player */}
+                  <AudioPlayer
+                    src={track.audio_url || track.stream_audio_url}
+                    title={track.title}
+                    artist={track.style}
+                    coverImage={track.cover_image_url}
+                  />
+                </div>
               ) : (
                 <div className="text-center py-12">
                   <Loader2 className="h-12 w-12 text-violet-400 animate-spin mx-auto mb-4" />

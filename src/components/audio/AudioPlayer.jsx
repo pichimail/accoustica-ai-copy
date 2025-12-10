@@ -32,6 +32,9 @@ export default function AudioPlayer({
     const audio = audioRef.current;
     if (!audio) return;
 
+    // Set volume
+    audio.volume = volume;
+
     const updateTime = () => setCurrentTime(audio.currentTime);
     const updateDuration = () => setDuration(audio.duration);
     const handleEnded = () => {
@@ -49,6 +52,9 @@ export default function AudioPlayer({
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateDuration);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('loadeddata', () => {
+      setDuration(audio.duration);
+    });
 
     return () => {
       audio.removeEventListener('timeupdate', updateTime);
@@ -58,7 +64,7 @@ export default function AudioPlayer({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [src, repeatMode]);
+  }, [src, repeatMode, volume]);
 
   // Initialize audio visualizer
   useEffect(() => {
@@ -96,16 +102,20 @@ export default function AudioPlayer({
     };
   }, [isPlaying]);
 
-  const togglePlay = () => {
+  const togglePlay = async () => {
     if (!audioRef.current || !src) return;
     
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
-      onPlay?.();
+    try {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        await audioRef.current.play();
+        onPlay?.();
+      }
+      setIsPlaying(!isPlaying);
+    } catch (error) {
+      console.error('Playback error:', error);
     }
-    setIsPlaying(!isPlaying);
   };
 
   const handleSeek = (value) => {
