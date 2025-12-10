@@ -322,116 +322,91 @@ export default function CreatePage() {
             </motion.div>
           </motion.div>
 
-          {/* Main Creation Area */}
-          <div className="grid lg:grid-cols-5 gap-8 mb-8">
-            {/* Creation Form - Takes 3 columns */}
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-              className="lg:col-span-3 space-y-6"
-            >
-              {/* Generation Status - Full Width */}
-              <AnimatePresence mode="wait">
-                {currentTrack && currentTrack.status !== 'ready' ? (
-                  <motion.div
-                    key="generating"
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                    className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-500/10 to-pink-500/10 backdrop-blur-xl border border-white/10 p-8"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-pink-500/20 animate-pulse"></div>
-                    <div className="relative z-10">
-                      <GeneratingStatus status={currentTrack.status} />
-                    </div>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="form"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <CreateMusicForm
-                      onSubmit={(data) => createTrackMutation.mutate(data)}
-                      isLoading={createTrackMutation.isPending}
-                      disabled={currentTrack?.status === 'generating'}
-                      limitReached={limitReached}
-                      remainingGenerations={remainingGenerations}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
+          {/* Centered Creation Form */}
+          <div className="max-w-3xl mx-auto mb-12">
+            <AnimatePresence mode="wait">
+              {currentTrack && currentTrack.status !== 'ready' ? (
+                <motion.div
+                  key="generating"
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                  className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-500/10 to-pink-500/10 backdrop-blur-xl border border-white/10 p-8"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-pink-500/20 animate-pulse"></div>
+                  <div className="relative z-10">
+                    <GeneratingStatus status={currentTrack.status} />
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="form"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <CreateMusicForm
+                    onSubmit={(data) => createTrackMutation.mutate(data)}
+                    isLoading={createTrackMutation.isPending}
+                    disabled={currentTrack?.status === 'generating'}
+                    limitReached={limitReached}
+                    remainingGenerations={remainingGenerations}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-            {/* Recent Tracks - Takes 2 columns */}
+          {/* Generated Tracks Grid */}
+          {recentTracks.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 }}
-              className="lg:col-span-2"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-6xl mx-auto"
             >
-              <div className="sticky top-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
-                      <Music className="h-5 w-5 text-white" />
-                    </div>
-                    Recent
-                  </h2>
-                  <Link to={createPageUrl('Library')}>
-                    <Button 
-                      variant="ghost" 
-                      className="text-slate-400 hover:text-white hover:bg-white/5 rounded-xl"
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
+                    <Music className="h-5 w-5 text-white" />
+                  </div>
+                  Your Tracks
+                </h2>
+                <Link to={createPageUrl('Library')}>
+                  <Button 
+                    variant="ghost" 
+                    className="text-slate-400 hover:text-white hover:bg-white/5 rounded-xl"
+                  >
+                    View All 
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <AnimatePresence mode="popLayout">
+                  {recentTracks.map((track, index) => (
+                    <motion.div
+                      key={track.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ delay: index * 0.1 }}
                     >
-                      View All 
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  </Link>
-                </div>
-
-                <div className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto pr-2 custom-scrollbar">
-                  <AnimatePresence mode="popLayout">
-                    {recentTracks.length === 0 ? (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        className="rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 p-8 text-center"
-                      >
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-violet-500/20 to-pink-500/20 flex items-center justify-center">
-                          <Sparkles className="h-8 w-8 text-violet-400" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-white mb-2">Start Creating</h3>
-                        <p className="text-slate-400 text-sm">Your musical journey begins here</p>
-                      </motion.div>
-                    ) : (
-                      recentTracks.map((track, index) => (
-                        <motion.div
-                          key={track.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ delay: index * 0.1 }}
-                        >
-                          <TrackCard
-                            track={track}
-                            onPlay={handlePlay}
-                            onDelete={handleDelete}
-                            onToggleVisibility={handleToggleVisibility}
-                            onToggleFavorite={handleToggleFavorite}
-                            showActions={true}
-                            isPlaying={playingTrack?.id === track.id}
-                          />
-                        </motion.div>
-                      ))
-                    )}
-                  </AnimatePresence>
-                </div>
+                      <TrackCard
+                        track={track}
+                        onPlay={handlePlay}
+                        onDelete={handleDelete}
+                        onToggleVisibility={handleToggleVisibility}
+                        onToggleFavorite={handleToggleFavorite}
+                        showActions={true}
+                        isPlaying={playingTrack?.id === track.id}
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             </motion.div>
-          </div>
+          )}
         </div>
       </div>
 
