@@ -397,10 +397,9 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                         toast.success('Style will be transferred to your track!');
                       }}
                     />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </>
         ) : (
           <>
