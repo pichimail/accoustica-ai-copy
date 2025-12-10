@@ -34,11 +34,21 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
   const [audioAnalysis, setAudioAnalysis] = useState(null);
   const [generatingRandom, setGeneratingRandom] = useState(false);
   const [selectedInspiration, setSelectedInspiration] = useState(null);
+  const [musicKey, setMusicKey] = useState('');
+  const [bpm, setBpm] = useState([120]);
+  const [energyLevel, setEnergyLevel] = useState([5]);
+  const [variationMode, setVariationMode] = useState(false);
+  const [baseTrackId, setBaseTrackId] = useState(null);
 
   const quickStyles = [
     'pop', 'rock', 'hip hop', 'electronic', 'jazz', 'classical',
     'r&b', 'country', 'indie', 'rap', 'techno', 'trap melodic',
     'heavy sound', 'tribal grooves', 'rhythmic complexity', 'happy music'
+  ];
+
+  const musicalKeys = [
+    'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B',
+    'Cm', 'C#m', 'Dm', 'D#m', 'Em', 'Fm', 'F#m', 'Gm', 'G#m', 'Am', 'A#m', 'Bm'
   ];
 
   const inspirationTags = [
@@ -141,28 +151,40 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
   const handleSubmit = (e) => {
     e.preventDefault();
     
+    const baseData = {
+      prompt: mode === 'simple' ? prompt : (lyrics || prompt),
+      style: style || 'AI Generated',
+      title: title || 'Untitled Track',
+      is_instrumental: isInstrumental,
+    };
+
+    // Add advanced music parameters
+    if (musicKey) {
+      baseData.prompt += ` [Key: ${musicKey}]`;
+    }
+    if (bpm[0] !== 120) {
+      baseData.prompt += ` [BPM: ${bpm[0]}]`;
+    }
+    if (energyLevel[0] !== 5) {
+      baseData.prompt += ` [Energy: ${energyLevel[0]}/10]`;
+    }
+    if (variationMode && baseTrackId) {
+      baseData.parent_track_id = baseTrackId;
+      baseData.prompt = `Variation of track: ${baseData.prompt}`;
+    }
+
     if (mode === 'simple') {
       if (!prompt.trim()) {
         toast.error('Please describe your song');
         return;
       }
-      onSubmit({
-        prompt: prompt,
-        style: style || 'AI Generated',
-        title: title || 'Untitled Track',
-        is_instrumental: isInstrumental,
-      });
+      onSubmit(baseData);
     } else {
       if (!lyrics.trim() && !isInstrumental) {
         toast.error('Please provide lyrics or enable instrumental mode');
         return;
       }
-      onSubmit({
-        prompt: lyrics || prompt,
-        style: style || 'AI Generated',
-        title: title || 'Untitled Track',
-        is_instrumental: isInstrumental,
-      });
+      onSubmit(baseData);
     }
   };
 
@@ -612,6 +634,106 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                         step={1}
                         className="cursor-pointer"
                       />
+                    </div>
+
+                    {/* Musical Key */}
+                    <div>
+                      <Label className="text-slate-300 text-sm mb-2 flex items-center gap-2">
+                        Musical Key
+                        <span className="text-xs text-slate-500">ⓘ Optional</span>
+                      </Label>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setMusicKey('')}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-xs transition-all",
+                            !musicKey
+                              ? "bg-slate-700 text-white"
+                              : "bg-slate-800/50 text-slate-400 hover:text-white"
+                          )}
+                        >
+                          Auto
+                        </button>
+                        {musicalKeys.slice(0, 12).map((key) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => setMusicKey(key)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg text-xs transition-all",
+                              musicKey === key
+                                ? "bg-violet-500/20 text-violet-300 border border-violet-500/30"
+                                : "bg-slate-800/50 text-slate-400 hover:text-white border border-slate-700"
+                            )}
+                          >
+                            {key}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {musicalKeys.slice(12).map((key) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => setMusicKey(key)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg text-xs transition-all",
+                              musicKey === key
+                                ? "bg-violet-500/20 text-violet-300 border border-violet-500/30"
+                                : "bg-slate-800/50 text-slate-400 hover:text-white border border-slate-700"
+                            )}
+                          >
+                            {key}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* BPM Slider */}
+                    <div>
+                      <Label className="text-slate-300 text-sm mb-2 flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          BPM (Tempo)
+                          <span className="text-xs text-slate-500">ⓘ</span>
+                        </span>
+                        <span className="text-xs text-slate-400">{bpm[0]} BPM</span>
+                      </Label>
+                      <Slider
+                        value={bpm}
+                        onValueChange={setBpm}
+                        min={60}
+                        max={200}
+                        step={5}
+                        className="cursor-pointer"
+                      />
+                      <div className="flex justify-between text-xs text-slate-500 mt-1">
+                        <span>Slow</span>
+                        <span>Fast</span>
+                      </div>
+                    </div>
+
+                    {/* Energy Level Slider */}
+                    <div>
+                      <Label className="text-slate-300 text-sm mb-2 flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          Energy Level
+                          <span className="text-xs text-slate-500">ⓘ</span>
+                        </span>
+                        <span className="text-xs text-slate-400">{energyLevel[0]}/10</span>
+                      </Label>
+                      <Slider
+                        value={energyLevel}
+                        onValueChange={setEnergyLevel}
+                        min={1}
+                        max={10}
+                        step={1}
+                        className="cursor-pointer"
+                      />
+                      <div className="flex justify-between text-xs text-slate-500 mt-1">
+                        <span>Calm</span>
+                        <span>Intense</span>
+                      </div>
                     </div>
                   </motion.div>
                 )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit, Heart, Wand2, Users, GitBranch, Video, Volume2, Disc, User } from 'lucide-react';
+import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit, Heart, Wand2, Users, GitBranch, Video, Volume2, Disc, User, Shuffle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
+import VariationGenerator from './VariationGenerator';
 
 const statusColors = {
   queued: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
@@ -46,6 +47,7 @@ export default function TrackCard({
 }) {
   const { currentTrack, isPlaying: globalIsPlaying, playTrack } = useAudioPlayer();
   const isPlaying = currentTrack?.id === track.id && globalIsPlaying;
+  const [showVariationDialog, setShowVariationDialog] = React.useState(false);
   const formatDuration = (seconds) => {
     if (!seconds) return '--:--';
     const mins = Math.floor(seconds / 60);
@@ -195,6 +197,13 @@ export default function TrackCard({
                           Create Persona
                         </DropdownMenuItem>
                         <DropdownMenuItem 
+                          onClick={() => setShowVariationDialog(true)}
+                          className="text-purple-400 focus:text-purple-300 focus:bg-purple-500/10"
+                        >
+                          <Shuffle className="h-4 w-4 mr-2" />
+                          Generate Variation
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
                           onClick={() => onToggleFavorite?.(track)}
                           className="text-slate-300 focus:text-white focus:bg-slate-700"
                         >
@@ -270,6 +279,14 @@ export default function TrackCard({
         </div>
       </div>
 
+      <VariationGenerator
+        open={showVariationDialog}
+        onClose={() => setShowVariationDialog(false)}
+        track={track}
+        onSuccess={() => {
+          // Refresh track list or handle success
+        }}
+      />
     </motion.div>
   );
 }
