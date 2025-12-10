@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit, Heart, Wand2, Users, GitBranch, Video, Volume2, Disc, User } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -263,17 +263,6 @@ export default function TrackCard({
         </div>
       </div>
 
-      {/* Dialogs */}
-      <VideoGeneratorDialog
-        track={track}
-        open={showVideoDialog}
-        onClose={() => setShowVideoDialog(false)}
-      />
-      <MasteringDialog
-        track={track}
-        open={showMasteringDialog}
-        onClose={() => setShowMasteringDialog(false)}
-      />
     </motion.div>
   );
 }
