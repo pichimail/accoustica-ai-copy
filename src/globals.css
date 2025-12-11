@@ -143,11 +143,61 @@ a:hover {
   * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
-  }
-  
-  button, a {
+    -webkit-user-select: none;
     user-select: none;
   }
+
+  button, a {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Enable smooth momentum scrolling */
+  body, html {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
+  /* Pull-to-refresh override */
+  body {
+    overscroll-behavior: none;
+  }
+}
+
+/* Native-like button press states */
+button:active, a:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease-in-out;
+}
+
+/* Smooth spring animations */
+@keyframes spring-in {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-spring-in {
+  animation: spring-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Elevated cards with depth */
+.card-elevated {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Native iOS-like blur */
+.blur-native {
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
 /* Smooth native scrolling */

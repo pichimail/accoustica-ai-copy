@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from "@/components/ui/button";
+import { haptics } from '@/components/utils/haptics';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +40,7 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   const handleLogout = () => {
+    haptics.medium();
     base44.auth.logout(createPageUrl('Home'));
   };
 
@@ -149,7 +151,9 @@ export default function Layout({ children, currentPageName }) {
           <nav className="flex-1 px-3 py-4 space-y-1">
             {filteredNavLinks.map((link) => (
               <Link key={link.page} to={createPageUrl(link.page)}>
-                <button className={cn(
+                <button 
+                  onClick={() => haptics.light()}
+                  className={cn(
                   "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all",
                   currentPageName === link.page 
                     ? "bg-gradient-to-r from-violet-500 to-pink-500 text-white shadow-lg shadow-violet-500/25" 
@@ -226,7 +230,9 @@ export default function Layout({ children, currentPageName }) {
         <div className="grid grid-cols-5 gap-1 px-2 py-2">
           {filteredNavLinks.map((link) => (
             <Link key={link.page} to={createPageUrl(link.page)}>
-              <button className={cn(
+              <button 
+                onClick={() => haptics.light()}
+                className={cn(
                 "w-full flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all",
                 currentPageName === link.page
                   ? "bg-gradient-to-r from-violet-500 to-pink-500 text-white shadow-lg shadow-violet-500/25"

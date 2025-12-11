@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit, Heart, Wand2, Users, GitBranch, Video, Volume2, Disc, User, Shuffle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,9 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
 import VariationGenerator from './VariationGenerator';
+import SwipeableCard from '@/components/mobile/SwipeableCard';
+import { haptics } from '@/components/utils/haptics';
+import { toast } from 'sonner';
 
 const statusColors = {
   queued: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
@@ -66,13 +69,52 @@ export default function TrackCard({
 
   const isReady = track.status === 'ready';
   const coverImage = track.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop';
+  const [showMobileActions, setShowMobileActions] = useState(false);
+
+  const handleSwipeLeft = () => {
+    if (onDelete) {
+      onDelete(track);
+      toast.success('Track deleted');
+    }
+  };
+
+  const handleSwipeRight = () => {
+    if (onToggleFavorite) {
+      haptics.success();
+      onToggleFavorite(track);
+      toast.success(track.is_favorite ? 'Removed from favorites' : 'Added to favorites');
+    }
+  };
+
+  const handleTap = () => {
+    if (isReady) {
+      playTrack(track);
+      onPlay?.(track);
+    }
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+    <SwipeableCard
+      onSwipeLeft={handleSwipeLeft}
+      onSwipeRight={handleSwipeRight}
+      leftAction={
+        <div className="flex items-center gap-2 text-red-400">
+          <Trash2 className="h-5 w-5" />
+          <span className="font-medium">Delete</span>
+        </div>
+      }
+      rightAction={
+        <div className="flex items-center gap-2 text-pink-400">
+          <Heart className={cn("h-5 w-5", track.is_favorite && "fill-current")} />
+          <span className="font-medium">{track.is_favorite ? 'Unfavorite' : 'Favorite'}</span>
+        </div>
+      }
       className="group relative bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden hover:border-violet-500/50 transition-all duration-300"
     >
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
       <div className="flex">
         {/* Cover Image - Clickable */}
         <div 
@@ -278,6 +320,7 @@ export default function TrackCard({
           </div>
         </div>
       </div>
+      </motion.div>
 
       <VariationGenerator
         open={showVariationDialog}
@@ -287,6 +330,6 @@ export default function TrackCard({
           // Refresh track list or handle success
         }}
       />
-    </motion.div>
+    </SwipeableCard>
   );
 }

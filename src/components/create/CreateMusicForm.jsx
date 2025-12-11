@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import SongStructureBuilder from './SongStructureBuilder';
 import AudioUploader from './AudioUploader';
+import { haptics } from '@/components/utils/haptics';
 
 export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitReached, remainingGenerations }) {
   const [mode, setMode] = useState('simple'); // 'simple' or 'advanced'
@@ -145,6 +146,7 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    haptics.medium();
     
     const baseData = {
       prompt: mode === 'simple' ? `[DESCRIPTION] ${prompt}` : (lyrics || prompt),
@@ -199,7 +201,10 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
         <div className="flex gap-2 bg-slate-800/50 p-1 rounded-xl">
           <button
             type="button"
-            onClick={() => setMode('simple')}
+            onClick={() => {
+              haptics.selection();
+              setMode('simple');
+            }}
             className={cn(
               "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all",
               mode === 'simple'
@@ -211,7 +216,10 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
           </button>
           <button
             type="button"
-            onClick={() => setMode('advanced')}
+            onClick={() => {
+              haptics.selection();
+              setMode('advanced');
+            }}
             className={cn(
               "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all",
               mode === 'advanced'
@@ -351,7 +359,10 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                       <button
                         key={tag}
                         type="button"
-                        onClick={() => handleInspirationClick(tag)}
+                        onClick={() => {
+                          haptics.selection();
+                          handleInspirationClick(tag);
+                        }}
                         className={cn(
                           "px-4 py-2 rounded-full text-xs font-medium transition-all border whitespace-nowrap backdrop-blur-xl flex-shrink-0",
                           isSelected
