@@ -11,6 +11,10 @@ import EnhancedMasteringDialog from '@/components/mastering/EnhancedMasteringDia
 import StemSeparationDialog from '@/components/audio/StemSeparationDialog';
 import PersonaCreator from '@/components/audio/PersonaCreator';
 import AudioPlayer from '@/components/audio/AudioPlayer';
+import AdvancedMasteringStudio from '@/components/mastering/AdvancedMasteringStudio';
+import MusicTheoryAssistant from '@/components/theory/MusicTheoryAssistant';
+import PullToRefresh from '@/components/mobile/PullToRefresh';
+import { haptics } from '@/components/utils/haptics';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -40,6 +44,9 @@ export default function LibraryPage() {
   const [masteringTrack, setMasteringTrack] = useState(null);
   const [stemSeparationTrack, setStemSeparationTrack] = useState(null);
   const [personaCreationTrack, setPersonaCreationTrack] = useState(null);
+  const [showAdvancedMastering, setShowAdvancedMastering] = useState(false);
+  const [showMusicTheory, setShowMusicTheory] = useState(false);
+  const [selectedTrack, setSelectedTrack] = useState(null);
   const [genreFilter, setGenreFilter] = useState('all');
   const [instrumentalFilter, setInstrumentalFilter] = useState('all');
   const queryClient = useQueryClient();
@@ -141,7 +148,24 @@ export default function LibraryPage() {
   };
 
   const handleMaster = (track) => {
-    setMasteringTrack(track);
+    setSelectedTrack(track);
+    setShowAdvancedMastering(true);
+  };
+
+  // Make music theory globally accessible from track cards
+  useEffect(() => {
+    window.openMusicTheory = (track) => {
+      setSelectedTrack(track);
+      setShowMusicTheory(true);
+    };
+    return () => {
+      delete window.openMusicTheory;
+    };
+  }, []);
+
+  const handleRefresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['myTracks'] });
+    haptics.success();
   };
 
   const handleSeparateStems = (track) => {
@@ -163,6 +187,7 @@ export default function LibraryPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-violet-950 pb-32">
       <div className="max-w-7xl mx-auto px-4 py-8">
+        <PullToRefresh onRefresh={handleRefresh}>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -352,9 +377,8 @@ export default function LibraryPage() {
             </AnimatePresence>
           </motion.div>
         )}
+        </PullToRefresh>
       </div>
-
-
 
       {/* Edit Dialog */}
       <TrackEditDialog
@@ -409,6 +433,28 @@ export default function LibraryPage() {
         onClose={() => setPersonaCreationTrack(null)}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ['myTracks'] })}
       />
-      </div>
-      );
-      }
+
+      {/* Advanced Mastering Studio */}
+      <AdvancedMasteringStudio
+        open={showAdvancedMastering}
+        onClose={() => setShowAdvancedMastering(false)}
+        track={selectedTrack}
+        onSuccess={(masteredUrl) => {
+          queryClient.invalidateQueries({ queryKey: ['myTracks'] });
+          toast.success('Track mastered! Check your library.');
+        }}
+      />
+
+      {/* Music Theory Assistant */}
+      <MusicTheoryAssistant
+        open={showMusicTheory}
+        onClose={() => setShowMusicTheory(false)}
+        track={selectedTrack}
+        onApplyFixes={(improvedPrompt) => {
+          toast.success('Use this improved prompt to regenerate your track!');
+          console.log('Improved prompt:', improvedPrompt);
+        }}
+      />
+    </div>
+  );
+}
