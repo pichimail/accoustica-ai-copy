@@ -10,6 +10,10 @@ import AdminUsers from './pages/AdminUsers';
 import AdminPlans from './pages/AdminPlans';
 import AdminTracks from './pages/AdminTracks';
 import CollaborativeStudio from './pages/CollaborativeStudio';
+import MasteringStudio from './pages/MasteringStudio';
+import VideoStudio from './pages/VideoStudio';
+import PersonasHub from './pages/PersonasHub';
+import StemStudio from './pages/StemStudio';
 import __Layout from './Layout.jsx';
 
 
@@ -26,6 +30,10 @@ export const PAGES = {
     "AdminPlans": AdminPlans,
     "AdminTracks": AdminTracks,
     "CollaborativeStudio": CollaborativeStudio,
+    "MasteringStudio": MasteringStudio,
+    "VideoStudio": VideoStudio,
+    "PersonasHub": PersonasHub,
+    "StemStudio": StemStudio,
 }
 
 export const pagesConfig = {
