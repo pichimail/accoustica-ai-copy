@@ -96,6 +96,27 @@ export default function MusicVideoGenerator({ track, open, onClose, onSuccess })
         attempts++;
         setProgress(Math.min(95, (attempts / maxAttempts) * 100));
         
+        // Every 10 attempts (20 seconds), directly check API status as fallback
+        if (attempts % 10 === 0) {
+          try {
+            const statusCheck = await base44.functions.invoke('checkVideoStatus', { taskId: id });
+            if (statusCheck.data.success && statusCheck.data.status === 'ready') {
+              setVideoUrl(statusCheck.data.video_url);
+              setProgress(100);
+              setGenerating(false);
+              toast.success('Video generated successfully!');
+              if (onSuccess) onSuccess();
+              return;
+            } else if (statusCheck.data.status === 'failed') {
+              toast.error(statusCheck.data.error || 'Video generation failed');
+              setGenerating(false);
+              return;
+            }
+          } catch (error) {
+            console.error('Direct status check failed:', error);
+          }
+        }
+        
         // Query the VideoGeneration entity directly
         const videos = await base44.entities.VideoGeneration.filter({ task_id: id });
         
