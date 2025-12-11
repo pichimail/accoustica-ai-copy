@@ -165,3 +165,26 @@ a:hover {
     scrollbar-width: none;
   }
 }
+
+/* Transparent scrollbar for inspiration tags */
+.inspiration-scrollbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.inspiration-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.inspiration-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 4px;
+}
+
+.inspiration-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.5);
+}
+
+.inspiration-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
+}

@@ -66,19 +66,14 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
   };
 
   const handleInspirationClick = (tag) => {
-    // If clicking selected tag, deselect it
-    if (selectedInspiration === tag) {
-      setSelectedInspiration(null);
-      handleStyleToggle(tag);
+    const styles = style.split(',').map(s => s.trim()).filter(Boolean);
+    
+    if (styles.includes(tag)) {
+      // Remove tag from style
+      setStyle(styles.filter(s => s !== tag).join(', '));
     } else {
-      // Select new tag and add to style
-      if (selectedInspiration) {
-        handleStyleToggle(selectedInspiration); // Remove old
-      }
-      setSelectedInspiration(tag);
-      if (!style.includes(tag)) {
-        handleStyleToggle(tag);
-      }
+      // Add tag to style
+      setStyle([...styles, tag].join(', '));
     }
   };
 
@@ -112,14 +107,14 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
     setGeneratingRandom(true);
     try {
       const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `Generate a creative and unique song description for AI music generation. Include mood, style, instruments, and theme. Make it detailed and inspiring. Return only the description, nothing else.`,
+        prompt: `Generate a short, creative song concept for AI music generation (like Suno.com style). Just describe the type of song, mood, and style in 1-2 sentences. NO LYRICS. Examples: "An upbeat pop song with electronic beats and summer vibes" or "A melancholic jazz ballad with piano and soft vocals". Return only the description.`,
         add_context_from_internet: false,
       });
 
       setPrompt(response);
-      toast.success('Random description generated!');
+      toast.success('Random song concept generated!');
     } catch (error) {
-      toast.error('Failed to generate description');
+      toast.error('Failed to generate concept');
     } finally {
       setGeneratingRandom(false);
     }
@@ -152,7 +147,7 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
     e.preventDefault();
     
     const baseData = {
-      prompt: mode === 'simple' ? prompt : (lyrics || prompt),
+      prompt: mode === 'simple' ? `[DESCRIPTION] ${prompt}` : (lyrics || prompt),
       style: style || 'AI Generated',
       title: title || 'Untitled Track',
       is_instrumental: isInstrumental,
@@ -348,36 +343,31 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
             {/* Inspiration Tags - Single Line Slider */}
             <div>
               <Label className="text-slate-300 mb-3 block">Inspiration</Label>
-              <div className="relative overflow-hidden">
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-violet-500/20 scrollbar-track-transparent">
-                  <AnimatePresence mode="popLayout">
-                    {inspirationTags
-                      .filter(tag => !selectedInspiration || selectedInspiration === tag)
-                      .map((tag) => (
-                        <motion.button
-                          key={tag}
-                          type="button"
-                          onClick={() => handleInspirationClick(tag)}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          layout
-                          className={cn(
-                            "px-4 py-2 rounded-full text-xs font-medium transition-all border whitespace-nowrap backdrop-blur-xl",
-                            selectedInspiration === tag
-                              ? "bg-gradient-to-r from-violet-500/30 to-pink-500/30 border-violet-400/50 text-white shadow-lg scale-110"
-                              : "bg-slate-800/50 border-slate-700 text-slate-400 hover:text-violet-300 hover:border-violet-500/30 hover:bg-violet-500/10"
-                          )}
-                        >
-                          {selectedInspiration === tag ? (
-                            <X className="h-3 w-3 inline mr-1" />
-                          ) : (
-                            <Plus className="h-3 w-3 inline mr-1" />
-                          )}
-                          {tag}
-                        </motion.button>
-                      ))}
-                  </AnimatePresence>
+              <div className="relative">
+                <div className="flex gap-2 overflow-x-auto pb-2 inspiration-scrollbar">
+                  {inspirationTags.map((tag) => {
+                    const isSelected = style.split(',').map(s => s.trim()).includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => handleInspirationClick(tag)}
+                        className={cn(
+                          "px-4 py-2 rounded-full text-xs font-medium transition-all border whitespace-nowrap backdrop-blur-xl flex-shrink-0",
+                          isSelected
+                            ? "bg-gradient-to-r from-violet-500/30 to-pink-500/30 border-violet-400/50 text-white shadow-lg"
+                            : "bg-slate-800/50 border-slate-700 text-slate-400 hover:text-violet-300 hover:border-violet-500/30 hover:bg-violet-500/10"
+                        )}
+                      >
+                        {isSelected ? (
+                          <X className="h-3 w-3 inline mr-1" />
+                        ) : (
+                          <Plus className="h-3 w-3 inline mr-1" />
+                        )}
+                        {tag}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
