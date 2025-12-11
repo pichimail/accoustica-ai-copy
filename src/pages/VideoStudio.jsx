@@ -29,7 +29,7 @@ export default function VideoStudioPage() {
     queryFn: () => base44.entities.VideoGeneration.list('-created_date'),
     refetchInterval: (data) => {
       const hasPending = Array.isArray(data) && data.some(v => v.status === 'pending' || v.status === 'processing');
-      return hasPending ? 5000 : false;
+      return hasPending ? 2000 : false; // Poll every 2 seconds for faster updates
     },
   });
 

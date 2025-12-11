@@ -72,9 +72,9 @@ export default function CreatePage() {
     },
     enabled: !!user?.email,
     refetchInterval: (data) => {
-      // Refetch every 5 seconds if any track is generating
+      // Refetch every 2 seconds if any track is generating for faster updates
       const hasGenerating = Array.isArray(data) && data.some(t => t.status === 'generating' || t.status === 'queued');
-      return hasGenerating ? 5000 : false;
+      return hasGenerating ? 2000 : false;
     },
   });
 
@@ -184,7 +184,7 @@ export default function CreatePage() {
 
         // Continue polling if not finished and under max attempts
         if (attempts < maxAttempts) {
-          setTimeout(poll, 3000); // Poll every 3 seconds for faster updates
+          setTimeout(poll, 2000); // Poll every 2 seconds for faster updates
         } else {
           toast.error('Generation timeout - check your library later');
           setCurrentTrack(null);

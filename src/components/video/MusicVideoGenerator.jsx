@@ -117,7 +117,7 @@ export default function MusicVideoGenerator({ track, open, onClose, onSuccess })
         }
 
         if (attempts < maxAttempts) {
-          setTimeout(poll, 5000);
+          setTimeout(poll, 2000); // Poll every 2 seconds for faster response
         } else {
           toast.error('Video generation timeout - check back later');
           setGenerating(false);
@@ -125,7 +125,7 @@ export default function MusicVideoGenerator({ track, open, onClose, onSuccess })
       } catch (error) {
         console.error('Polling error:', error);
         if (attempts < maxAttempts) {
-          setTimeout(poll, 5000);
+          setTimeout(poll, 2000); // Poll every 2 seconds
         } else {
           setGenerating(false);
         }

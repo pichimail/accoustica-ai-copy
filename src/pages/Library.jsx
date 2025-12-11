@@ -72,7 +72,7 @@ export default function LibraryPage() {
     enabled: !!user?.email,
     refetchInterval: (data) => {
       const hasGenerating = Array.isArray(data) && data.some(t => t.status === 'generating' || t.status === 'queued');
-      return hasGenerating ? 5000 : false;
+      return hasGenerating ? 2000 : false; // Poll every 2 seconds for faster updates
     },
   });
 

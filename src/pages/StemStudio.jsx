@@ -32,7 +32,7 @@ export default function StemStudioPage() {
     queryFn: () => base44.entities.StemSeparation.list('-created_date'),
     refetchInterval: (data) => {
       const hasPending = Array.isArray(data) && data.some(s => s.status === 'pending' || s.status === 'processing');
-      return hasPending ? 5000 : false;
+      return hasPending ? 2000 : false; // Poll every 2 seconds for faster updates
     },
   });
 
