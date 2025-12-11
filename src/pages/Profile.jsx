@@ -10,8 +10,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { 
   User, Music, TrendingUp, Calendar, Award, 
-  Settings, Zap, Crown, Clock, Target, Heart 
+  Settings, Zap, Crown, Clock, Target, Heart, Video, Download, Share2, ExternalLink 
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -80,6 +81,34 @@ export default function ProfilePage() {
       );
     },
     enabled: !!user?.email,
+  });
+
+  const { data: userVideos = [] } = useQuery({
+    queryKey: ['userVideos', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return [];
+      const allVideos = await base44.entities.VideoGeneration.filter({ status: 'ready' });
+      
+      // Filter videos that belong to user's tracks
+      const videoPromises = allVideos.map(async (video) => {
+        try {
+          const tracks = await base44.entities.Track.filter({ id: video.track_id });
+          if (tracks.length > 0 && tracks[0].created_by === user.email) {
+            return { ...video, track: tracks[0] };
+          }
+        } catch (e) {
+          return null;
+        }
+        return null;
+      });
+      
+      const videosWithTracks = await Promise.all(videoPromises);
+      return videosWithTracks.filter(v => v !== null).sort((a, b) => 
+        new Date(b.created_date) - new Date(a.created_date)
+      );
+    },
+    enabled: !!user?.email,
+    refetchInterval: 10000,
   });
 
   const dailyUsage = user?.last_usage_reset === new Date().toISOString().split('T')[0] 
@@ -233,6 +262,10 @@ export default function ProfilePage() {
                 <Heart className="h-4 w-4 mr-2" />
                 Favorites
               </TabsTrigger>
+              <TabsTrigger value="videos" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
+                <Video className="h-4 w-4 mr-2" />
+                Music Videos
+              </TabsTrigger>
               <TabsTrigger value="achievements" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
                 <Award className="h-4 w-4 mr-2" />
                 Achievements
@@ -330,6 +363,92 @@ export default function ProfilePage() {
                       ))
                     )}
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="videos">
+              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
+                <CardHeader>
+                  <CardTitle className="text-white">Music Videos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {userVideos.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Video className="h-12 w-12 text-slate-600 mx-auto mb-3" />
+                      <p className="text-slate-400">No music videos yet</p>
+                      <p className="text-sm text-slate-500 mt-2">Generate videos from your tracks to see them here</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {userVideos.map((video) => (
+                        <motion.div
+                          key={video.id}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden hover:border-violet-500/50 transition-all"
+                        >
+                          <div className="relative aspect-video bg-slate-900">
+                            <video 
+                              src={video.video_url} 
+                              controls 
+                              poster={video.track?.cover_image_url}
+                              className="w-full h-full object-cover"
+                            >
+                              Your browser does not support video.
+                            </video>
+                          </div>
+
+                          <div className="p-4">
+                            <h3 className="font-semibold text-white mb-1 truncate">{video.track?.title || 'Untitled'}</h3>
+                            <p className="text-sm text-slate-400 mb-3 truncate">{video.track?.style || 'Unknown'}</p>
+                            
+                            <div className="flex items-center gap-2 text-xs text-slate-500 mb-3">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(video.created_date).toLocaleDateString()}
+                            </div>
+
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const a = document.createElement('a');
+                                  a.href = video.video_url;
+                                  a.download = `${video.track?.title || 'video'}.mp4`;
+                                  a.click();
+                                }}
+                                className="flex-1 bg-slate-700/50 border-slate-600 text-white hover:bg-slate-700"
+                              >
+                                <Download className="h-3 w-3 mr-1" />
+                                Download
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(video.video_url);
+                                  toast.success('Video link copied!');
+                                }}
+                                className="flex-1 bg-slate-700/50 border-slate-600 text-white hover:bg-slate-700"
+                              >
+                                <Share2 className="h-3 w-3 mr-1" />
+                                Share
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.open(video.video_url, '_blank')}
+                                className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-700"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
