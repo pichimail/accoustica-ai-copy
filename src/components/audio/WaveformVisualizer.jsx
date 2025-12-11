@@ -70,6 +70,10 @@ export default function WaveformVisualizer({ audioRef, isPlaying, height = 80, c
       draw();
     } else {
       // Show static waveform when paused
+      const width = canvasRef.current.offsetWidth;
+      const height = canvasRef.current.offsetHeight;
+      const barWidth = width / bufferLength;
+      
       ctx.clearRect(0, 0, width, height);
       for (let i = 0; i < bufferLength; i++) {
         const barHeight = height * 0.1;
