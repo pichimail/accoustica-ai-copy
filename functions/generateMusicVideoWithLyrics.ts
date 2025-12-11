@@ -41,36 +41,37 @@ Deno.serve(async (req) => {
     };
 
     // Call Suno API to generate video
-    const response = await fetch('https://studio-api.suno.ai/api/generate/video', {
+    const response = await fetch('https://api.kie.ai/api/v1/mp4/generate', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${SUNO_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        task_id: taskId,
-        audio_id: audioId,
-        ...videoPayload,
-        callback: {
-          url: `${Deno.env.get('BASE44_CALLBACK_URL')}/functions/videoCallback`,
-          events: ['video.succeeded', 'video.failed'],
-        },
+        taskId: taskId,
+        audioId: audioId,
+        author: videoPayload.author,
+        domainName: videoPayload.domain_name,
+        callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/videoCallback`,
       }),
     });
 
     const data = await response.json();
 
-    if (!response.ok) {
+    if (data.code !== 200 && data.code !== 0) {
+      console.error('Suno API error:', data);
       return Response.json({
         success: false,
-        error: data.detail || 'Failed to start video generation',
-      }, { status: response.status });
+        error: data.msg || 'Failed to start video generation',
+        details: data
+      }, { status: 400 });
     }
 
     // Create VideoGeneration record
+    const videoTaskId = data.data?.taskId || taskId;
     await base44.asServiceRole.entities.VideoGeneration.create({
       track_id: track.id,
-      task_id: data.id || taskId,
+      task_id: videoTaskId,
       status: 'pending',
       author: videoPayload.author,
       domain_name: videoPayload.domain_name,
@@ -78,7 +79,7 @@ Deno.serve(async (req) => {
 
     return Response.json({
       success: true,
-      taskId: data.id || taskId,
+      taskId: videoTaskId,
       message: 'Video generation started',
     });
 

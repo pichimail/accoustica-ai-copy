@@ -9,7 +9,7 @@ import { Video, Loader2, Download, ExternalLink, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
-export default function MusicVideoGenerator({ track, open, onClose }) {
+export default function MusicVideoGenerator({ track, open, onClose, onSuccess }) {
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState('16:9');
   const [visualStyle, setVisualStyle] = useState('cinematic');
@@ -96,21 +96,21 @@ export default function MusicVideoGenerator({ track, open, onClose }) {
         attempts++;
         setProgress(Math.min(95, (attempts / maxAttempts) * 100));
         
-        const statusResponse = await base44.functions.invoke('checkMusicVideoStatus', {
-          taskId: id,
-        });
-
-        if (statusResponse.data.success) {
-          const status = statusResponse.data.status;
+        // Query the VideoGeneration entity directly
+        const videos = await base44.entities.VideoGeneration.filter({ task_id: id });
+        
+        if (videos.length > 0) {
+          const video = videos[0];
           
-          if (status === 'SUCCESS' && statusResponse.data.videoUrl) {
-            setVideoUrl(statusResponse.data.videoUrl);
+          if (video.status === 'ready' && video.video_url) {
+            setVideoUrl(video.video_url);
             setProgress(100);
             setGenerating(false);
             toast.success('Video generated successfully!');
+            if (onSuccess) onSuccess();
             return;
-          } else if (status && status.includes('FAILED')) {
-            toast.error('Video generation failed');
+          } else if (video.status === 'failed') {
+            toast.error(video.error_message || 'Video generation failed');
             setGenerating(false);
             return;
           }
@@ -119,12 +119,16 @@ export default function MusicVideoGenerator({ track, open, onClose }) {
         if (attempts < maxAttempts) {
           setTimeout(poll, 5000);
         } else {
-          toast.error('Video generation timeout');
+          toast.error('Video generation timeout - check back later');
           setGenerating(false);
         }
       } catch (error) {
         console.error('Polling error:', error);
-        setGenerating(false);
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 5000);
+        } else {
+          setGenerating(false);
+        }
       }
     };
 
