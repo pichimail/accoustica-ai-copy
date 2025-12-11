@@ -5,6 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from 'framer-motion';
+import EnhancedVisualizer from './EnhancedVisualizer';
 
 export default function GlobalAudioPlayer() {
   const {
@@ -126,6 +127,17 @@ export default function GlobalAudioPlayer() {
 
               {/* Center Controls */}
               <div className="flex-1 max-w-2xl hidden lg:block">
+                <div className="flex flex-col gap-1">
+                  {/* Mini Visualizer */}
+                  <div className="mb-1">
+                    <EnhancedVisualizer
+                      audioRef={audioRef}
+                      isPlaying={isPlaying}
+                      height={40}
+                      className="rounded-lg overflow-hidden"
+                    />
+                  </div>
+                  
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-center gap-2">
                     <Button
@@ -203,6 +215,7 @@ export default function GlobalAudioPlayer() {
                       {formatTime(duration)}
                     </span>
                   </div>
+                </div>
                 </div>
               </div>
 
