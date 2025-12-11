@@ -3,41 +3,52 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        const { code, msg, data } = await req.json();
+        const payload = await req.json();
+        
+        console.log('Received video callback - Full payload:', JSON.stringify(payload));
 
-        console.log('Received video callback:', { code, msg, taskId: data?.task_id, videoUrl: data?.video_url });
+        // Handle multiple possible payload formats
+        const code = payload.code || payload.status || 200;
+        const taskId = payload.taskId || payload.task_id || payload.data?.taskId || payload.data?.task_id;
+        const videoUrl = payload.videoUrl || payload.video_url || payload.data?.videoUrl || payload.data?.video_url;
+        const errorMsg = payload.msg || payload.message || payload.error;
 
-        if (code === 200 && data?.task_id && data?.video_url) {
-            // Find and update the VideoGeneration record
-            const videoRecords = await base44.asServiceRole.entities.VideoGeneration.filter({ 
-                task_id: data.task_id 
-            });
+        console.log('Parsed callback:', { code, taskId, videoUrl, errorMsg });
 
-            if (videoRecords.length > 0) {
-                await base44.asServiceRole.entities.VideoGeneration.update(videoRecords[0].id, {
-                    status: 'ready',
-                    video_url: data.video_url,
-                });
-                console.log('Video record updated:', videoRecords[0].id);
-            }
-        } else if (code !== 200) {
-            // Handle failure
-            const videoRecords = await base44.asServiceRole.entities.VideoGeneration.filter({ 
-                task_id: data?.task_id 
-            });
-
-            if (videoRecords.length > 0) {
-                await base44.asServiceRole.entities.VideoGeneration.update(videoRecords[0].id, {
-                    status: 'failed',
-                    error_message: msg || 'Video generation failed',
-                });
-            }
+        if (!taskId) {
+            console.error('No taskId found in callback');
+            return Response.json({ status: 'received', error: 'No taskId' }, { status: 200 });
         }
 
-        return Response.json({ status: 'received' }, { status: 200 });
+        // Find the VideoGeneration record
+        const videoRecords = await base44.asServiceRole.entities.VideoGeneration.filter({ 
+            task_id: taskId 
+        });
+
+        if (videoRecords.length === 0) {
+            console.error('No video record found for taskId:', taskId);
+            return Response.json({ status: 'received', error: 'Record not found' }, { status: 200 });
+        }
+
+        // Update based on success/failure
+        if (videoUrl && (code === 200 || code === 0)) {
+            await base44.asServiceRole.entities.VideoGeneration.update(videoRecords[0].id, {
+                status: 'ready',
+                video_url: videoUrl,
+            });
+            console.log('✅ Video record updated successfully:', videoRecords[0].id);
+        } else {
+            await base44.asServiceRole.entities.VideoGeneration.update(videoRecords[0].id, {
+                status: 'failed',
+                error_message: errorMsg || 'Video generation failed',
+            });
+            console.log('❌ Video marked as failed:', videoRecords[0].id);
+        }
+
+        return Response.json({ status: 'received', success: true }, { status: 200 });
 
     } catch (error) {
-        console.error('Error in videoCallback:', error);
+        console.error('❌ Error in videoCallback:', error);
         return Response.json({ status: 'received', error: error.message }, { status: 200 });
     }
 });
