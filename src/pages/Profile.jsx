@@ -22,14 +22,28 @@ export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [userPlan, setUserPlan] = useState(null);
   const [activeTab, setActiveTab] = useState('activity');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState('');
 
   useEffect(() => {
     const fetchUser = async () => {
       const userData = await base44.auth.me();
       setUser(userData);
+      setEditedName(userData.full_name || '');
     };
     fetchUser();
   }, []);
+
+  const handleSaveProfile = async () => {
+    try {
+      await base44.auth.updateMe({ full_name: editedName });
+      setUser({ ...user, full_name: editedName });
+      setIsEditing(false);
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      toast.error('Failed to update profile');
+    }
+  };
 
   // Fetch user's plan
   const { data: plans = [] } = useQuery({
@@ -215,9 +229,13 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <Button variant="outline" className="border-slate-700 hover:bg-slate-800">
+            <Button 
+              onClick={() => setIsEditing(!isEditing)}
+              variant="outline" 
+              className="border-slate-700 hover:bg-slate-800"
+            >
               <Settings className="h-4 w-4 mr-2" />
-              Edit Profile
+              {isEditing ? 'Cancel' : 'Edit Profile'}
             </Button>
           </div>
         </motion.div>
@@ -555,19 +573,23 @@ export default function ProfilePage() {
                   <div>
                     <Label className="text-slate-300">Full Name</Label>
                     <Input 
-                      defaultValue={user.full_name} 
+                      value={editedName} 
+                      onChange={(e) => setEditedName(e.target.value)}
                       className="bg-slate-800 border-slate-700 text-white"
                     />
                   </div>
                   <div>
                     <Label className="text-slate-300">Email</Label>
                     <Input 
-                      defaultValue={user.email} 
+                      value={user.email} 
                       disabled
                       className="bg-slate-800 border-slate-700 text-slate-400"
                     />
                   </div>
-                  <Button className="bg-violet-600 hover:bg-violet-700">
+                  <Button 
+                    onClick={handleSaveProfile}
+                    className="bg-violet-600 hover:bg-violet-700"
+                  >
                     Save Changes
                   </Button>
                 </CardContent>

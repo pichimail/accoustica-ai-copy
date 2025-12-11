@@ -40,6 +40,11 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
   const [energyLevel, setEnergyLevel] = useState([5]);
   const [variationMode, setVariationMode] = useState(false);
   const [baseTrackId, setBaseTrackId] = useState(null);
+  const [creativityLevel, setCreativityLevel] = useState([50]);
+  const [complexityLevel, setComplexityLevel] = useState([50]);
+  const [genreFusion, setGenreFusion] = useState([]);
+  const [variationCount, setVariationCount] = useState(1);
+  const [autoGenerateLyrics, setAutoGenerateLyrics] = useState(false);
 
   const quickStyles = [
     'pop', 'rock', 'hip hop', 'electronic', 'jazz', 'classical',
@@ -55,6 +60,11 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
   const inspirationTags = [
     'rap rock', 'r&b', 'techno', 'indie rock', 'reggae', 'blues',
     'folk', 'metal', 'punk', 'disco', 'funk', 'soul'
+  ];
+
+  const genreFusionOptions = [
+    'pop', 'rock', 'hip hop', 'electronic', 'jazz', 'classical',
+    'r&b', 'country', 'indie', 'latin', 'afrobeat', 'k-pop'
   ];
 
   const handleStyleToggle = (tag) => {
@@ -144,15 +154,33 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     haptics.medium();
+
+    // Auto-generate lyrics if enabled and not instrumental
+    let finalLyrics = lyrics;
+    if (autoGenerateLyrics && !isInstrumental && !lyrics.trim()) {
+      try {
+        const lyricsResponse = await base44.integrations.Core.InvokeLLM({
+          prompt: `Generate creative song lyrics based on: "${prompt}". Style: ${style}. Make them ${creativityLevel[0] > 70 ? 'highly creative and unique' : creativityLevel[0] > 30 ? 'balanced' : 'simple and straightforward'}. Keep it concise.`,
+          add_context_from_internet: false,
+        });
+        finalLyrics = lyricsResponse;
+      } catch (error) {
+        console.error('Failed to generate lyrics:', error);
+      }
+    }
     
     const baseData = {
-      prompt: mode === 'simple' ? `[DESCRIPTION] ${prompt}` : (lyrics || prompt),
+      prompt: mode === 'simple' ? `[DESCRIPTION] ${prompt}` : (finalLyrics || prompt),
       style: style || 'AI Generated',
-      title: title || 'Untitled Track',
+      title: title, // Will be auto-generated if empty
       is_instrumental: isInstrumental,
+      creativity_level: creativityLevel[0],
+      complexity_level: complexityLevel[0],
+      variation_count: variationCount,
+      genre_fusion: genreFusion.join(', '),
     };
 
     // Add advanced music parameters
@@ -382,6 +410,146 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                 </div>
               </div>
             </div>
+
+            {/* Genre Fusion */}
+            <div>
+              <Label className="text-slate-300 mb-3 block">Genre Fusion (AI Blend)</Label>
+              <div className="flex flex-wrap gap-2">
+                {genreFusionOptions.map((genre) => {
+                  const isSelected = genreFusion.includes(genre);
+                  return (
+                    <button
+                      key={genre}
+                      type="button"
+                      onClick={() => {
+                        haptics.selection();
+                        setGenreFusion(prev => 
+                          isSelected 
+                            ? prev.filter(g => g !== genre)
+                            : prev.length < 3 ? [...prev, genre] : prev
+                        );
+                      }}
+                      disabled={!isSelected && genreFusion.length >= 3}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-medium transition-all border",
+                        isSelected
+                          ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border-cyan-400/50 text-white"
+                          : genreFusion.length >= 3
+                          ? "bg-slate-800/30 border-slate-700 text-slate-600 cursor-not-allowed"
+                          : "bg-slate-800/50 border-slate-700 text-slate-400 hover:text-cyan-300 hover:border-cyan-500/30"
+                      )}
+                    >
+                      {genre}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-slate-500 mt-2">Select up to 3 genres to blend</p>
+            </div>
+
+            {/* AI Parameters */}
+            <div className="space-y-4 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-xl p-4 border border-blue-500/10">
+              <Label className="text-blue-300 font-medium">AI Generation Parameters</Label>
+
+              <div>
+                <div className="flex justify-between mb-2">
+                  <Label className="text-slate-300 text-sm">Creativity Level</Label>
+                  <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
+                    {creativityLevel[0]}%
+                  </Badge>
+                </div>
+                <Slider
+                  value={creativityLevel}
+                  onValueChange={setCreativityLevel}
+                  max={100}
+                  step={10}
+                  className="cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-slate-500 mt-1">
+                  <span>Safe</span>
+                  <span>Experimental</span>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between mb-2">
+                  <Label className="text-slate-300 text-sm">Complexity Level</Label>
+                  <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-xs">
+                    {complexityLevel[0]}%
+                  </Badge>
+                </div>
+                <Slider
+                  value={complexityLevel}
+                  onValueChange={setComplexityLevel}
+                  max={100}
+                  step={10}
+                  className="cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-slate-500 mt-1">
+                  <span>Simple</span>
+                  <span>Complex</span>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between mb-2">
+                  <Label className="text-slate-300 text-sm">Variations to Generate</Label>
+                  <Badge className="bg-pink-500/20 text-pink-300 border-pink-500/30 text-xs">
+                    {variationCount}
+                  </Badge>
+                </div>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4].map((count) => (
+                    <button
+                      key={count}
+                      type="button"
+                      onClick={() => {
+                        haptics.selection();
+                        setVariationCount(count);
+                      }}
+                      className={cn(
+                        "flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all border",
+                        variationCount === count
+                          ? "bg-pink-500/20 text-pink-300 border-pink-400/50"
+                          : "bg-slate-800/50 text-slate-400 border-slate-700 hover:border-pink-500/30"
+                      )}
+                    >
+                      {count}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500 mt-2">Generate multiple variations at once</p>
+              </div>
+            </div>
+
+            {/* Auto-generate Lyrics Toggle */}
+            {!isInstrumental && (
+              <div className="flex items-center justify-between bg-gradient-to-r from-violet-500/10 to-purple-500/10 rounded-xl p-4 border border-violet-500/20">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-5 w-5 text-violet-400" />
+                  <div>
+                    <Label className="text-violet-300 font-medium">AI Lyric Generation</Label>
+                    <p className="text-xs text-slate-400 mt-0.5">Auto-generate lyrics from your prompt</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.selection();
+                    setAutoGenerateLyrics(!autoGenerateLyrics);
+                  }}
+                  className={cn(
+                    "w-12 h-6 rounded-full transition-all relative",
+                    autoGenerateLyrics ? "bg-violet-500" : "bg-slate-700"
+                  )}
+                >
+                  <div className={cn(
+                    "absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all",
+                    autoGenerateLyrics ? "left-6" : "left-0.5"
+                  )} />
+                </button>
+              </div>
+            )}
 
             {/* Audio Upload for Style Transfer */}
             <AnimatePresence>
