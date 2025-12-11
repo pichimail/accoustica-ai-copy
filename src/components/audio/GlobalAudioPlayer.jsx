@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from 'framer-motion';
 import WaveformVisualizer from './WaveformVisualizer';
+import VisualizerSettings from './VisualizerSettings';
 
 export default function GlobalAudioPlayer() {
   const {
@@ -30,6 +31,10 @@ export default function GlobalAudioPlayer() {
   } = useAudioPlayer();
 
   const [visualizerType, setVisualizerType] = useState('waveform'); // 'waveform' or 'bars'
+  const [colorPalette, setColorPalette] = useState('violet');
+  const [sensitivity, setSensitivity] = useState(100);
+  const [smoothness, setSmoothness] = useState(50);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -112,6 +117,10 @@ export default function GlobalAudioPlayer() {
                   isPlaying={isPlaying}
                   height={60}
                   className="rounded-xl bg-slate-800/30 border border-violet-500/10"
+                  colorPalette={colorPalette}
+                  sensitivity={sensitivity}
+                  smoothness={smoothness}
+                  type={visualizerType}
                 />
               </div>
 
@@ -276,6 +285,15 @@ export default function GlobalAudioPlayer() {
                   <Button
                     size="icon"
                     variant="ghost"
+                    onClick={() => setShowSettings(true)}
+                    className="h-9 w-9 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg"
+                  >
+                    <Settings className="h-5 w-5" />
+                  </Button>
+
+                  <Button
+                    size="icon"
+                    variant="ghost"
                     onClick={() => setIsFullscreen(true)}
                     className="h-9 w-9 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg"
                   >
@@ -286,6 +304,20 @@ export default function GlobalAudioPlayer() {
             </div>
           </div>
         </div>
+
+        {/* Visualizer Settings Dialog */}
+        <VisualizerSettings
+          open={showSettings}
+          onClose={() => setShowSettings(false)}
+          visualizerType={visualizerType}
+          setVisualizerType={setVisualizerType}
+          colorPalette={colorPalette}
+          setColorPalette={setColorPalette}
+          sensitivity={sensitivity}
+          setSensitivity={setSensitivity}
+          smoothness={smoothness}
+          setSmoothness={setSmoothness}
+        />
       </motion.div>
     </AnimatePresence>
   );
