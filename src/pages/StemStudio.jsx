@@ -31,7 +31,7 @@ export default function StemStudioPage() {
     queryKey: ['stem-separations'],
     queryFn: () => base44.entities.StemSeparation.list('-created_date'),
     refetchInterval: (data) => {
-      const hasPending = data?.some(s => s.status === 'pending' || s.status === 'processing');
+      const hasPending = Array.isArray(data) && data.some(s => s.status === 'pending' || s.status === 'processing');
       return hasPending ? 5000 : false;
     },
   });
