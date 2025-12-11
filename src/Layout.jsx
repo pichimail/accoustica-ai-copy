@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { 
   Sparkles, Music, Globe, User, LogOut, Menu, X, 
-  Plus, Library, Crown, Home, PanelLeftClose, PanelLeftOpen
+  Plus, Library, Crown, Home, PanelLeftClose, PanelLeftOpen,
+  Video, Users, Disc
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from 'framer-motion';
@@ -50,6 +51,10 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Library', icon: Library, page: 'Library', requireAuth: true },
     { name: 'Discover', icon: Globe, page: 'Discover' },
     { name: 'Studio', icon: Music, page: 'CollaborativeStudio', requireAuth: true },
+    { name: 'Mastering', icon: Crown, page: 'MasteringStudio', requireAuth: true },
+    { name: 'Video', icon: Sparkles, page: 'VideoStudio', requireAuth: true },
+    { name: 'Personas', icon: User, page: 'PersonasHub', requireAuth: true },
+    { name: 'Stems', icon: PanelLeftClose, page: 'StemStudio', requireAuth: true },
     { name: 'Profile', icon: User, page: 'Profile', requireAuth: true },
   ];
 
