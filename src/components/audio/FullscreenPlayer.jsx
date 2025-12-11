@@ -4,6 +4,7 @@ import { X, Play, Pause, SkipBack, SkipForward, Repeat, Repeat1, Shuffle, Volume
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import EnhancedVisualizer from './EnhancedVisualizer';
 
 export default function FullscreenPlayer({ 
   track, 
@@ -188,23 +189,17 @@ export default function FullscreenPlayer({
                   />
                 </div>
                 
-                {/* Visualizer Overlay */}
-                <div className="absolute -bottom-6 left-0 right-0 h-20 flex items-end justify-center gap-1 px-8">
-                  {visualizerData.map((value, index) => (
-                    <motion.div
-                      key={index}
-                      className="flex-1 rounded-full"
-                      style={{
-                        height: `${Math.max(10, value * 100)}%`,
-                        background: 'linear-gradient(to top, #06b6d4, #3b82f6, #8b5cf6, #ec4899)',
-                        boxShadow: '0 0 10px rgba(139, 92, 246, 0.8)',
-                      }}
-                      animate={{
-                        height: `${Math.max(10, value * 100)}%`,
-                      }}
-                      transition={{ duration: 0.1 }}
-                    />
-                  ))}
+                {/* Enhanced Visualizer Overlay */}
+                <div className="absolute -bottom-6 left-0 right-0 h-24">
+                  <EnhancedVisualizer
+                    audioRef={audioRef}
+                    isPlaying={isPlaying}
+                    height={96}
+                    bassBoost={1.3}
+                    midBoost={1.1}
+                    trebleBoost={0.9}
+                    className="rounded-2xl"
+                  />
                 </div>
               </motion.div>
             </div>
