@@ -72,41 +72,49 @@ export default function VideoGeneratorDialog({ track, open, onClose }) {
     }
   };
 
-  const pollVideoStatus = async (taskId) => {
-    const maxAttempts = 60;
+  const pollVideoStatus = async (videoTaskId) => {
+    const maxAttempts = 120; // 10 minutes max
     let attempts = 0;
 
     const poll = async () => {
       try {
         attempts++;
-        setProgress(Math.min(95, (attempts / maxAttempts) * 100));
+        const estimatedProgress = Math.min(95, (attempts / maxAttempts) * 100);
+        setProgress(estimatedProgress);
 
-        const statusResponse = await base44.functions.invoke('checkMusicVideoStatus', { taskId });
-
-        if (statusResponse.data.success) {
-          const status = statusResponse.data.status;
-
-          if (status === 'SUCCESS' && statusResponse.data.videoUrl) {
-            setVideoUrl(statusResponse.data.videoUrl);
+        // Check VideoGeneration entity for status
+        const videoRecords = await base44.entities.VideoGeneration.filter({ task_id: videoTaskId });
+        
+        if (videoRecords.length > 0) {
+          const videoRecord = videoRecords[0];
+          
+          if (videoRecord.status === 'ready' && videoRecord.video_url) {
+            setVideoUrl(videoRecord.video_url);
             setProgress(100);
             setGenerating(false);
-            toast.success('Video ready!');
+            toast.success('Video ready! View it in your profile.');
+            onClose(); // Close dialog after success
             return;
-          } else if (status?.includes('FAILED')) {
-            toast.error('Video generation failed');
+          } else if (videoRecord.status === 'failed') {
+            toast.error(videoRecord.error_message || 'Video generation failed');
             setGenerating(false);
             return;
           }
         }
 
         if (attempts < maxAttempts) {
-          setTimeout(poll, 5000);
+          setTimeout(poll, 5000); // Check every 5 seconds
         } else {
-          toast.error('Generation timeout');
+          toast.error('Video generation timeout. Please check your profile later.');
           setGenerating(false);
         }
       } catch (error) {
-        setGenerating(false);
+        console.error('Polling error:', error);
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 5000);
+        } else {
+          setGenerating(false);
+        }
       }
     };
 

@@ -8,10 +8,30 @@ Deno.serve(async (req) => {
         console.log('Received video callback:', { code, msg, taskId: data?.task_id, videoUrl: data?.video_url });
 
         if (code === 200 && data?.task_id && data?.video_url) {
-            // Update track with video URL
-            // Note: We'd need to store the video task mapping to the track
-            // For now, we'll store this in a separate entity or update based on external tracking
-            console.log('Video generated:', data.video_url);
+            // Find and update the VideoGeneration record
+            const videoRecords = await base44.asServiceRole.entities.VideoGeneration.filter({ 
+                task_id: data.task_id 
+            });
+
+            if (videoRecords.length > 0) {
+                await base44.asServiceRole.entities.VideoGeneration.update(videoRecords[0].id, {
+                    status: 'ready',
+                    video_url: data.video_url,
+                });
+                console.log('Video record updated:', videoRecords[0].id);
+            }
+        } else if (code !== 200) {
+            // Handle failure
+            const videoRecords = await base44.asServiceRole.entities.VideoGeneration.filter({ 
+                task_id: data?.task_id 
+            });
+
+            if (videoRecords.length > 0) {
+                await base44.asServiceRole.entities.VideoGeneration.update(videoRecords[0].id, {
+                    status: 'failed',
+                    error_message: msg || 'Video generation failed',
+                });
+            }
         }
 
         return Response.json({ status: 'received' }, { status: 200 });
