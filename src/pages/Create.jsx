@@ -105,6 +105,10 @@ export default function CreatePage() {
         style: data.style,
         title: data.title,
         instrumental: data.is_instrumental || false,
+        creativity_level: data.creativity_level || 50,
+        complexity_level: data.complexity_level || 50,
+        variation_count: data.variation_count || 1,
+        genre_fusion: data.genre_fusion || '',
       });
 
       if (!response.data.success) {

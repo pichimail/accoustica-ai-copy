@@ -11,7 +11,16 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { prompt, style, title, instrumental = false } = await req.json();
+        const { 
+            prompt, 
+            style, 
+            title, 
+            instrumental = false,
+            creativity_level = 50,
+            complexity_level = 50,
+            variation_count = 1,
+            genre_fusion = ''
+        } = await req.json();
 
         if (!prompt) {
             return Response.json({ error: 'Prompt is required' }, { status: 400 });
@@ -22,6 +31,27 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500 });
         }
 
+        // Generate unique title if not provided
+        let trackTitle = title || `${style || 'Music'} Track ${Date.now()}`;
+
+        // Enhance prompt with AI parameters
+        let enhancedPrompt = prompt;
+        if (creativity_level > 70) {
+            enhancedPrompt += ' [CREATIVE: experimental, unique, innovative]';
+        } else if (creativity_level < 30) {
+            enhancedPrompt += ' [CREATIVE: traditional, classic, conventional]';
+        }
+        
+        if (complexity_level > 70) {
+            enhancedPrompt += ' [COMPLEXITY: intricate, layered, sophisticated]';
+        } else if (complexity_level < 30) {
+            enhancedPrompt += ' [COMPLEXITY: simple, straightforward, minimal]';
+        }
+
+        if (genre_fusion) {
+            enhancedPrompt += ` [FUSION: ${genre_fusion}]`;
+        }
+
         // Call Suno API to generate music
         const response = await fetch(`${SUNO_API_BASE}/generate`, {
             method: 'POST',
@@ -30,13 +60,13 @@ Deno.serve(async (req) => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                prompt: prompt,
+                prompt: enhancedPrompt,
                 customMode: true,
                 instrumental: instrumental,
                 model: 'V5',
                 callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`,
                 style: style || 'AI Generated Music',
-                title: title || 'Untitled Track',
+                title: trackTitle,
             }),
         });
 
@@ -50,29 +80,34 @@ Deno.serve(async (req) => {
             }, { status: 400 });
         }
 
-        // Create 2 Track records in database (Suno generates 2 variations by default)
-        const track1 = await base44.entities.Track.create({
-            title: title || 'Untitled Track',
-            prompt: prompt,
-            style: style || 'AI Generated',
-            task_id: data.data.taskId,
-            status: 'queued',
-            is_instrumental: instrumental,
-        });
+        // Create Track records based on variation count (Suno generates 2 by default)
+        const trackPromises = [];
+        const totalTracks = variation_count * 2;
+        
+        for (let i = 0; i < totalTracks; i++) {
+            const variationTitle = variation_count > 1 
+                ? `${trackTitle} (Var ${Math.floor(i/2) + 1}.${(i % 2) + 1})`
+                : trackTitle;
+            
+            trackPromises.push(
+                base44.entities.Track.create({
+                    title: variationTitle,
+                    prompt: enhancedPrompt,
+                    style: style || 'AI Generated',
+                    task_id: data.data.taskId,
+                    status: 'queued',
+                    is_instrumental: instrumental,
+                })
+            );
+        }
 
-        const track2 = await base44.entities.Track.create({
-            title: title || 'Untitled Track',
-            prompt: prompt,
-            style: style || 'AI Generated',
-            task_id: data.data.taskId,
-            status: 'queued',
-            is_instrumental: instrumental,
-        });
+        const tracks = await Promise.all(trackPromises);
 
         return Response.json({
             success: true,
             taskId: data.data.taskId,
-            trackIds: [track1.id, track2.id],
+            trackIds: tracks.map(t => t.id),
+            track_count: tracks.length,
         });
 
     } catch (error) {
