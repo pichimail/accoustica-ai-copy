@@ -12,44 +12,66 @@ Deno.serve(async (req) => {
         }
 
         const { 
+            mode = 'simple',
+            model = 'V5',
             prompt, 
-            style, 
-            title, 
+            style = '', 
+            title = '', 
+            customMode = false,
             instrumental = false,
-            creativity_level = 50,
-            complexity_level = 50,
-            variation_count = 1,
-            genre_fusion = ''
+            vocalGender,
+            weirdness,
+            styleInfluence,
         } = await req.json();
-
-        if (!prompt) {
-            return Response.json({ error: 'Prompt is required' }, { status: 400 });
-        }
 
         const apiKey = Deno.env.get('SUNO_API_KEY');
         if (!apiKey) {
             return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500 });
         }
 
-        // Generate unique title if not provided
-        let trackTitle = title || `${style || 'Music'} Track ${Date.now()}`;
+        // Build API payload based on mode
+        const payload = {
+            customMode: customMode,
+            instrumental: instrumental,
+            model: model,
+            callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`,
+        };
 
-        // Enhance prompt with AI parameters
-        let enhancedPrompt = prompt;
-        if (creativity_level > 70) {
-            enhancedPrompt += ' [CREATIVE: experimental, unique, innovative]';
-        } else if (creativity_level < 30) {
-            enhancedPrompt += ' [CREATIVE: traditional, classic, conventional]';
-        }
-        
-        if (complexity_level > 70) {
-            enhancedPrompt += ' [COMPLEXITY: intricate, layered, sophisticated]';
-        } else if (complexity_level < 30) {
-            enhancedPrompt += ' [COMPLEXITY: simple, straightforward, minimal]';
-        }
-
-        if (genre_fusion) {
-            enhancedPrompt += ` [FUSION: ${genre_fusion}]`;
+        if (mode === 'simple') {
+            // Simple mode: only prompt required
+            if (!prompt || !prompt.trim()) {
+                return Response.json({ error: 'Prompt is required' }, { status: 400 });
+            }
+            payload.prompt = prompt;
+        } else if (mode === 'custom') {
+            // Custom mode: prompt (lyrics), style, title required
+            if (!prompt || !prompt.trim()) {
+                return Response.json({ error: 'Lyrics (prompt) are required' }, { status: 400 });
+            }
+            if (!style || !style.trim()) {
+                return Response.json({ error: 'Style is required' }, { status: 400 });
+            }
+            if (!title || !title.trim()) {
+                return Response.json({ error: 'Title is required' }, { status: 400 });
+            }
+            payload.prompt = prompt;
+            payload.style = style;
+            payload.title = title;
+            
+            // Add optional parameters
+            if (vocalGender) payload.vocalGender = vocalGender;
+            if (typeof weirdness === 'number') payload.weirdnessConstraint = weirdness;
+            if (typeof styleInfluence === 'number') payload.styleWeight = styleInfluence;
+        } else if (mode === 'instrumental') {
+            // Instrumental mode: style and title required
+            if (!style || !style.trim()) {
+                return Response.json({ error: 'Style is required' }, { status: 400 });
+            }
+            if (!title || !title.trim()) {
+                return Response.json({ error: 'Title is required' }, { status: 400 });
+            }
+            payload.style = style;
+            payload.title = title;
         }
 
         // Call Suno API to generate music
@@ -59,15 +81,7 @@ Deno.serve(async (req) => {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                prompt: enhancedPrompt,
-                customMode: true,
-                instrumental: instrumental,
-                model: 'V5',
-                callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`,
-                style: style || 'AI Generated Music',
-                title: trackTitle,
-            }),
+            body: JSON.stringify(payload),
         });
 
         const data = await response.json();
@@ -80,23 +94,20 @@ Deno.serve(async (req) => {
             }, { status: 400 });
         }
 
-        // Create Track records based on variation count (Suno generates 2 by default)
+        // Create Track records (Suno generates 2 by default)
         const trackPromises = [];
-        const totalTracks = variation_count * 2;
+        const trackTitle = title || `${style || 'Music'} Track`;
         
-        for (let i = 0; i < totalTracks; i++) {
-            const variationTitle = variation_count > 1 
-                ? `${trackTitle} (Var ${Math.floor(i/2) + 1}.${(i % 2) + 1})`
-                : trackTitle;
-            
+        for (let i = 0; i < 2; i++) {
             trackPromises.push(
                 base44.entities.Track.create({
-                    title: variationTitle,
-                    prompt: enhancedPrompt,
+                    title: `${trackTitle} (${i + 1})`,
+                    prompt: prompt || '',
                     style: style || 'AI Generated',
                     task_id: data.data.taskId,
                     status: 'queued',
                     is_instrumental: instrumental,
+                    model_version: model,
                 })
             );
         }

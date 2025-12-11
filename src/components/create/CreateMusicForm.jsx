@@ -15,13 +15,14 @@ import AudioUploader from './AudioUploader';
 import { haptics } from '@/components/utils/haptics';
 
 export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitReached, remainingGenerations }) {
-  const [mode, setMode] = useState('simple'); // 'simple' or 'advanced'
+  const [mode, setMode] = useState('simple'); // 'simple', 'custom', or 'instrumental'
+  const [model, setModel] = useState('V5');
   const [prompt, setPrompt] = useState('');
   const [lyrics, setLyrics] = useState('');
   const [style, setStyle] = useState('');
   const [title, setTitle] = useState('');
   const [isInstrumental, setIsInstrumental] = useState(false);
-  const [vocalGender, setVocalGender] = useState('male');
+  const [vocalGender, setVocalGender] = useState('m');
   const [lyricsMode, setLyricsMode] = useState('manual');
   const [weirdness, setWeirdness] = useState([50]);
   const [styleInfluence, setStyleInfluence] = useState([50]);
@@ -53,10 +54,29 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
     'heavy sound', 'tribal grooves', 'rhythmic complexity', 'happy music'
   ];
 
+  const models = [
+    { value: 'V5', label: 'V5', desc: 'Superior musical expression, faster' },
+    { value: 'V4_5PLUS', label: 'V4.5+', desc: 'Richer sound, max 8 min' },
+    { value: 'V4_5', label: 'V4.5', desc: 'Smarter prompts, max 8 min' },
+    { value: 'V4_5ALL', label: 'V4.5 All', desc: 'Smarter prompts, max 8 min' },
+    { value: 'V4', label: 'V4', desc: 'Improved vocals, max 4 min' },
+  ];
+
   const musicalKeys = [
     'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B',
     'Cm', 'C#m', 'Dm', 'D#m', 'Em', 'Fm', 'F#m', 'Gm', 'G#m', 'Am', 'A#m', 'Bm'
   ];
+
+  // Character limits based on model
+  const getCharLimits = () => {
+    if (mode === 'simple') {
+      return { prompt: 200 };
+    }
+    if (model === 'V4') {
+      return { prompt: 3000, style: 200, title: 80 };
+    }
+    return { prompt: 5000, style: 1000, title: 80 };
+  };
 
   const inspirationTags = [
     'rap rock', 'r&b', 'techno', 'indie rock', 'reggae', 'blues',
@@ -159,71 +179,103 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
     e.preventDefault();
     haptics.medium();
 
-    // Auto-generate lyrics if enabled and not instrumental
-    let finalLyrics = lyrics;
-    if (autoGenerateLyrics && !isInstrumental && !lyrics.trim()) {
-      try {
-        const lyricsResponse = await base44.integrations.Core.InvokeLLM({
-          prompt: `Generate creative song lyrics based on: "${prompt}". Style: ${style}. Make them ${creativityLevel[0] > 70 ? 'highly creative and unique' : creativityLevel[0] > 30 ? 'balanced' : 'simple and straightforward'}. Keep it concise.`,
-          add_context_from_internet: false,
-        });
-        finalLyrics = lyricsResponse;
-      } catch (error) {
-        console.error('Failed to generate lyrics:', error);
-      }
-    }
-    
-    const baseData = {
-      prompt: mode === 'simple' ? `[DESCRIPTION] ${prompt}` : (finalLyrics || prompt),
-      style: style || 'AI Generated',
-      title: title, // Will be auto-generated if empty
-      is_instrumental: isInstrumental,
-      creativity_level: creativityLevel[0],
-      complexity_level: complexityLevel[0],
-      variation_count: variationCount,
-      genre_fusion: genreFusion.join(', '),
-    };
+    const limits = getCharLimits();
 
-    // Add advanced music parameters
-    if (musicKey) {
-      baseData.prompt += ` [Key: ${musicKey}]`;
-    }
-    if (bpm[0] !== 120) {
-      baseData.prompt += ` [BPM: ${bpm[0]}]`;
-    }
-    if (energyLevel[0] !== 5) {
-      baseData.prompt += ` [Energy: ${energyLevel[0]}/10]`;
-    }
-    if (variationMode && baseTrackId) {
-      baseData.parent_track_id = baseTrackId;
-      baseData.prompt = `Variation of track: ${baseData.prompt}`;
-    }
-
+    // Validation based on mode
     if (mode === 'simple') {
       if (!prompt.trim()) {
         toast.error('Please describe your song');
         return;
       }
-      onSubmit(baseData);
-    } else {
-      if (!lyrics.trim() && !isInstrumental) {
-        toast.error('Please provide lyrics or enable instrumental mode');
+      if (prompt.length > limits.prompt) {
+        toast.error(`Description must be under ${limits.prompt} characters`);
         return;
       }
-      onSubmit(baseData);
+    } else if (mode === 'custom') {
+      if (!prompt.trim()) {
+        toast.error('Please provide lyrics');
+        return;
+      }
+      if (!style.trim()) {
+        toast.error('Please specify a music style');
+        return;
+      }
+      if (!title.trim()) {
+        toast.error('Please provide a title');
+        return;
+      }
+      if (prompt.length > limits.prompt) {
+        toast.error(`Lyrics must be under ${limits.prompt} characters`);
+        return;
+      }
+      if (style.length > limits.style) {
+        toast.error(`Style must be under ${limits.style} characters`);
+        return;
+      }
+      if (title.length > limits.title) {
+        toast.error(`Title must be under ${limits.title} characters`);
+        return;
+      }
+    } else if (mode === 'instrumental') {
+      if (!style.trim()) {
+        toast.error('Please specify a music style');
+        return;
+      }
+      if (!title.trim()) {
+        toast.error('Please provide a title');
+        return;
+      }
+      if (style.length > limits.style) {
+        toast.error(`Style must be under ${limits.style} characters`);
+        return;
+      }
+      if (title.length > limits.title) {
+        toast.error(`Title must be under ${limits.title} characters`);
+        return;
+      }
     }
+    
+    const baseData = {
+      mode: mode,
+      model: model,
+      prompt: mode === 'custom' ? prompt : (mode === 'simple' ? prompt : ''),
+      style: mode !== 'simple' ? style : '',
+      title: mode !== 'simple' ? title : '',
+      customMode: mode !== 'simple',
+      instrumental: mode === 'instrumental',
+      vocalGender: vocalGender,
+      weirdness: weirdness[0] / 100,
+      styleInfluence: styleInfluence[0] / 100,
+    };
+
+    onSubmit(baseData);
   };
 
   return (
     <div className="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-800 overflow-hidden">
-      {/* Header with Tabs */}
-      <div className="border-b border-slate-800 p-4">
-        <div className="flex items-center justify-between mb-4">
+      {/* Header with Model & Tabs */}
+      <div className="border-b border-slate-800 p-4 space-y-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Music className="h-4 w-4 text-slate-400" />
             <span className="text-sm text-slate-400">{remainingGenerations} credits</span>
           </div>
-          <div className="text-xs text-slate-500">v5</div>
+          
+          {/* Model Selector */}
+          <div className="relative">
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="appearance-none bg-slate-800/50 border border-slate-700 text-white text-xs px-3 py-1.5 pr-8 rounded-lg cursor-pointer hover:border-violet-500/30 transition-all"
+            >
+              {models.map(m => (
+                <option key={m.value} value={m.value}>
+                  {m.label} - {m.desc}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 pointer-events-none" />
+          </div>
         </div>
 
         {/* Mode Tabs */}
@@ -235,7 +287,7 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
               setMode('simple');
             }}
             className={cn(
-              "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              "flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all",
               mode === 'simple'
                 ? "bg-slate-700 text-white"
                 : "text-slate-400 hover:text-white"
@@ -247,16 +299,31 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
             type="button"
             onClick={() => {
               haptics.selection();
-              setMode('advanced');
+              setMode('custom');
             }}
             className={cn(
-              "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-              mode === 'advanced'
+              "flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+              mode === 'custom'
                 ? "bg-slate-700 text-white"
                 : "text-slate-400 hover:text-white"
             )}
           >
-            Advanced
+            Custom
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              haptics.selection();
+              setMode('instrumental');
+            }}
+            className={cn(
+              "flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+              mode === 'instrumental'
+                ? "bg-slate-700 text-white"
+                : "text-slate-400 hover:text-white"
+            )}
+          >
+            Instrumental
           </button>
         </div>
       </div>
@@ -268,7 +335,8 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
             {/* Simple Mode: Song Description */}
             <div className="relative">
               <div className="flex items-center justify-between mb-2">
-                <Label className="text-slate-300">Song Description</Label>
+                <Label className="text-slate-300">Prompt</Label>
+                <span className="text-xs text-slate-500">{prompt.length}/{getCharLimits().prompt}</span>
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
@@ -302,84 +370,16 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
               <Textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Describe the song you want to create..."
-                className="bg-slate-800/50 backdrop-blur-xl border-slate-700 text-white min-h-[120px] resize-none hover:border-violet-500/30 focus:border-violet-500/50 transition-all"
+                placeholder="Describe your music in a few words..."
+                maxLength={getCharLimits().prompt}
+                className="bg-slate-800/50 backdrop-blur-xl border-slate-700 text-white min-h-[100px] resize-none hover:border-violet-500/30 focus:border-violet-500/50 transition-all"
                 disabled={disabled || isLoading}
               />
             </div>
 
-            {/* Audio/Lyrics/Instrumental Row */}
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setShowAudioUpload(!showAudioUpload)}
-                className="border-violet-500/30 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 hover:text-violet-200 hover:border-violet-400/50 backdrop-blur-xl transition-all"
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Audio
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setShowLyrics(!showLyrics)}
-                className="border-pink-500/30 bg-pink-500/10 text-pink-300 hover:bg-pink-500/20 hover:text-pink-200 hover:border-pink-400/50 backdrop-blur-xl transition-all"
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Lyrics
-              </Button>
-              <button
-                type="button"
-                onClick={() => setIsInstrumental(!isInstrumental)}
-                className={cn(
-                  "ml-auto px-3 py-1.5 rounded-lg text-xs font-medium transition-all backdrop-blur-xl",
-                  isInstrumental
-                    ? "bg-violet-500/20 text-violet-300 border border-violet-500/30"
-                    : "bg-slate-800/50 text-slate-400 hover:text-violet-300 hover:bg-violet-500/10 border border-slate-700"
-                )}
-              >
-                Instrumental
-              </button>
-            </div>
-
-            {/* Lyrics Section (Expandable) */}
-            <AnimatePresence>
-              {showLyrics && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <Label className="text-slate-300">Lyrics</Label>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleGenerateLyrics}
-                      disabled={generatingLyrics || !prompt.trim()}
-                      className="h-7 text-xs text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
-                    >
-                      <Sparkles className="h-3 w-3 mr-1" />
-                      {generatingLyrics ? 'Generating...' : 'Generate'}
-                    </Button>
-                  </div>
-                  <Textarea
-                    value={lyrics}
-                    onChange={(e) => setLyrics(e.target.value)}
-                    placeholder="Write lyrics or generate with AI based on your description..."
-                    className="bg-slate-800/50 backdrop-blur-xl border-slate-700 text-white min-h-[100px] text-sm hover:border-violet-500/30 focus:border-violet-500/50 transition-all"
-                    disabled={disabled || isLoading}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Inspiration Tags - Single Line Slider */}
+            {/* Inspiration Tags - Single Line Slider (Simple Mode only) */}
             <div>
-              <Label className="text-slate-300 mb-3 block">Inspiration</Label>
+              <Label className="text-slate-300 mb-2 block text-sm">Style Tags</Label>
               <div className="relative">
                 <div className="flex gap-2 overflow-x-auto pb-2 inspiration-scrollbar">
                   {inspirationTags.map((tag) => {
@@ -412,9 +412,209 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
               </div>
             </div>
 
-            {/* Genre Fusion */}
+          </>
+        ) : mode === 'custom' ? (
+          <>
+            {/* Custom Mode: Lyrics (Prompt) */}
             <div>
-              <Label className="text-slate-300 mb-3 block">Genre Fusion (AI Blend)</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-slate-300">Custom Prompt (Lyrics)</Label>
+                <span className="text-xs text-slate-500">{prompt.length}/{getCharLimits().prompt}</span>
+              </div>
+              <Textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Write your lyrics here..."
+                maxLength={getCharLimits().prompt}
+                className="bg-slate-800/50 border-slate-700 text-white min-h-[150px] resize-none"
+                disabled={disabled || isLoading}
+              />
+            </div>
+
+            {/* Style */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-slate-300">Style</Label>
+                <span className="text-xs text-slate-500">{style.length}/{getCharLimits().style}</span>
+              </div>
+              <Textarea
+                value={style}
+                onChange={(e) => setStyle(e.target.value)}
+                placeholder="e.g., pop / female singer / synthwave / dark / Jazz..."
+                maxLength={getCharLimits().style}
+                className="bg-slate-800/50 border-slate-700 text-white min-h-[80px] text-sm resize-none"
+                disabled={disabled || isLoading}
+              />
+              <div className="flex flex-wrap gap-2 mt-2">
+                {quickStyles.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => handleStyleToggle(tag)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-xs transition-all",
+                      style.includes(tag)
+                        ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                        : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
+                    )}
+                  >
+                    <Plus className="h-3 w-3 inline mr-1" />
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Title */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-slate-300">Title</Label>
+                <span className="text-xs text-slate-500">{title.length}/{getCharLimits().title}</span>
+              </div>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Song Title"
+                maxLength={getCharLimits().title}
+                className="bg-slate-800/50 border-slate-700 text-white"
+                disabled={disabled || isLoading}
+              />
+            </div>
+
+            {/* Advanced Parameters */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                className="flex items-center justify-between w-full mb-2"
+              >
+                <Label className="text-slate-300 cursor-pointer">Advanced Parameters</Label>
+                {showAdvancedOptions ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+              </button>
+              <AnimatePresence>
+                {showAdvancedOptions && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="space-y-3"
+                  >
+                    {/* Vocal Gender */}
+                    <div>
+                      <Label className="text-slate-300 text-sm mb-2 block">Vocal Gender</Label>
+                      <div className="flex gap-2">
+                        {[{ v: 'm', l: 'Male' }, { v: 'f', l: 'Female' }].map(({ v, l }) => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setVocalGender(v)}
+                            className={cn(
+                              "flex-1 px-3 py-2 rounded-lg text-sm transition-all",
+                              vocalGender === v
+                                ? "bg-slate-700 text-white"
+                                : "bg-slate-800/50 text-slate-400 hover:text-white"
+                            )}
+                          >
+                            {l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Weirdness (0-1) */}
+                    <div>
+                      <Label className="text-slate-300 text-sm mb-2 flex justify-between">
+                        <span>Weirdness Constraint</span>
+                        <span className="text-xs text-slate-400">{(weirdness[0] / 100).toFixed(2)}</span>
+                      </Label>
+                      <Slider
+                        value={weirdness}
+                        onValueChange={setWeirdness}
+                        max={100}
+                        step={1}
+                        className="cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Style Weight (0-1) */}
+                    <div>
+                      <Label className="text-slate-300 text-sm mb-2 flex justify-between">
+                        <span>Style Weight</span>
+                        <span className="text-xs text-slate-400">{(styleInfluence[0] / 100).toFixed(2)}</span>
+                      </Label>
+                      <Slider
+                        value={styleInfluence}
+                        onValueChange={setStyleInfluence}
+                        max={100}
+                        step={1}
+                        className="cursor-pointer"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Instrumental Mode */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-slate-300">Style</Label>
+                <span className="text-xs text-slate-500">{style.length}/{getCharLimits().style}</span>
+              </div>
+              <Textarea
+                value={style}
+                onChange={(e) => setStyle(e.target.value)}
+                placeholder="e.g., Classical / Piano / Acoustic"
+                maxLength={getCharLimits().style}
+                className="bg-slate-800/50 border-slate-700 text-white min-h-[100px] resize-none"
+                disabled={disabled || isLoading}
+              />
+              <div className="flex flex-wrap gap-2 mt-2">
+                {quickStyles.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => handleStyleToggle(tag)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-xs transition-all",
+                      style.includes(tag)
+                        ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                        : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
+                    )}
+                  >
+                    <Plus className="h-3 w-3 inline mr-1" />
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Title */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-slate-300">Title</Label>
+                <span className="text-xs text-slate-500">{title.length}/{getCharLimits().title}</span>
+              </div>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Song Title"
+                maxLength={getCharLimits().title}
+                className="bg-slate-800/50 border-slate-700 text-white"
+                disabled={disabled || isLoading}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Old sections removed - keeping only submit button below */}
+        {mode === 'simple' && (
+          <>
+            {/* Genre Fusion (Simple Mode Only) */}
+            <div>
+              <Label className="text-slate-300 mb-2 block text-sm">Genre Fusion (AI Blend)</Label>
               <div className="flex flex-wrap gap-2">
                 {genreFusionOptions.map((genre) => {
                   const isSelected = genreFusion.includes(genre);
@@ -447,8 +647,12 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
               </div>
               <p className="text-xs text-slate-500 mt-2">Select up to 3 genres to blend</p>
             </div>
+          </>
+        )}
 
-            {/* AI Parameters */}
+        {mode === 'simple' && (
+          <>
+            {/* AI Parameters (Simple Mode Only) */}
             <div className="space-y-4 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-xl p-4 border border-blue-500/10">
               <Label className="text-blue-300 font-medium">AI Generation Parameters</Label>
 
@@ -522,9 +726,15 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                 <p className="text-xs text-slate-500 mt-2">Generate multiple variations at once</p>
               </div>
             </div>
+          </>
+        )}
 
+        {/* Remove old advanced mode sections - everything between line 596 and 957 */}
+        {/* Old instrumental toggle/lyrics sections removed */}
+        {mode === 'simple' && (
+          <>
             {/* Auto-generate Lyrics Toggle */}
-            {!isInstrumental && (
+            {!isInstrumental && mode === 'simple' && (
               <div className="flex items-center justify-between bg-gradient-to-r from-violet-500/10 to-purple-500/10 rounded-xl p-4 border border-violet-500/20">
                 <div className="flex items-center gap-3">
                   <Sparkles className="h-5 w-5 text-violet-400" />
@@ -551,7 +761,11 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                 </button>
               </div>
             )}
+          </>
+        )}
 
+        {mode === 'simple' && (
+          <>
             {/* Audio Upload for Style Transfer */}
             <AnimatePresence>
               {showAudioUpload && (
@@ -592,367 +806,6 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                 </motion.div>
               )}
             </AnimatePresence>
-          </>
-        ) : (
-          <>
-            {/* Advanced Mode: Lyrics */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowLyrics(!showLyrics)}
-                className="flex items-center justify-between w-full mb-2"
-              >
-                <Label className="text-slate-300 cursor-pointer">Lyrics</Label>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleGenerateLyrics();
-                    }}
-                    disabled={generatingLyrics}
-                    className="h-7 text-xs text-violet-400 hover:text-violet-300"
-                  >
-                    <Wand2 className="h-3 w-3" />
-                  </Button>
-                  {showLyrics ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
-                </div>
-              </button>
-              <AnimatePresence>
-                {showLyrics && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                  >
-                    <Textarea
-                      value={lyrics}
-                      onChange={(e) => setLyrics(e.target.value)}
-                      placeholder="Write some lyrics or a prompt — or leave blank for instrumental"
-                      className="bg-slate-800 border-slate-700 text-white min-h-[120px] text-sm resize-none"
-                      disabled={disabled || isLoading}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Styles Section */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowStyles(!showStyles)}
-                className="flex items-center justify-between w-full mb-2"
-              >
-                <Label className="text-slate-300 cursor-pointer">Styles</Label>
-                {showStyles ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
-              </button>
-              <AnimatePresence>
-                {showStyles && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="space-y-3"
-                  >
-                    <Input
-                      value={style}
-                      onChange={(e) => setStyle(e.target.value)}
-                      placeholder="rap hiphop, heavy sound, tribal grooves, rhythmic complexity, filmstep"
-                      className="bg-slate-800 border-slate-700 text-white text-sm"
-                      disabled={disabled || isLoading}
-                    />
-                    <div className="flex flex-wrap gap-2">
-                      {quickStyles.map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => handleStyleToggle(tag)}
-                          className={cn(
-                            "px-2.5 py-1 rounded-lg text-xs transition-all",
-                            style.includes(tag)
-                              ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
-                              : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
-                          )}
-                        >
-                          <Plus className="h-3 w-3 inline mr-1" />
-                          {tag}
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Advanced Options */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-                className="flex items-center justify-between w-full mb-2"
-              >
-                <Label className="text-slate-300 cursor-pointer">Advanced Options</Label>
-                {showAdvancedOptions ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
-              </button>
-              <AnimatePresence>
-                {showAdvancedOptions && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="space-y-4"
-                  >
-                    {/* Exclude Styles Toggle */}
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setExcludeStyles(!excludeStyles)}
-                        className={cn(
-                          "w-4 h-4 rounded border flex items-center justify-center",
-                          excludeStyles ? "bg-cyan-500 border-cyan-500" : "border-slate-600"
-                        )}
-                      >
-                        {excludeStyles && <X className="h-3 w-3 text-white" />}
-                      </button>
-                      <span className="text-sm text-slate-400">Exclude styles</span>
-                    </div>
-
-                    {/* Vocal Gender */}
-                    <div>
-                      <Label className="text-slate-300 text-sm mb-2 flex items-center gap-2">
-                        Vocal Gender
-                        <span className="text-xs text-slate-500">ⓘ</span>
-                      </Label>
-                      <div className="flex gap-2">
-                        {['male', 'female'].map((gender) => (
-                          <button
-                            key={gender}
-                            type="button"
-                            onClick={() => setVocalGender(gender)}
-                            className={cn(
-                              "flex-1 px-3 py-2 rounded-lg text-sm transition-all",
-                              vocalGender === gender
-                                ? "bg-slate-700 text-white"
-                                : "bg-slate-800/50 text-slate-400 hover:text-white"
-                            )}
-                          >
-                            {gender.charAt(0).toUpperCase() + gender.slice(1)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Lyrics Mode */}
-                    <div>
-                      <Label className="text-slate-300 text-sm mb-2 flex items-center gap-2">
-                        Lyrics Mode
-                        <span className="text-xs text-slate-500">ⓘ</span>
-                      </Label>
-                      <div className="flex gap-2">
-                        {['manual', 'auto'].map((lmode) => (
-                          <button
-                            key={lmode}
-                            type="button"
-                            onClick={() => setLyricsMode(lmode)}
-                            className={cn(
-                              "flex-1 px-3 py-2 rounded-lg text-sm transition-all",
-                              lyricsMode === lmode
-                                ? "bg-slate-700 text-white"
-                                : "bg-slate-800/50 text-slate-400 hover:text-white"
-                            )}
-                          >
-                            {lmode.charAt(0).toUpperCase() + lmode.slice(1)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Weirdness Slider */}
-                    <div>
-                      <Label className="text-slate-300 text-sm mb-2 flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                          Weirdness
-                          <span className="text-xs text-slate-500">ⓘ</span>
-                        </span>
-                        <span className="text-xs text-slate-400">{weirdness[0]}%</span>
-                      </Label>
-                      <Slider
-                        value={weirdness}
-                        onValueChange={setWeirdness}
-                        max={100}
-                        step={1}
-                        className="cursor-pointer"
-                      />
-                    </div>
-
-                    {/* Style Influence Slider */}
-                    <div>
-                      <Label className="text-slate-300 text-sm mb-2 flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                          Style Influence
-                          <span className="text-xs text-slate-500">ⓘ</span>
-                        </span>
-                        <span className="text-xs text-slate-400">{styleInfluence[0]}%</span>
-                      </Label>
-                      <Slider
-                        value={styleInfluence}
-                        onValueChange={setStyleInfluence}
-                        max={100}
-                        step={1}
-                        className="cursor-pointer"
-                      />
-                    </div>
-
-                    {/* Musical Key */}
-                    <div>
-                      <Label className="text-slate-300 text-sm mb-2 flex items-center gap-2">
-                        Musical Key
-                        <span className="text-xs text-slate-500">ⓘ Optional</span>
-                      </Label>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setMusicKey('')}
-                          className={cn(
-                            "px-3 py-1.5 rounded-lg text-xs transition-all",
-                            !musicKey
-                              ? "bg-slate-700 text-white"
-                              : "bg-slate-800/50 text-slate-400 hover:text-white"
-                          )}
-                        >
-                          Auto
-                        </button>
-                        {musicalKeys.slice(0, 12).map((key) => (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => setMusicKey(key)}
-                            className={cn(
-                              "px-3 py-1.5 rounded-lg text-xs transition-all",
-                              musicKey === key
-                                ? "bg-violet-500/20 text-violet-300 border border-violet-500/30"
-                                : "bg-slate-800/50 text-slate-400 hover:text-white border border-slate-700"
-                            )}
-                          >
-                            {key}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {musicalKeys.slice(12).map((key) => (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => setMusicKey(key)}
-                            className={cn(
-                              "px-3 py-1.5 rounded-lg text-xs transition-all",
-                              musicKey === key
-                                ? "bg-violet-500/20 text-violet-300 border border-violet-500/30"
-                                : "bg-slate-800/50 text-slate-400 hover:text-white border border-slate-700"
-                            )}
-                          >
-                            {key}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* BPM Slider */}
-                    <div>
-                      <Label className="text-slate-300 text-sm mb-2 flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                          BPM (Tempo)
-                          <span className="text-xs text-slate-500">ⓘ</span>
-                        </span>
-                        <span className="text-xs text-slate-400">{bpm[0]} BPM</span>
-                      </Label>
-                      <Slider
-                        value={bpm}
-                        onValueChange={setBpm}
-                        min={60}
-                        max={200}
-                        step={5}
-                        className="cursor-pointer"
-                      />
-                      <div className="flex justify-between text-xs text-slate-500 mt-1">
-                        <span>Slow</span>
-                        <span>Fast</span>
-                      </div>
-                    </div>
-
-                    {/* Energy Level Slider */}
-                    <div>
-                      <Label className="text-slate-300 text-sm mb-2 flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                          Energy Level
-                          <span className="text-xs text-slate-500">ⓘ</span>
-                        </span>
-                        <span className="text-xs text-slate-400">{energyLevel[0]}/10</span>
-                      </Label>
-                      <Slider
-                        value={energyLevel}
-                        onValueChange={setEnergyLevel}
-                        min={1}
-                        max={10}
-                        step={1}
-                        className="cursor-pointer"
-                      />
-                      <div className="flex justify-between text-xs text-slate-500 mt-1">
-                        <span>Calm</span>
-                        <span>Intense</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Song Structure Builder */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowStructure(!showStructure)}
-                className="flex items-center justify-between w-full mb-2"
-              >
-                <Label className="text-slate-300 cursor-pointer">Song Structure</Label>
-                {showStructure ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
-              </button>
-              <AnimatePresence>
-                {showStructure && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                  >
-                    <SongStructureBuilder
-                      genre={style.split(',')[0]?.trim() || 'pop'}
-                      onApply={(structure) => {
-                        setSongStructure(structure);
-                        toast.success('Structure applied!');
-                      }}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Song Title */}
-            <div>
-              <Label className="text-slate-300 text-sm mb-2 flex items-center gap-2">
-                <Music className="h-3 w-3" />
-                Song Title (Optional)
-              </Label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Untitled Track"
-                className="bg-slate-800 border-slate-700 text-white"
-                disabled={disabled || isLoading}
-              />
-            </div>
           </>
         )}
 
