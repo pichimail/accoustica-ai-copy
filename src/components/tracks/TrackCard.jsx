@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit, Heart, Wand2, Users, GitBranch, Video, Volume2, Disc, User, Shuffle } from 'lucide-react';
+import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit, Heart, Wand2, Users, GitBranch, Video, Volume2, Disc, User, Shuffle, BookOpen } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';

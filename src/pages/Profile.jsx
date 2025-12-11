@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { 
   User, Music, TrendingUp, Calendar, Award, 
-  Settings, Zap, Crown, Clock, Target, Heart, Video, Download, Share2, ExternalLink 
+  Settings, Zap, Crown, Clock, Target, Heart, Video, Download, Share2, ExternalLink, Wand2, Play
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -79,6 +79,19 @@ export default function ProfilePage() {
         '-updated_date',
         20
       );
+    },
+    enabled: !!user?.email,
+  });
+
+  const { data: masteredTracks = [] } = useQuery({
+    queryKey: ['masteredTracks', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return [];
+      return await base44.entities.Track.filter(
+        { created_by: user.email },
+        '-created_date',
+        50
+      ).then(tracks => tracks.filter(t => t.parent_track_id)); // Only mastered versions
     },
     enabled: !!user?.email,
   });
@@ -262,9 +275,13 @@ export default function ProfilePage() {
                 <Heart className="h-4 w-4 mr-2" />
                 Favorites
               </TabsTrigger>
+              <TabsTrigger value="mastered" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
+                <Wand2 className="h-4 w-4 mr-2" />
+                Mastered
+              </TabsTrigger>
               <TabsTrigger value="videos" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
                 <Video className="h-4 w-4 mr-2" />
-                Music Videos
+                Videos
               </TabsTrigger>
               <TabsTrigger value="achievements" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
                 <Award className="h-4 w-4 mr-2" />
@@ -363,6 +380,50 @@ export default function ProfilePage() {
                       ))
                     )}
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="mastered">
+              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Wand2 className="h-5 w-5 text-purple-400" />
+                    Mastered Tracks
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {masteredTracks.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Wand2 className="h-12 w-12 text-slate-600 mx-auto mb-3" />
+                      <p className="text-slate-400">No mastered tracks yet</p>
+                      <p className="text-sm text-slate-500 mt-2">Use the AI Mastering Studio on your tracks</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {masteredTracks.map((track) => (
+                        <Link key={track.id} to={createPageUrl('TrackView') + `?id=${track.id}`}>
+                          <motion.div
+                            whileHover={{ scale: 1.02 }}
+                            className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 hover:border-purple-500/50 transition-all cursor-pointer"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-lg overflow-hidden bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center flex-shrink-0">
+                                <Wand2 className="h-6 w-6 text-purple-400" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-white truncate">{track.title}</h4>
+                                <p className="text-sm text-slate-400">{track.style}</p>
+                              </div>
+                              <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+                                Mastered
+                              </Badge>
+                            </div>
+                          </motion.div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
