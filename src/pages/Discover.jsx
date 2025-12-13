@@ -5,6 +5,7 @@ import TrackCard from '@/components/tracks/TrackCard';
 import AudioPlayer from '@/components/audio/AudioPlayer';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import ViewToggle from '@/components/ui/ViewToggle';
 import {
   Select,
   SelectContent,
@@ -22,6 +23,7 @@ export default function DiscoverPage() {
   const [selectedGenre, setSelectedGenre] = useState('All');
   const [sortBy, setSortBy] = useState('-created_date');
   const [playingTrack, setPlayingTrack] = useState(null);
+  const [viewMode, setViewMode] = useState('list');
 
   const { data: publicTracks = [], isLoading } = useQuery({
     queryKey: ['publicTracks', sortBy],
@@ -82,6 +84,7 @@ export default function DiscoverPage() {
           transition={{ delay: 0.1 }}
           className="flex flex-col md:flex-row gap-4 mb-8"
         >
+          <ViewToggle view={viewMode} onViewChange={setViewMode} />
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
@@ -149,7 +152,7 @@ export default function DiscoverPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="grid md:grid-cols-2 lg:grid-cols-3 gap-4"
+            className={viewMode === 'list' ? 'space-y-3' : 'grid md:grid-cols-2 lg:grid-cols-3 gap-4'}
           >
             <AnimatePresence>
               {filteredTracks.map((track, index) => (
@@ -165,6 +168,7 @@ export default function DiscoverPage() {
                     isPlaying={playingTrack?.id === track.id}
                     showActions={false}
                     showVisibility={false}
+                    viewMode={viewMode}
                   />
                 </motion.div>
               ))}

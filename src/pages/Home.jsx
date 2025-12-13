@@ -1,9 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Sparkles, Music, Zap, Globe, Play, ArrowRight, Headphones, Mic, Wand2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import FloatingAlbumArt from '@/components/home/FloatingAlbumArt';
+import DynamicGradient from '@/components/background/DynamicGradient';
+import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 
 const features = [
   {
@@ -38,8 +43,32 @@ const genres = [
 ];
 
 export default function HomePage() {
+  const { playTrack } = useAudioPlayer();
+  
+  // Fetch most played/liked tracks
+  const { data: popularTracks = [] } = useQuery({
+    queryKey: ['popularTracks'],
+    queryFn: async () => {
+      const tracks = await base44.entities.Track.filter(
+        { is_public: true, status: 'ready' },
+        '-plays',
+        5
+      );
+      return tracks;
+    },
+  });
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-violet-950 overflow-hidden">
+    <div className="min-h-screen bg-slate-950 overflow-hidden relative">
+      {/* Dynamic Gradient Background */}
+      <DynamicGradient />
+      
+      {/* Floating Album Art */}
+      {popularTracks.length > 0 && (
+        <FloatingAlbumArt tracks={popularTracks} onTrackPlay={playTrack} />
+      )}
+      
+      <div className="relative">
       {/* Hero Section */}
       <section className="relative py-20 md:py-32 px-4">
         {/* Background Elements */}
@@ -281,6 +310,7 @@ export default function HomePage() {
           </p>
         </div>
       </footer>
+      </div>
     </div>
   );
 }

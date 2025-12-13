@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import ViewToggle from '@/components/ui/ViewToggle';
+import TrackEditDialog from '@/components/tracks/TrackEditDialog';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
