@@ -47,6 +47,7 @@ export default function TrackCard({
   onCreatePersona,
   showActions = true,
   showVisibility = true,
+  viewMode = 'grid',
 }) {
   const { currentTrack, isPlaying: globalIsPlaying, playTrack } = useAudioPlayer();
   const isPlaying = currentTrack?.id === track.id && globalIsPlaying;
@@ -109,16 +110,22 @@ export default function TrackCard({
           <span className="font-medium">{track.is_favorite ? 'Unfavorite' : 'Favorite'}</span>
         </div>
       }
-      className="group relative bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden hover:border-violet-500/50 transition-all duration-300"
+      className={cn(
+        "group relative bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden hover:border-violet-500/50 transition-all duration-300",
+        viewMode === 'list' && "flex-row"
+      )}
     >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-      <div className="flex">
+      <div className="flex items-center">
         {/* Cover Image - Clickable */}
         <div 
-          className="relative w-24 h-24 md:w-28 md:h-28 flex-shrink-0 cursor-pointer group"
+          className={cn(
+            "relative flex-shrink-0 cursor-pointer group",
+            viewMode === 'list' ? "w-16 h-16" : "w-24 h-24 md:w-28 md:h-28"
+          )}
           onClick={() => {
             if (isReady) {
               playTrack(track);
