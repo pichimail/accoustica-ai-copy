@@ -5,7 +5,6 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import TrackCard from '@/components/tracks/TrackCard';
-import TrackEditDialog from '@/components/tracks/TrackEditDialog';
 import ShareTrackDialog from '@/components/collaboration/ShareTrackDialog';
 import VersionHistory from '@/components/collaboration/VersionHistory';
 import MusicVideoGenerator from '@/components/video/MusicVideoGenerator';
