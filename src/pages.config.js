@@ -14,6 +14,7 @@ import MasteringStudio from './pages/MasteringStudio';
 import VideoStudio from './pages/VideoStudio';
 import PersonasHub from './pages/PersonasHub';
 import StemStudio from './pages/StemStudio';
+import ForYou from './pages/ForYou';
 import __Layout from './Layout.jsx';
 
 
@@ -34,6 +35,7 @@ export const PAGES = {
     "VideoStudio": VideoStudio,
     "PersonasHub": PersonasHub,
     "StemStudio": StemStudio,
+    "ForYou": ForYou,
 }
 
 export const pagesConfig = {
