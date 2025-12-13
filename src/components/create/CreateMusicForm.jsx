@@ -70,7 +70,7 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
   // Character limits based on model
   const getCharLimits = () => {
     if (mode === 'simple') {
-      return { prompt: 200 };
+      return { prompt: 500 };
     }
     if (model === 'V4') {
       return { prompt: 3000, style: 200, title: 80 };

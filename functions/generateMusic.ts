@@ -96,14 +96,24 @@ Deno.serve(async (req) => {
 
         // Create Track records (Suno generates 2 by default)
         const trackPromises = [];
-        const trackTitle = title || `${style || 'Music'} Track`;
+        
+        // Generate auto title from prompt if not provided
+        let finalTitle = title;
+        if (!finalTitle && prompt) {
+            // Create title from first 4-5 words of prompt
+            const words = prompt.trim().split(/\s+/).slice(0, 5).join(' ');
+            finalTitle = words.length > 40 ? words.substring(0, 40) + '...' : words;
+        }
+        if (!finalTitle) {
+            finalTitle = 'Untitled Track';
+        }
         
         for (let i = 0; i < 2; i++) {
             trackPromises.push(
                 base44.entities.Track.create({
-                    title: `${trackTitle} (${i + 1})`,
+                    title: `${finalTitle}`,
                     prompt: prompt || '',
-                    style: style || 'AI Generated',
+                    style: style || user.full_name,
                     task_id: data.data.taskId,
                     status: 'queued',
                     is_instrumental: instrumental,

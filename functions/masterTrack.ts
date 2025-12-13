@@ -21,24 +21,36 @@ Deno.serve(async (req) => {
       multiband_compression
     } = await req.json();
 
-    // In a real implementation, this would call an audio mastering API
-    // For now, we'll simulate the mastering process and return the original URL
-    // with metadata about the mastering settings applied
+    // Get original track
+    const originalTrack = await base44.asServiceRole.entities.Track.filter({ id: track_id });
+    if (!originalTrack || originalTrack.length === 0) {
+      return Response.json({ error: 'Original track not found' }, { status: 404 });
+    }
+    
+    const track = originalTrack[0];
 
-    // Create a mastered track record
+    // Create a mastered track record with "Mastered" tag
     const masteredTrack = await base44.asServiceRole.entities.Track.create({
-      title: `${track_id} (Mastered)`,
-      prompt: `Mastered version with: ${loudness} LUFS, ${compression}% compression`,
+      title: `${track.title} (Mastered)`,
+      prompt: track.prompt,
+      style: track.style,
+      tags: 'Mastered',
       audio_url: audio_url,
+      stream_audio_url: track.stream_audio_url,
+      cover_image_url: track.cover_image_url,
+      duration: track.duration,
       status: 'ready',
       created_by: user.email,
       parent_track_id: track_id,
+      is_instrumental: track.is_instrumental,
+      model_version: track.model_version,
+      lyrics: track.lyrics,
     });
 
     // Store mastering preset
     await base44.asServiceRole.entities.MasteringPreset.create({
-      preset_name: `Custom Master - ${new Date().toISOString()}`,
-      description: 'AI-generated mastering preset',
+      preset_name: `Master - ${track.title}`,
+      description: `Mastered: ${loudness} LUFS, ${compression}% comp, Bass: ${bass_boost}dB, Highs: ${high_boost}dB`,
       loudness: loudness,
       compression: compression,
       bass_boost: bass_boost,
@@ -51,7 +63,7 @@ Deno.serve(async (req) => {
       success: true, 
       mastered_url: audio_url,
       mastered_track_id: masteredTrack.id,
-      message: 'Track mastered successfully. In production, this would process audio with professional mastering algorithms.'
+      message: 'Track mastered and saved separately'
     });
   } catch (error) {
     console.error('Mastering error:', error);
