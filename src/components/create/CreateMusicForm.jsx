@@ -14,10 +14,10 @@ import SongStructureBuilder from './SongStructureBuilder';
 import AudioUploader from './AudioUploader';
 import { haptics } from '@/components/utils/haptics';
 
-export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitReached, remainingGenerations }) {
+export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitReached, remainingGenerations, initialPrompt = '' }) {
   const [mode, setMode] = useState('simple'); // 'simple', 'custom', or 'instrumental'
   const [model, setModel] = useState('V5');
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState(initialPrompt);
   const [lyrics, setLyrics] = useState('');
   const [style, setStyle] = useState('');
   const [title, setTitle] = useState('');
@@ -47,6 +47,12 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
   const [genreFusion, setGenreFusion] = useState([]);
   const [variationCount, setVariationCount] = useState(1);
   const [autoGenerateLyrics, setAutoGenerateLyrics] = useState(false);
+
+  React.useEffect(() => {
+    if (initialPrompt) {
+      setPrompt(initialPrompt);
+    }
+  }, [initialPrompt]);
 
   const quickStyles = [
     'pop', 'rock', 'hip hop', 'electronic', 'jazz', 'classical',
