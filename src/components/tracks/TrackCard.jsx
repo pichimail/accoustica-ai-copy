@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit, Heart, Wand2, Users, GitBranch, Video, Volume2, Disc, User, Shuffle, BookOpen } from 'lucide-react';
+import { Play, Pause, Clock, Eye, EyeOff, Music, MoreVertical, Share2, Trash2, Edit, Heart, Wand2, Users, GitBranch, Video, Volume2, Disc, User, Shuffle, BookOpen, ThumbsUp, ThumbsDown, Pin, Edit2, PinOff } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
@@ -39,6 +39,8 @@ export default function TrackCard({
   onToggleVisibility,
   onEdit,
   onToggleFavorite,
+  onDislike,
+  onPin,
   onShare,
   onViewVersions,
   onGenerateVideo,
@@ -71,6 +73,7 @@ export default function TrackCard({
   const isReady = track.status === 'ready';
   const coverImage = track.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop';
   const [showMobileActions, setShowMobileActions] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   const handleSwipeLeft = () => {
     if (onDelete) {
@@ -171,13 +174,26 @@ export default function TrackCard({
         {/* Content */}
         <div className="flex-1 p-3 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <Link 
-                to={createPageUrl('TrackView') + `?id=${track.id}`}
-                className="hover:text-violet-400 transition-colors"
-              >
-                <h3 className="font-semibold text-white truncate">{track.title}</h3>
-              </Link>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <Link 
+                  to={createPageUrl('TrackView') + `?id=${track.id}`}
+                  className="hover:text-violet-400 transition-colors flex-1 min-w-0"
+                >
+                  <h3 className="font-semibold text-white truncate">{track.title}</h3>
+                </Link>
+                {showActions && isReady && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit?.(track);
+                    }}
+                    className="text-slate-400 hover:text-violet-400 transition-colors p-1"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
               <p className="text-sm text-slate-400 truncate mt-0.5">{track.style || 'Custom Style'}</p>
             </div>
             
@@ -257,7 +273,30 @@ export default function TrackCard({
                           className="text-slate-300 focus:text-white focus:bg-slate-700"
                         >
                           <Heart className={cn("h-4 w-4 mr-2", track.is_favorite && "fill-red-500 text-red-500")} />
-                          {track.is_favorite ? 'Unfavorite' : 'Favorite'}
+                          {track.is_favorite ? 'Unlike' : 'Like'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => onDislike?.(track)}
+                          className="text-slate-300 focus:text-white focus:bg-slate-700"
+                        >
+                          <ThumbsDown className="h-4 w-4 mr-2" />
+                          Dislike
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => onPin?.(track)}
+                          className="text-slate-300 focus:text-white focus:bg-slate-700"
+                        >
+                          {track.is_pinned ? (
+                            <>
+                              <PinOff className="h-4 w-4 mr-2" />
+                              Unpin Track
+                            </>
+                          ) : (
+                            <>
+                              <Pin className="h-4 w-4 mr-2" />
+                              Pin Track
+                            </>
+                          )}
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => navigator.clipboard.writeText(window.location.origin + createPageUrl('PublicTrack') + `?id=${track.id}`)}
@@ -303,26 +342,60 @@ export default function TrackCard({
             {track.prompt}
           </p>
 
-          <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
-            <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {formatDuration(track.duration)}
-            </span>
-            <span>{formatDate(track.created_date)}</span>
-            {track.is_instrumental && (
-              <Badge variant="outline" className="text-xs bg-slate-700/50 text-slate-400 border-slate-600">
-                <Music className="h-3 w-3 mr-1" />
-                Instrumental
-              </Badge>
-            )}
-            {showVisibility && (
+          <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center gap-4 text-xs text-slate-500">
               <span className="flex items-center gap-1">
-                {track.is_public ? (
-                  <Eye className="h-3 w-3 text-green-400" />
-                ) : (
-                  <EyeOff className="h-3 w-3 text-slate-400" />
-                )}
+                <Clock className="h-3 w-3" />
+                {formatDuration(track.duration)}
               </span>
+              <span>{formatDate(track.created_date)}</span>
+              {track.is_instrumental && (
+                <Badge variant="outline" className="text-xs bg-slate-700/50 text-slate-400 border-slate-600">
+                  <Music className="h-3 w-3 mr-1" />
+                  Instrumental
+                </Badge>
+              )}
+              {showVisibility && (
+                <span className="flex items-center gap-1">
+                  {track.is_public ? (
+                    <Eye className="h-3 w-3 text-green-400" />
+                  ) : (
+                    <EyeOff className="h-3 w-3 text-slate-400" />
+                  )}
+                </span>
+              )}
+            </div>
+            
+            {/* Quick Actions */}
+            {showActions && isReady && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite?.(track);
+                  }}
+                  className={cn(
+                    "p-1.5 rounded-lg transition-colors",
+                    track.is_favorite 
+                      ? "text-red-400 hover:text-red-300" 
+                      : "text-slate-400 hover:text-red-400"
+                  )}
+                  title={track.is_favorite ? "Unlike" : "Like"}
+                >
+                  <Heart className={cn("h-4 w-4", track.is_favorite && "fill-current")} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(window.location.origin + createPageUrl('PublicTrack') + `?id=${track.id}`);
+                    toast.success('Share link copied!');
+                  }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 transition-colors"
+                  title="Share"
+                >
+                  <Share2 className="h-4 w-4" />
+                </button>
+              </div>
             )}
           </div>
         </div>

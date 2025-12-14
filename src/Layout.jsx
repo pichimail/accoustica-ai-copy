@@ -12,10 +12,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { 
-  Sparkles, Music, Globe, User, LogOut, Menu, X, 
-  Plus, Library, Crown, Home, PanelLeftClose, PanelLeftOpen,
-  Video, Users, Disc
-} from 'lucide-react';
+        Sparkles, Music, Globe, User, LogOut, Menu, X, 
+        Plus, Library, Crown, Home, PanelLeftClose, PanelLeftOpen,
+        Video, Users, Disc
+      } from 'lucide-react';
+      import DynamicGradient from '@/components/background/DynamicGradient';
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from 'framer-motion';
 import { AudioPlayerProvider } from '@/components/audio/AudioPlayerContext';
@@ -69,13 +70,20 @@ export default function Layout({ children, currentPageName }) {
     return <>{children}</>;
   }
 
+  const showSidebar = currentPageName !== 'Home';
+
   const avatarUrl = user?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.full_name || 'User'}`;
 
   return (
     <AudioPlayerProvider>
     <div className="min-h-screen bg-slate-950 flex flex-col">
+      {/* Global Dynamic Gradient Background */}
+      <DynamicGradient />
       {/* Mobile Top Bar */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800/50 safe-top">
+      <header className={cn(
+        "lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900/30 backdrop-blur-md border-b border-white/10 safe-top",
+        currentPageName === 'Home' && "hidden"
+      )}>
         <div className="flex items-center justify-between px-4 h-16">
           <Link to={createPageUrl('Home')} className="flex items-center gap-2">
             <img 
@@ -127,8 +135,9 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Desktop Sidebar */}
       <aside className={cn(
-        "hidden lg:flex fixed left-0 top-0 h-screen bg-slate-900/95 backdrop-blur-xl border-r border-slate-800/50 z-40 transition-all duration-300",
-        sidebarOpen ? "w-64" : "w-20"
+        "hidden lg:flex fixed left-0 top-0 h-screen bg-slate-900/30 backdrop-blur-md border-r border-white/10 z-40 transition-all duration-300",
+        sidebarOpen ? "w-64" : "w-20",
+        currentPageName === 'Home' && "hidden"
       )}>
         <div className="flex flex-col w-full">
           {/* Logo & Toggle */}
@@ -221,9 +230,9 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Main Content */}
       <main className={cn(
-        "flex-1 lg:transition-all lg:duration-300",
-        "pt-16 pb-20 lg:pt-0 lg:pb-0", // Mobile padding
-        sidebarOpen ? "lg:ml-64" : "lg:ml-20"
+        "flex-1 lg:transition-all lg:duration-300 relative z-10",
+        currentPageName === 'Home' ? "pt-0 pb-20 lg:pb-0" : "pt-16 pb-20 lg:pt-0 lg:pb-0",
+        showSidebar && (sidebarOpen ? "lg:ml-64" : "lg:ml-20")
       )}>
         {children}
       </main>
@@ -232,7 +241,10 @@ export default function Layout({ children, currentPageName }) {
       <GlobalAudioPlayer />
 
       {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/50 safe-bottom">
+      <nav className={cn(
+        "lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/30 backdrop-blur-md border-t border-white/10 safe-bottom",
+        currentPageName === 'Home' && "hidden"
+      )}>
         <div className="grid grid-cols-5 gap-1 px-2 py-2">
           {filteredNavLinks.map((link) => (
             <Link key={link.page} to={createPageUrl(link.page)}>
