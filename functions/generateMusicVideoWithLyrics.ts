@@ -1,4 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
+import { createClientFromRequest } from './_shared/supabaseClient.ts';
+import { getAppSettings, getKieApiKey, getWatermark, isFeatureEnabled } from './_shared/appSettings.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -18,11 +19,18 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    const SUNO_API_KEY = Deno.env.get('SUNO_API_KEY');
+    const settings = await getAppSettings(base44);
+    if (!isFeatureEnabled(settings, 'lyric_video')) {
+      return Response.json({
+        success: false,
+        error: 'Music video generation is disabled',
+      }, { status: 403 });
+    }
+    const SUNO_API_KEY = getKieApiKey(settings);
     if (!SUNO_API_KEY) {
-      return Response.json({ 
-        success: false, 
-        error: 'SUNO_API_KEY not configured' 
+      return Response.json({
+        success: false,
+        error: 'KIE API key not configured'
       }, { status: 500 });
     }
 
@@ -52,7 +60,8 @@ Deno.serve(async (req) => {
         audioId: audioId,
         author: videoPayload.author,
         domainName: videoPayload.domain_name,
-        callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/videoCallback`,
+        waterMark: getWatermark(settings),
+        callBackUrl: `${Deno.env.get('SUPABASE_FUNCTION_URL') || ''}/videoCallback`,
       }),
     });
 
@@ -73,8 +82,12 @@ Deno.serve(async (req) => {
       track_id: track.id,
       task_id: videoTaskId,
       status: 'pending',
+      provider: 'suno',
+      generation_type: 'music',
       author: videoPayload.author,
       domain_name: videoPayload.domain_name,
+      created_by: user.email,
+      is_public: false,
     });
 
     return Response.json({

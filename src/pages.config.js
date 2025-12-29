@@ -1,4 +1,5 @@
 import Create from './pages/Create';
+import Studio from './pages/Studio';
 import Library from './pages/Library';
 import Discover from './pages/Discover';
 import TrackView from './pages/TrackView';
@@ -19,6 +20,7 @@ import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "Studio": Studio,
     "Create": Create,
     "Library": Library,
     "Discover": Discover,
@@ -39,7 +41,7 @@ export const PAGES = {
 }
 
 export const pagesConfig = {
-    mainPage: "Create",
+    mainPage: "Home",
     Pages: PAGES,
     Layout: __Layout,
 };

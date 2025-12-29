@@ -214,7 +214,7 @@ export default function PublicTrackPage() {
             <p className="text-slate-400 mb-6">
               Join Accoustica and start generating amazing AI music
             </p>
-            <Link to={createPageUrl('Create')}>
+            <Link to={createPageUrl('Studio')}>
               <Button size="lg" className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600">
                 <Sparkles className="h-5 w-5 mr-2" />
                 Start Creating

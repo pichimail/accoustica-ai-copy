@@ -1,4 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
+import { createClientFromRequest } from './_shared/supabaseClient.ts';
+import { getAppSettings, getKieApiKey } from './_shared/appSettings.ts';
 
 const SUNO_API_BASE = 'https://api.kie.ai/api/v1';
 
@@ -17,9 +18,10 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'taskId is required' }, { status: 400 });
         }
 
-        const apiKey = Deno.env.get('SUNO_API_KEY');
+        const settings = await getAppSettings(base44);
+        const apiKey = getKieApiKey(settings);
         if (!apiKey) {
-            return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500 });
+            return Response.json({ error: 'KIE API key not configured' }, { status: 500 });
         }
 
         // Check status from Suno API

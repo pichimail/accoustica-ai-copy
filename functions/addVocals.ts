@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
+import { createClientFromRequest } from './_shared/supabaseClient.ts';
 
 const SUNO_API_BASE = 'https://api.kie.ai/api/v1';
 
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
             negativeTags,
             style,
             model,
-            callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`,
+            callBackUrl: `${Deno.env.get('SUPABASE_FUNCTION_URL') || ''}/sunoCallback`,
         };
 
         if (vocalGender) body.vocalGender = vocalGender;

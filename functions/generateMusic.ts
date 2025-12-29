@@ -1,4 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
+import { createClientFromRequest } from './_shared/supabaseClient.ts';
+import { getAppSettings, getKieApiKey, isFeatureEnabled } from './_shared/appSettings.ts';
 
 const SUNO_API_BASE = 'https://api.kie.ai/api/v1';
 
@@ -24,9 +25,13 @@ Deno.serve(async (req) => {
             styleInfluence,
         } = await req.json();
 
-        const apiKey = Deno.env.get('SUNO_API_KEY');
+        const settings = await getAppSettings(base44);
+        if (!isFeatureEnabled(settings, 'music_generation')) {
+            return Response.json({ error: 'Music generation is disabled' }, { status: 403 });
+        }
+        const apiKey = getKieApiKey(settings);
         if (!apiKey) {
-            return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500 });
+            return Response.json({ error: 'KIE API key not configured' }, { status: 500 });
         }
 
         // Build API payload based on mode
@@ -34,7 +39,7 @@ Deno.serve(async (req) => {
             customMode: customMode,
             instrumental: instrumental,
             model: model,
-            callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`,
+            callBackUrl: `${Deno.env.get('SUPABASE_FUNCTION_URL') || ''}/sunoCallback`,
         };
 
         if (mode === 'simple') {

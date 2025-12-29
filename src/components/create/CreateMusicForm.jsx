@@ -16,7 +16,7 @@ import { haptics } from '@/components/utils/haptics';
 
 export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitReached, remainingGenerations, initialPrompt = '' }) {
   const [mode, setMode] = useState('simple'); // 'simple', 'custom', or 'instrumental'
-  const [model, setModel] = useState('V5');
+  const model = 'V5';
   const [prompt, setPrompt] = useState(initialPrompt);
   const [lyrics, setLyrics] = useState('');
   const [style, setStyle] = useState('');
@@ -58,14 +58,6 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
     'pop', 'rock', 'hip hop', 'electronic', 'jazz', 'classical',
     'r&b', 'country', 'indie', 'rap', 'techno', 'trap melodic',
     'heavy sound', 'tribal grooves', 'rhythmic complexity', 'happy music'
-  ];
-
-  const models = [
-    { value: 'V5', label: 'V5', desc: 'Superior musical expression, faster' },
-    { value: 'V4_5PLUS', label: 'V4.5+', desc: 'Richer sound, max 8 min' },
-    { value: 'V4_5', label: 'V4.5', desc: 'Smarter prompts, max 8 min' },
-    { value: 'V4_5ALL', label: 'V4.5 All', desc: 'Smarter prompts, max 8 min' },
-    { value: 'V4', label: 'V4', desc: 'Improved vocals, max 4 min' },
   ];
 
   const musicalKeys = [
@@ -258,34 +250,18 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
   };
 
   return (
-    <div className="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-800 overflow-hidden">
-      {/* Header with Model & Tabs */}
-      <div className="border-b border-slate-800 p-4 space-y-4">
+    <div className="glass-surface rounded-3xl overflow-hidden">
+      {/* Header */}
+      <div className="border-b border-white/10 p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Music className="h-4 w-4 text-slate-400" />
-            <span className="text-sm text-slate-400">{remainingGenerations} credits</span>
-          </div>
-          
-          {/* Model Selector */}
-          <div className="relative">
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="appearance-none bg-slate-800/50 border border-slate-700 text-white text-xs px-3 py-1.5 pr-8 rounded-lg cursor-pointer hover:border-violet-500/30 transition-all"
-            >
-              {models.map(m => (
-                <option key={m.value} value={m.value}>
-                  {m.label} - {m.desc}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 pointer-events-none" />
+            <Music className="h-4 w-4 text-slate-300" />
+            <span className="text-sm text-slate-300">{remainingGenerations} credits</span>
           </div>
         </div>
 
         {/* Mode Tabs */}
-        <div className="flex gap-2 bg-slate-800/50 p-1 rounded-xl">
+        <div className="flex gap-2 glass-surface p-1 rounded-full">
           <button
             type="button"
             onClick={() => {
@@ -295,8 +271,8 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
             className={cn(
               "flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all",
               mode === 'simple'
-                ? "bg-slate-700 text-white"
-                : "text-slate-400 hover:text-white"
+                ? "bg-white/20 text-white"
+                : "text-slate-300 hover:text-white"
             )}
           >
             Simple
@@ -310,8 +286,8 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
             className={cn(
               "flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all",
               mode === 'custom'
-                ? "bg-slate-700 text-white"
-                : "text-slate-400 hover:text-white"
+                ? "bg-white/20 text-white"
+                : "text-slate-300 hover:text-white"
             )}
           >
             Custom
@@ -325,8 +301,8 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
             className={cn(
               "flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all",
               mode === 'instrumental'
-                ? "bg-slate-700 text-white"
-                : "text-slate-400 hover:text-white"
+                ? "bg-white/20 text-white"
+                : "text-slate-300 hover:text-white"
             )}
           >
             Instrumental
@@ -378,7 +354,7 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Describe your music in a few words..."
                 maxLength={getCharLimits().prompt}
-                className="bg-slate-800/50 backdrop-blur-xl border-slate-700 text-white min-h-[100px] resize-none hover:border-violet-500/30 focus:border-violet-500/50 transition-all"
+                className="min-h-[100px] resize-none hover:border-violet-500/30 focus:border-violet-500/50 transition-all"
                 disabled={disabled || isLoading}
               />
             </div>
@@ -397,7 +373,7 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Write your lyrics here..."
                 maxLength={getCharLimits().prompt}
-                className="bg-slate-800/50 border-slate-700 text-white min-h-[150px] resize-none"
+                className="min-h-[150px] resize-none"
                 disabled={disabled || isLoading}
               />
             </div>
@@ -413,7 +389,7 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                 onChange={(e) => setStyle(e.target.value)}
                 placeholder="e.g., pop / female singer / synthwave / dark / Jazz..."
                 maxLength={getCharLimits().style}
-                className="bg-slate-800/50 border-slate-700 text-white min-h-[80px] text-sm resize-none"
+                className="min-h-[80px] text-sm resize-none"
                 disabled={disabled || isLoading}
               />
               <div className="flex flex-wrap gap-2 mt-2">
@@ -426,7 +402,7 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                       "px-2.5 py-1 rounded-lg text-xs transition-all",
                       style.includes(tag)
                         ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
-                        : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
+                        : "glass-surface text-slate-300 hover:text-white"
                     )}
                   >
                     <Plus className="h-3 w-3 inline mr-1" />
@@ -447,7 +423,6 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Song Title"
                 maxLength={getCharLimits().title}
-                className="bg-slate-800/50 border-slate-700 text-white"
                 disabled={disabled || isLoading}
               />
             </div>
@@ -482,8 +457,8 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                             className={cn(
                               "flex-1 px-3 py-2 rounded-lg text-sm transition-all",
                               vocalGender === v
-                                ? "bg-slate-700 text-white"
-                                : "bg-slate-800/50 text-slate-400 hover:text-white"
+                                ? "bg-white/20 text-white"
+                                : "glass-surface text-slate-300 hover:text-white"
                             )}
                           >
                             {l}
@@ -539,7 +514,7 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                 onChange={(e) => setStyle(e.target.value)}
                 placeholder="e.g., Classical / Piano / Acoustic"
                 maxLength={getCharLimits().style}
-                className="bg-slate-800/50 border-slate-700 text-white min-h-[100px] resize-none"
+                className="min-h-[100px] resize-none"
                 disabled={disabled || isLoading}
               />
               <div className="flex flex-wrap gap-2 mt-2">
@@ -552,7 +527,7 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                       "px-2.5 py-1 rounded-lg text-xs transition-all",
                       style.includes(tag)
                         ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
-                        : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
+                        : "glass-surface text-slate-300 hover:text-white"
                     )}
                   >
                     <Plus className="h-3 w-3 inline mr-1" />
@@ -573,7 +548,6 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Song Title"
                 maxLength={getCharLimits().title}
-                className="bg-slate-800/50 border-slate-700 text-white"
                 disabled={disabled || isLoading}
               />
             </div>

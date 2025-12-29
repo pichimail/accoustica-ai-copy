@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Sparkles, Music, Zap, Globe, Play, ArrowRight, Headphones, Mic, Wand2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -7,7 +7,6 @@ import { motion } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import FloatingAlbumArt from '@/components/home/FloatingAlbumArt';
-import DynamicGradient from '@/components/background/DynamicGradient';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 
 const features = [
@@ -59,10 +58,7 @@ export default function HomePage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-950 overflow-hidden relative">
-      {/* Dynamic Gradient Background */}
-      <DynamicGradient />
-      
+    <div className="min-h-screen overflow-hidden relative">
       {/* Floating Album Art */}
       {popularTracks.length > 0 && (
         <FloatingAlbumArt tracks={popularTracks} onTrackPlay={playTrack} />
@@ -91,7 +87,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight"
+            className="app-title text-5xl md:text-7xl font-bold text-white mb-6 leading-tight"
           >
             Create Music with
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-pink-400 to-purple-400">
@@ -115,7 +111,7 @@ export default function HomePage() {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <Link to={createPageUrl('Create')}>
+            <Link to={createPageUrl('Studio')}>
               <Button size="lg" className="w-full sm:w-auto h-14 px-8 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white font-semibold text-lg rounded-xl">
                 <Sparkles className="h-5 w-5 mr-2" />
                 Start Creating
@@ -161,7 +157,7 @@ export default function HomePage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="app-title text-3xl md:text-4xl font-bold text-white mb-4">
               Everything You Need
             </h2>
             <p className="text-slate-400 text-lg max-w-2xl mx-auto">
@@ -177,7 +173,7 @@ export default function HomePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 hover:border-violet-500/50 transition-colors group"
+                className="glass-surface rounded-2xl p-6 hover:border-violet-500/50 transition-colors group"
               >
                 <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${feature.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                   <feature.icon className="h-6 w-6 text-white" />
@@ -191,7 +187,7 @@ export default function HomePage() {
       </section>
 
       {/* Genres Section */}
-      <section className="py-20 px-4 bg-slate-800/30">
+      <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0 }}
@@ -199,7 +195,7 @@ export default function HomePage() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="app-title text-3xl md:text-4xl font-bold text-white mb-4">
               Any Genre, Any Style
             </h2>
             <p className="text-slate-400 text-lg">
@@ -220,7 +216,7 @@ export default function HomePage() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.05 }}
-                className="px-5 py-2.5 bg-slate-700/50 hover:bg-gradient-to-r hover:from-violet-500 hover:to-pink-500 rounded-full text-white font-medium transition-all cursor-pointer"
+                className="px-5 py-2.5 glass-surface hover:bg-gradient-to-r hover:from-violet-500 hover:to-pink-500 rounded-full text-white font-medium transition-all cursor-pointer"
               >
                 {genre}
               </motion.span>
@@ -287,7 +283,7 @@ export default function HomePage() {
           <p className="text-slate-300 text-lg mb-8">
             Join thousands of creators making amazing music with AI
           </p>
-          <Link to={createPageUrl('Create')}>
+            <Link to={createPageUrl('Studio')}>
             <Button size="lg" className="h-14 px-10 bg-white text-slate-900 hover:bg-slate-100 font-semibold text-lg rounded-xl">
               Get Started Free
               <ArrowRight className="h-5 w-5 ml-2" />
