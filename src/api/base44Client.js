@@ -52,7 +52,13 @@ const getAuthUser = async () => {
     return getFallbackAdmin();
   }
   const { data, error } = await supabase.auth.getUser();
-  handleSupabaseError(error);
+  if (error) {
+    const message = error.message?.toLowerCase() || '';
+    if (message.includes('auth session missing')) {
+      return null;
+    }
+    handleSupabaseError(error);
+  }
   return data?.user || null;
 };
 

@@ -1,4 +1,32 @@
 import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
+import path from 'path';
+
+const loadEnvFile = (filePath) => {
+  if (!fs.existsSync(filePath)) return;
+  const content = fs.readFileSync(filePath, 'utf8');
+  content.split(/\r?\n/).forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+    const idx = trimmed.indexOf('=');
+    if (idx === -1) return;
+    const key = trimmed.slice(0, idx).trim();
+    let value = trimmed.slice(idx + 1).trim();
+    if (!key) return;
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (!(key in process.env)) {
+      process.env[key] = value;
+    }
+  });
+};
+
+loadEnvFile(path.join(process.cwd(), '.env'));
+loadEnvFile(path.join(process.cwd(), '.env.local'));
 
 const getEnv = (key, fallbacks = []) => {
   const keys = [key, ...fallbacks];
