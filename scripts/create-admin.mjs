@@ -105,6 +105,16 @@ const ensureAdminUser = async () => {
     throw new Error('Unable to resolve admin user id.');
   }
 
+  const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
+    password: DEFAULT_ADMIN_PASSWORD,
+    email_confirm: true,
+    user_metadata: { full_name: DEFAULT_ADMIN_NAME }
+  });
+
+  if (updateError) {
+    throw updateError;
+  }
+
   const now = new Date().toISOString();
   const { error: upsertError } = await supabase
     .from('profiles')
