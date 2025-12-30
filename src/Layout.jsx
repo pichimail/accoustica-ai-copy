@@ -22,6 +22,7 @@ import {
   Home,
   PanelLeftClose,
   PanelLeftOpen,
+  PlusCircle,
   Users,
 } from 'lucide-react';
 import DynamicGradient from '@/components/background/DynamicGradient';
@@ -62,10 +63,12 @@ export default function Layout({ children, currentPageName }) {
     settings.features.runway_image ||
     settings.features.runway_music ||
     settings.features.runway_extend;
+  const showCreate = settings.features.music_generation;
 
   const navLinks = [
     { name: 'Home', icon: Home, page: 'Home' },
     { name: 'For You', icon: Sparkles, page: 'ForYou', requireAuth: true },
+    ...(showCreate ? [{ name: 'Create', icon: PlusCircle, page: 'Create', requireAuth: true }] : []),
     ...(showStudio ? [{ name: 'Studio', icon: Music, page: 'Studio', requireAuth: true }] : []),
     { name: 'Library', icon: Library, page: 'Library', requireAuth: true },
     { name: 'Discover', icon: Globe, page: 'Discover' },
@@ -82,7 +85,7 @@ export default function Layout({ children, currentPageName }) {
   });
 
   const mobileNavLinks = filteredNavLinks.filter((link) =>
-    ['Home', 'Studio', 'Library', 'Discover', 'Profile'].includes(link.page)
+    ['Home', 'Create', 'Studio', 'Library', 'Discover', 'Profile'].includes(link.page)
   );
 
   // Hide layout on public track page
@@ -260,7 +263,10 @@ export default function Layout({ children, currentPageName }) {
         "lg:hidden fixed bottom-0 left-0 right-0 z-40 glass-surface border-t border-white/10 safe-bottom",
         currentPageName === 'Home' && "hidden"
       )}>
-        <div className="grid grid-cols-5 gap-1 px-2 py-2">
+        <div className={cn(
+          "grid gap-1 px-2 py-2",
+          mobileNavLinks.length > 5 ? "grid-cols-6" : "grid-cols-5"
+        )}>
           {mobileNavLinks.map((link) => (
             <Link key={link.page} to={createPageUrl(link.page)}>
               <button 
