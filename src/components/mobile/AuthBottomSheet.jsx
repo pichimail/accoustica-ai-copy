@@ -13,10 +13,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Sparkles, Mail, Lock, Crown, X } from 'lucide-react';
+import { Mail, Lock, Crown, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { haptics } from '@/components/utils/haptics';
 import { useMobile } from '@/hooks/use-mobile';
+import BrandLogo from '@/components/brand/BrandLogo';
 
 export default function AuthBottomSheet({ isOpen, onClose }) {
   const [mode, setMode] = useState('sign-in');
@@ -150,9 +151,7 @@ export default function AuthBottomSheet({ isOpen, onClose }) {
             <div className="px-6 pb-8">
               {/* Header */}
               <div className="flex items-center gap-3 mb-6">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
-                  <Sparkles className="h-6 w-6 text-white" />
-                </div>
+                <BrandLogo variant="icon" className="h-10 w-10" />
                 <div>
                   <h2 className="text-white text-2xl font-bold">
                     {mode === 'sign-in' ? 'Welcome Back' : 'Get Started'}

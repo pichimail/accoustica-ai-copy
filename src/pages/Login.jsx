@@ -12,9 +12,10 @@ import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Sparkles, Mail, Lock, Crown } from 'lucide-react';
+import { Mail, Lock, Crown } from 'lucide-react';
+import BrandLogo from '@/components/brand/BrandLogo';
 
 export default function LoginPage({ authError }) {
   const [mode, setMode] = useState('sign-in');
@@ -156,18 +157,11 @@ export default function LoginPage({ authError }) {
     <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <Card className="w-full max-w-md bg-slate-900/70 border border-slate-800 shadow-xl">
         <CardHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <CardTitle className="text-white text-2xl">
-                Accoustica AI Studio
-              </CardTitle>
-              <p className="text-sm text-slate-400">
-                Sign in to create, publish, and collaborate.
-              </p>
-            </div>
+          <div className="flex flex-col gap-2">
+            <BrandLogo variant="wordmark" className="h-8 w-auto" />
+            <p className="text-sm text-slate-400">
+              Sign in to create, publish, and collaborate.
+            </p>
           </div>
           {authError?.message && (
             <div className="mt-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">

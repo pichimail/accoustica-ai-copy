@@ -16,8 +16,7 @@ const DEFAULT_FEATURES = {
 const DEFAULT_SETTINGS = {
   default_theme: 'radiant-dusk',
   watermark_text: 'Accoustica',
-  watermark_logo_url:
-    '/favicon.svg',
+  watermark_logo_url: '/icon-logo-accoustica.png',
   features: DEFAULT_FEATURES,
   kie_api_key: '',
   google_auth_enabled: false,

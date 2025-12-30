@@ -4,11 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import AudioPlayer from '@/components/audio/AudioPlayer';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Calendar, Music, Play, Share2, Sparkles } from 'lucide-react';
+import { Clock, Calendar, Music, Play, Share2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import BrandLogo from '@/components/brand/BrandLogo';
 
 export default function PublicTrackPage() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -97,10 +98,7 @@ export default function PublicTrackPage() {
         <div className="py-4 px-4 border-b border-slate-800/50 backdrop-blur-xl">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <Link to={createPageUrl('Home')} className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-violet-500 to-pink-500 flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-white" />
-              </div>
-              <span className="font-bold text-white">Accoustica</span>
+              <BrandLogo variant="wordmark" className="h-6 w-auto" />
             </Link>
             <Link to={createPageUrl('Discover')}>
               <Button variant="ghost" className="text-slate-400 hover:text-white">

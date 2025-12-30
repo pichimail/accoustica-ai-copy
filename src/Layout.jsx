@@ -30,6 +30,7 @@ import { AudioPlayerProvider } from '@/components/audio/AudioPlayerContext';
 import GlobalAudioPlayer from '@/components/audio/GlobalAudioPlayer';
 import FullScreenPlayer from '@/components/audio/FullScreenPlayer';
 import { useAppSettings } from '@/lib/use-app-settings';
+import BrandLogo from '@/components/brand/BrandLogo';
 
 const publicPages = ['Home', 'PublicTrack', 'Discover'];
 
@@ -104,11 +105,7 @@ export default function Layout({ children, currentPageName }) {
         currentPageName === 'Home' && "hidden"
       )}>
         <Link to={createPageUrl('Home')} className="flex items-center gap-2">
-          <img
-            src="/favicon.svg"
-            alt="Accoustica"
-            className="h-8"
-          />
+          <BrandLogo variant="wordmark" className="h-7 w-auto" />
         </Link>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -124,11 +121,7 @@ export default function Layout({ children, currentPageName }) {
       )}>
         <div className="flex items-center justify-between px-4 h-16">
           <Link to={createPageUrl('Home')} className="flex items-center gap-2">
-            <img 
-              src="/favicon.svg" 
-              alt="Accoustica" 
-              className="h-8"
-            />
+            <BrandLogo variant="icon" className="h-8 w-8" />
           </Link>
 
           <div className="flex items-center gap-2">

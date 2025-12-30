@@ -210,29 +210,25 @@ export default function AdminDashboardPage() {
           className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
         >
           <StatsCard
-            title="Total Users"
-            value={stats.totalUsers}
-            icon={Users}
-            iconClassName="bg-blue-500/20"
-          />
+                title="Total Users"
+                value={stats.totalUsers}
+                icon={Users}
+                iconClassName="bg-blue-500/20" trend={undefined} trendUp={undefined} className={undefined}          />
           <StatsCard
-            title="Active Users"
-            value={stats.activeUsers}
-            icon={CheckCircle2}
-            iconClassName="bg-green-500/20"
-          />
+                title="Active Users"
+                value={stats.activeUsers}
+                icon={CheckCircle2}
+                iconClassName="bg-green-500/20" trend={undefined} trendUp={undefined} className={undefined}          />
           <StatsCard
-            title="Total Tracks"
-            value={stats.totalTracks}
-            icon={Music}
-            iconClassName="bg-violet-500/20"
-          />
+                title="Total Tracks"
+                value={stats.totalTracks}
+                icon={Music}
+                iconClassName="bg-violet-500/20" trend={undefined} trendUp={undefined} className={undefined}          />
           <StatsCard
-            title="Public Tracks"
-            value={stats.publicTracks}
-            icon={TrendingUp}
-            iconClassName="bg-pink-500/20"
-          />
+                title="Public Tracks"
+                value={stats.publicTracks}
+                icon={TrendingUp}
+                iconClassName="bg-pink-500/20" trend={undefined} trendUp={undefined} className={undefined}          />
         </motion.div>
 
         {/* Charts Row */}

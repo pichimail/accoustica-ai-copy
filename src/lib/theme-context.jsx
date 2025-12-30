@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useAppSettings } from '@/lib/use-app-settings';
+import { BRAND_ASSETS, getThemeMode } from '@/lib/brand-assets';
 
 const ThemeContext = createContext(null);
 
@@ -31,6 +32,25 @@ const applyThemeClass = (themeId) => {
   root.classList.add(className);
 };
 
+const updateThemeIcons = (themeId) => {
+  if (typeof document === 'undefined') return;
+  const mode = getThemeMode(themeId);
+  const iconHref = BRAND_ASSETS.icon[mode] || BRAND_ASSETS.icon.dark;
+
+  const ensureLink = (rel) => {
+    let link = document.querySelector(`link[rel="${rel}"]`);
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = rel;
+      document.head.appendChild(link);
+    }
+    return link;
+  };
+
+  ensureLink('icon').setAttribute('href', iconHref);
+  ensureLink('apple-touch-icon').setAttribute('href', iconHref);
+};
+
 export const ThemeProvider = ({ children }) => {
   const { user } = useAuth();
   const { settings } = useAppSettings();
@@ -48,6 +68,7 @@ export const ThemeProvider = ({ children }) => {
   useEffect(() => {
     if (!isReady) return;
     applyThemeClass(theme);
+    updateThemeIcons(theme);
     window.localStorage.setItem('accoustica_theme', theme);
   }, [theme, isReady]);
 

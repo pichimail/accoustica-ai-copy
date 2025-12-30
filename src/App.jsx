@@ -31,29 +31,41 @@ const AuthenticatedApp = () => {
     );
   }
 
-  if (!isAuthenticated) {
-    return <LoginPage authError={authError} />;
-  }
-
-  // Render the main app
+  // Render the app routes
   return (
     <Routes>
+      {/* Home page - accessible to everyone */}
       <Route path="/" element={
         <LayoutWrapper currentPageName={mainPageKey}>
           <MainPage />
         </LayoutWrapper>
       } />
-      {Object.entries(Pages).map(([path, Page]) => (
-        <Route
-          key={path}
-          path={`/${path}`}
-          element={
-            <LayoutWrapper currentPageName={path}>
-              <Page />
-            </LayoutWrapper>
-          }
-        />
-      ))}
+
+      {/* Login page - accessible to everyone */}
+      <Route path="/Login" element={<LoginPage authError={authError} />} />
+
+      {/* All other pages - require authentication */}
+      {Object.entries(Pages).map(([path, Page]) => {
+        // Skip Home and Login since they're handled above
+        if (path === 'Home' || path === 'Login') return null;
+
+        return (
+          <Route
+            key={path}
+            path={`/${path}`}
+            element={
+              !isAuthenticated ? (
+                <LoginPage authError={authError} />
+              ) : (
+                <LayoutWrapper currentPageName={path}>
+                  <Page />
+                </LayoutWrapper>
+              )
+            }
+          />
+        );
+      })}
+
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

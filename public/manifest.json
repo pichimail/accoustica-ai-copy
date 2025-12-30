@@ -1,0 +1,22 @@
+{
+  "name": "Accoustica AI Studio",
+  "short_name": "Accoustica",
+  "description": "AI music and video creation studio.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "/icon-logo-accoustica-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-logo-accoustica-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

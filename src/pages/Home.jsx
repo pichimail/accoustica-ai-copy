@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Sparkles, Music, Zap, Globe, Play, ArrowRight, Headphones, Mic, Wand2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Sparkles, Music, Zap, Globe, Play, ArrowRight, Headphones, Mic, Wand2, LogIn, UserPlus } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import FloatingAlbumArt from '@/components/home/FloatingAlbumArt';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
+import { useAuth } from '@/lib/AuthContext';
+import { useMobile } from '@/hooks/use-mobile';
+import AuthBottomSheet from '@/components/mobile/AuthBottomSheet';
+import BrandLogo from '@/components/brand/BrandLogo';
 
 const features = [
   {
@@ -43,7 +47,11 @@ const genres = [
 
 export default function HomePage() {
   const { playTrack } = useAudioPlayer();
-  
+  const { isAuthenticated } = useAuth();
+  const isMobile = useMobile();
+  const navigate = useNavigate();
+  const [showAuthSheet, setShowAuthSheet] = useState(false);
+
   // Fetch most played/liked tracks
   const { data: popularTracks = [] } = useQuery({
     queryKey: ['popularTracks'],
@@ -56,6 +64,36 @@ export default function HomePage() {
       return tracks;
     },
   });
+
+  // Handle navigation to protected routes
+  const handleNavigateToStudio = (e) => {
+    if (!isAuthenticated) {
+      e.preventDefault();
+      if (isMobile) {
+        setShowAuthSheet(true);
+      } else {
+        navigate(createPageUrl('Login'));
+      }
+    } else {
+      navigate(createPageUrl('Studio'));
+    }
+  };
+
+  const handleSignUp = () => {
+    if (isMobile) {
+      setShowAuthSheet(true);
+    } else {
+      navigate(createPageUrl('Login'));
+    }
+  };
+
+  const handleSignIn = () => {
+    if (isMobile) {
+      setShowAuthSheet(true);
+    } else {
+      navigate(createPageUrl('Login'));
+    }
+  };
 
   return (
     <div className="min-h-screen overflow-hidden relative">
@@ -111,18 +149,45 @@ export default function HomePage() {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <Link to={createPageUrl('Studio')}>
-              <Button size="lg" className="w-full sm:w-auto h-14 px-8 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white font-semibold text-lg rounded-xl">
-                <Sparkles className="h-5 w-5 mr-2" />
-                Start Creating
-              </Button>
-            </Link>
-            <Link to={createPageUrl('Discover')}>
-              <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 bg-white/5 border-slate-700 text-white hover:bg-white/10 font-semibold text-lg rounded-xl">
-                <Play className="h-5 w-5 mr-2" />
-                Explore Music
-              </Button>
-            </Link>
+            <Button
+              size="lg"
+              onClick={handleNavigateToStudio}
+              className="w-full sm:w-auto h-14 px-8 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white font-semibold text-lg rounded-xl"
+            >
+              <Sparkles className="h-5 w-5 mr-2" />
+              Start Creating
+            </Button>
+
+            {!isAuthenticated && (
+              <>
+                <Button
+                  size="lg"
+                  onClick={handleSignUp}
+                  className="w-full sm:w-auto h-14 px-8 bg-white text-slate-900 hover:bg-slate-100 font-semibold text-lg rounded-xl"
+                >
+                  <UserPlus className="h-5 w-5 mr-2" />
+                  Sign Up
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={handleSignIn}
+                  className="w-full sm:w-auto h-14 px-8 bg-white/5 border-slate-700 text-white hover:bg-white/10 font-semibold text-lg rounded-xl"
+                >
+                  <LogIn className="h-5 w-5 mr-2" />
+                  Log In
+                </Button>
+              </>
+            )}
+
+            {isAuthenticated && (
+              <Link to={createPageUrl('Discover')}>
+                <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 bg-white/5 border-slate-700 text-white hover:bg-white/10 font-semibold text-lg rounded-xl">
+                  <Play className="h-5 w-5 mr-2" />
+                  Explore Music
+                </Button>
+              </Link>
+            )}
           </motion.div>
 
           {/* Stats */}
@@ -283,12 +348,14 @@ export default function HomePage() {
           <p className="text-slate-300 text-lg mb-8">
             Join thousands of creators making amazing music with AI
           </p>
-            <Link to={createPageUrl('Studio')}>
-            <Button size="lg" className="h-14 px-10 bg-white text-slate-900 hover:bg-slate-100 font-semibold text-lg rounded-xl">
-              Get Started Free
-              <ArrowRight className="h-5 w-5 ml-2" />
-            </Button>
-          </Link>
+          <Button
+            size="lg"
+            onClick={handleNavigateToStudio}
+            className="h-14 px-10 bg-white text-slate-900 hover:bg-slate-100 font-semibold text-lg rounded-xl"
+          >
+            Get Started Free
+            <ArrowRight className="h-5 w-5 ml-2" />
+          </Button>
         </motion.div>
       </section>
 
@@ -296,10 +363,7 @@ export default function HomePage() {
       <footer className="py-8 px-4 border-t border-slate-800">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-violet-500 to-pink-500 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-white" />
-            </div>
-            <span className="font-bold text-white">Accoustica Music Studio</span>
+            <BrandLogo variant="wordmark" className="h-6 w-auto" />
           </div>
           <p className="text-slate-500 text-sm">
             © {new Date().getFullYear()} Accoustica. All rights reserved.
@@ -307,6 +371,12 @@ export default function HomePage() {
         </div>
       </footer>
       </div>
+
+      {/* Auth Bottom Sheet for Mobile */}
+      <AuthBottomSheet
+        isOpen={showAuthSheet}
+        onClose={() => setShowAuthSheet(false)}
+      />
     </div>
   );
 }
