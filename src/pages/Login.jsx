@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { supabase } from '@/api/base44Client';
 import { useAppSettings } from '@/lib/use-app-settings';
 import {
-  DEFAULT_ADMIN_EMAIL,
-  DEFAULT_ADMIN_PASSWORD,
-  DEFAULT_ADMIN_NAME,
   GOOGLE_AUTH_ENV,
   GOOGLE_CLIENT_ID
 } from '@/lib/auth-config';
@@ -14,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Mail, Lock, Crown } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 import BrandLogo from '@/components/brand/BrandLogo';
 
 export default function LoginPage({ authError }) {
@@ -24,7 +21,6 @@ export default function LoginPage({ authError }) {
   const [isBusy, setIsBusy] = useState(false);
   const { settings } = useAppSettings();
 
-  const hasDefaultAdmin = Boolean(DEFAULT_ADMIN_EMAIL && DEFAULT_ADMIN_PASSWORD);
   const googleClientId = settings?.google_client_id || GOOGLE_CLIENT_ID;
   const googleAuthEnabled =
     GOOGLE_AUTH_ENV ?? settings?.google_auth_enabled ?? Boolean(googleClientId);
@@ -99,66 +95,12 @@ export default function LoginPage({ authError }) {
     }
   };
 
-  const handleDefaultAdminLogin = async () => {
-    if (!hasDefaultAdmin) {
-      toast.error('Set VITE_DEFAULT_ADMIN_EMAIL and VITE_DEFAULT_ADMIN_PASSWORD first.');
-      return;
-    }
-
-    setIsBusy(true);
-    try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: DEFAULT_ADMIN_EMAIL,
-        password: DEFAULT_ADMIN_PASSWORD
-      });
-
-      if (signInError) {
-        const message = signInError.message?.toLowerCase() || '';
-        if (message.includes('invalid') || message.includes('credentials')) {
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email: DEFAULT_ADMIN_EMAIL,
-            password: DEFAULT_ADMIN_PASSWORD,
-            options: {
-              data: { full_name: DEFAULT_ADMIN_NAME }
-            }
-          });
-          if (signUpError) {
-            const signUpMessage = signUpError.message?.toLowerCase() || '';
-            if (signUpMessage.includes('already')) {
-              throw new Error('Admin user exists but the password is incorrect.');
-            }
-            throw signUpError;
-          }
-          if (!signUpData?.session) {
-            toast.success('Admin account created. Check your email to confirm, then sign in.');
-            return;
-          }
-        } else {
-          throw signInError;
-        }
-      }
-
-      const { data: authData } = await supabase.auth.getUser();
-      if (authData?.user?.id) {
-        await supabase
-          .from('profiles')
-          .update({ role: 'admin', updated_date: new Date().toISOString() })
-          .eq('id', authData.user.id);
-      }
-      toast.success('Logged in as admin.');
-    } catch (error) {
-      toast.error(error.message || 'Admin login failed');
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <Card className="w-full max-w-md bg-slate-900/70 border border-slate-800 shadow-xl">
         <CardHeader>
-          <div className="flex flex-col gap-2">
-            <BrandLogo variant="wordmark" className="h-8 w-auto" />
+          <div className="flex flex-col items-center gap-2 text-center">
+            <BrandLogo variant="wordmark" className="h-9 w-auto object-contain" />
             <p className="text-sm text-slate-400">
               Sign in to create, publish, and collaborate.
             </p>
@@ -170,29 +112,6 @@ export default function LoginPage({ authError }) {
           )}
         </CardHeader>
         <CardContent className="space-y-4">
-          {googleAuthEnabled && (
-            <GoogleAuthButton onClick={handleGoogleSignIn} disabled={isBusy} />
-          )}
-
-          {hasDefaultAdmin && (
-            <Button
-              onClick={handleDefaultAdminLogin}
-              disabled={isBusy}
-              variant="outline"
-              className="w-full border-amber-500/50 text-amber-200 hover:text-white hover:border-amber-400"
-            >
-              <Crown className="h-4 w-4 mr-2" />
-              Use Default Admin
-            </Button>
-          )}
-
-          {(googleAuthEnabled || hasDefaultAdmin) && (
-            <div className="flex items-center gap-3 text-xs uppercase tracking-widest text-slate-500">
-              <span className="flex-1 h-px bg-slate-800" />
-              or
-              <span className="flex-1 h-px bg-slate-800" />
-            </div>
-          )}
           <div className="space-y-2">
             <Label className="text-slate-300">Email</Label>
             <div className="relative">
@@ -261,6 +180,21 @@ export default function LoginPage({ authError }) {
               </>
             )}
           </div>
+          {googleAuthEnabled && (
+            <>
+              <div className="flex items-center gap-3 text-xs uppercase tracking-widest text-slate-500">
+                <span className="flex-1 h-px bg-slate-800" />
+                or continue with
+                <span className="flex-1 h-px bg-slate-800" />
+              </div>
+              <GoogleAuthButton
+                onClick={handleGoogleSignIn}
+                disabled={isBusy}
+                className="h-11"
+                iconClassName="h-5 w-5"
+              />
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -108,7 +108,7 @@ export default function Layout({ children, currentPageName }) {
         currentPageName === 'Home' && "hidden"
       )}>
         <Link to={createPageUrl('Home')} className="flex items-center gap-2">
-          <BrandLogo variant="wordmark" className="h-7 w-auto" />
+          <BrandLogo variant="wordmark" className="h-8 w-auto" />
         </Link>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -124,7 +124,7 @@ export default function Layout({ children, currentPageName }) {
       )}>
         <div className="flex items-center justify-between px-4 h-16">
           <Link to={createPageUrl('Home')} className="flex items-center gap-2">
-            <BrandLogo variant="icon" className="h-8 w-8" />
+            <BrandLogo variant="icon" className="h-9 w-9" />
           </Link>
 
           <div className="flex items-center gap-2">

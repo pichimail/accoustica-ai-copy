@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { supabase } from '@/api/base44Client';
 import { useAppSettings } from '@/lib/use-app-settings';
 import {
-  DEFAULT_ADMIN_EMAIL,
-  DEFAULT_ADMIN_PASSWORD,
-  DEFAULT_ADMIN_NAME,
   GOOGLE_AUTH_ENV,
   GOOGLE_CLIENT_ID
 } from '@/lib/auth-config';
@@ -13,10 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Mail, Lock, Crown, X } from 'lucide-react';
+import { Mail, Lock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { haptics } from '@/components/utils/haptics';
-import { useMobile } from '@/hooks/use-mobile';
 import BrandLogo from '@/components/brand/BrandLogo';
 
 export default function AuthBottomSheet({ isOpen, onClose }) {
@@ -25,9 +21,7 @@ export default function AuthBottomSheet({ isOpen, onClose }) {
   const [password, setPassword] = useState('');
   const [isBusy, setIsBusy] = useState(false);
   const { settings } = useAppSettings();
-  const isMobile = useMobile();
 
-  const hasDefaultAdmin = Boolean(DEFAULT_ADMIN_EMAIL && DEFAULT_ADMIN_PASSWORD);
   const googleClientId = settings?.google_client_id || GOOGLE_CLIENT_ID;
   const googleAuthEnabled =
     GOOGLE_AUTH_ENV ?? settings?.google_auth_enabled ?? Boolean(googleClientId);
@@ -151,7 +145,7 @@ export default function AuthBottomSheet({ isOpen, onClose }) {
             <div className="px-6 pb-8">
               {/* Header */}
               <div className="flex items-center gap-3 mb-6">
-                <BrandLogo variant="icon" className="h-10 w-10" />
+                <BrandLogo variant="icon" className="h-11 w-11 object-contain" />
                 <div>
                   <h2 className="text-white text-2xl font-bold">
                     {mode === 'sign-in' ? 'Welcome Back' : 'Get Started'}
@@ -163,54 +157,6 @@ export default function AuthBottomSheet({ isOpen, onClose }) {
               </div>
 
               <div className="space-y-4">
-                {/* Google Sign In */}
-                {googleAuthEnabled && (
-                  <GoogleAuthButton
-                    onClick={handleGoogleSignIn}
-                    disabled={isBusy}
-                    className="h-12"
-                    iconClassName="h-5 w-5"
-                  />
-                )}
-
-                {/* Default Admin (Dev Only) */}
-                {hasDefaultAdmin && (
-                  <Button
-                    onClick={async () => {
-                      haptics.medium();
-                      setIsBusy(true);
-                      try {
-                        const { error } = await supabase.auth.signInWithPassword({
-                          email: DEFAULT_ADMIN_EMAIL,
-                          password: DEFAULT_ADMIN_PASSWORD
-                        });
-                        if (error) throw error;
-                        toast.success('Logged in as admin.');
-                        onClose();
-                      } catch (error) {
-                        toast.error(error.message || 'Admin login failed');
-                      } finally {
-                        setIsBusy(false);
-                      }
-                    }}
-                    disabled={isBusy}
-                    variant="outline"
-                    className="w-full h-12 border-amber-500/50 text-amber-200 hover:text-white hover:border-amber-400"
-                  >
-                    <Crown className="h-5 w-5 mr-2" />
-                    Use Default Admin
-                  </Button>
-                )}
-
-                {/* Divider */}
-                {(googleAuthEnabled || hasDefaultAdmin) && (
-                  <div className="flex items-center gap-3 text-xs uppercase tracking-widest text-slate-500">
-                    <span className="flex-1 h-px bg-slate-700" />
-                    or
-                    <span className="flex-1 h-px bg-slate-700" />
-                  </div>
-                )}
-
                 {/* Email Input */}
                 <div className="space-y-2">
                   <Label className="text-slate-300 text-sm">Email</Label>
@@ -293,6 +239,21 @@ export default function AuthBottomSheet({ isOpen, onClose }) {
                     </>
                   )}
                 </div>
+                {googleAuthEnabled && (
+                  <>
+                    <div className="flex items-center gap-3 text-xs uppercase tracking-widest text-slate-500">
+                      <span className="flex-1 h-px bg-slate-700" />
+                      or continue with
+                      <span className="flex-1 h-px bg-slate-700" />
+                    </div>
+                    <GoogleAuthButton
+                      onClick={handleGoogleSignIn}
+                      disabled={isBusy}
+                      className="h-12"
+                      iconClassName="h-5 w-5"
+                    />
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

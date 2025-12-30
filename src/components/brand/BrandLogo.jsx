@@ -13,5 +13,12 @@ export default function BrandLogo({
   const mode = getThemeMode(theme);
   const src = BRAND_ASSETS[variant]?.[mode] || BRAND_ASSETS.icon.dark;
 
-  return <img src={src} alt={alt} className={cn('block', className)} {...props} />;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={cn('block object-contain', className)}
+      {...props}
+    />
+  );
 }
