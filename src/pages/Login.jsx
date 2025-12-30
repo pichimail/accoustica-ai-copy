@@ -8,12 +8,13 @@ import {
   GOOGLE_AUTH_ENV,
   GOOGLE_CLIENT_ID
 } from '@/lib/auth-config';
+import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Sparkles, Mail, Lock, Chrome, Crown } from 'lucide-react';
+import { Sparkles, Mail, Lock, Crown } from 'lucide-react';
 
 export default function LoginPage({ authError }) {
   const [mode, setMode] = useState('sign-in');
@@ -23,8 +24,9 @@ export default function LoginPage({ authError }) {
   const { settings } = useAppSettings();
 
   const hasDefaultAdmin = Boolean(DEFAULT_ADMIN_EMAIL && DEFAULT_ADMIN_PASSWORD);
+  const googleClientId = settings?.google_client_id || GOOGLE_CLIENT_ID;
   const googleAuthEnabled =
-    GOOGLE_AUTH_ENV ?? settings?.google_auth_enabled ?? Boolean(GOOGLE_CLIENT_ID);
+    GOOGLE_AUTH_ENV ?? settings?.google_auth_enabled ?? Boolean(googleClientId);
 
   const handleAuth = async () => {
     if (!email.trim() || !password.trim()) {
@@ -175,15 +177,7 @@ export default function LoginPage({ authError }) {
         </CardHeader>
         <CardContent className="space-y-4">
           {googleAuthEnabled && (
-            <Button
-              onClick={handleGoogleSignIn}
-              disabled={isBusy}
-              variant="outline"
-              className="w-full border-slate-700 text-slate-200 hover:text-white hover:border-slate-500"
-            >
-              <Chrome className="h-4 w-4 mr-2" />
-              Continue with Google
-            </Button>
+            <GoogleAuthButton onClick={handleGoogleSignIn} disabled={isBusy} />
           )}
 
           {hasDefaultAdmin && (

@@ -10,11 +10,29 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Loader2, Music, Disc } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Download, Loader2, Music, Disc, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function StemSeparationDialog({ track, open, onClose }) {
   const [separating, setSeparating] = useState(false);
+  const [downloadFormat, setDownloadFormat] = useState('mp3');
+  const [downloadQuality, setDownloadQuality] = useState('high');
+  const [convertingFormat, setConvertingFormat] = useState(null);
 
   // Fetch existing separations
   const { data: separations = [], refetch } = useQuery({
@@ -90,11 +108,40 @@ export default function StemSeparationDialog({ track, open, onClose }) {
     poll();
   };
 
-  const downloadStem = (url, name) => {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${track.title}_${name}.mp3`;
-    a.click();
+  const downloadStem = async (url, name, format = 'mp3') => {
+    if (format !== 'mp3' && format !== 'original') {
+      // Convert format before downloading
+      setConvertingFormat(name);
+      try {
+        const response = await base44.functions.invoke('convertAudioFormat', {
+          audioUrl: url,
+          targetFormat: format,
+          quality: downloadQuality,
+          trackId: track.id,
+        });
+
+        if (response.data?.success) {
+          const a = document.createElement('a');
+          a.href = response.data.convertedUrl;
+          a.download = `${track.title}_${name}.${format}`;
+          a.click();
+          toast.success(`Downloaded as ${format.toUpperCase()}`);
+        } else {
+          toast.error('Format conversion failed');
+        }
+      } catch (error) {
+        console.error('Conversion error:', error);
+        toast.error('Failed to convert format');
+      } finally {
+        setConvertingFormat(null);
+      }
+    } else {
+      // Direct download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${track.title}_${name}.mp3`;
+      a.click();
+    }
   };
 
   const latestSeparation = separations[0];
@@ -150,18 +197,51 @@ export default function StemSeparationDialog({ track, open, onClose }) {
 
           {/* Results */}
           {latestSeparation && latestSeparation.status === 'ready' && (
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-slate-300">Available Stems</h4>
-              
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-slate-300">Available Stems</h4>
+
+                {/* Format & Quality Selection */}
+                <div className="flex items-center gap-2">
+                  <Select value={downloadFormat} onValueChange={setDownloadFormat}>
+                    <SelectTrigger className="w-24 h-8 text-xs bg-slate-800 border-slate-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mp3">MP3</SelectItem>
+                      <SelectItem value="wav">WAV</SelectItem>
+                      <SelectItem value="mp4">MP4</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={downloadQuality} onValueChange={setDownloadQuality}>
+                    <SelectTrigger className="w-28 h-8 text-xs bg-slate-800 border-slate-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low (128k)</SelectItem>
+                      <SelectItem value="medium">Medium (192k)</SelectItem>
+                      <SelectItem value="high">High (320k)</SelectItem>
+                      <SelectItem value="lossless">Lossless</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 {latestSeparation.vocal_url && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => downloadStem(latestSeparation.vocal_url, 'Vocals')}
+                    onClick={() => downloadStem(latestSeparation.vocal_url, 'Vocals', downloadFormat)}
+                    disabled={convertingFormat === 'Vocals'}
                     className="justify-start"
                   >
-                    <Download className="h-3 w-3 mr-2" />
+                    {convertingFormat === 'Vocals' ? (
+                      <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-3 w-3 mr-2" />
+                    )}
                     Vocals
                   </Button>
                 )}

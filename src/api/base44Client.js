@@ -65,6 +65,11 @@ const getAuthUser = async () => {
 const ensureProfile = async (authUser) => {
   if (!authUser?.id) return null;
 
+  const metadata = authUser.user_metadata || {};
+  const emailFallback = authUser.email?.split('@')[0] || 'User';
+  const displayName = metadata.full_name || metadata.name || emailFallback;
+  const avatarUrl = metadata.avatar_url || metadata.picture || null;
+
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('*')
@@ -73,16 +78,33 @@ const ensureProfile = async (authUser) => {
   handleSupabaseError(error);
 
   if (profile) {
+    const updates = {};
+    if ((!profile.full_name || profile.full_name === emailFallback) && displayName) {
+      updates.full_name = displayName;
+    }
+    if (!profile.avatar_url && avatarUrl) {
+      updates.avatar_url = avatarUrl;
+    }
+    if (Object.keys(updates).length > 0) {
+      const { data: updated, error: updateError } = await supabase
+        .from('profiles')
+        .update({ ...updates, updated_date: new Date().toISOString() })
+        .eq('id', authUser.id)
+        .select()
+        .single();
+      handleSupabaseError(updateError);
+      return updated;
+    }
     return profile;
   }
 
-  const fallbackName = authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User';
   const { data: created, error: insertError } = await supabase
     .from('profiles')
     .insert({
       id: authUser.id,
       email: authUser.email,
-      full_name: fallbackName,
+      full_name: displayName,
+      avatar_url: avatarUrl,
       created_date: new Date().toISOString(),
       updated_date: new Date().toISOString()
     })

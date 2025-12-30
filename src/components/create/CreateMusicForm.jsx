@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,6 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 import { Wand2, Music, ChevronDown, ChevronUp, Plus, X, Sparkles, Upload, Dices } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { toast } from 'sonner';
@@ -13,10 +20,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SongStructureBuilder from './SongStructureBuilder';
 import AudioUploader from './AudioUploader';
 import { haptics } from '@/components/utils/haptics';
+import { hasFeatureAccess, getUserPlanTier, getUpgradeRequirement, FEATURE_TIERS } from '@/lib/premium-features';
+import UpgradeModal from '@/components/premium/UpgradeModal';
 
 export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitReached, remainingGenerations, initialPrompt = '' }) {
+  const [user, setUser] = useState(null);
+  const [userTier, setUserTier] = useState(FEATURE_TIERS.FREE);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeRequirement, setUpgradeRequirement] = useState(null);
+
   const [mode, setMode] = useState('simple'); // 'simple', 'custom', or 'instrumental'
-  const model = 'V5';
+  const [model, setModel] = useState('V5');
   const [prompt, setPrompt] = useState(initialPrompt);
   const [lyrics, setLyrics] = useState('');
   const [style, setStyle] = useState('');
@@ -48,11 +62,31 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
   const [variationCount, setVariationCount] = useState(1);
   const [autoGenerateLyrics, setAutoGenerateLyrics] = useState(false);
 
+  // Fetch user and their plan tier
+  useEffect(() => {
+    const fetchUser = async () => {
+      const userData = await base44.auth.me();
+      if (userData) {
+        setUser(userData);
+        const tier = await getUserPlanTier(userData);
+        setUserTier(tier);
+      }
+    };
+    fetchUser();
+  }, []);
+
   React.useEffect(() => {
     if (initialPrompt) {
       setPrompt(initialPrompt);
     }
   }, [initialPrompt]);
+
+  const modelOptions = [
+    { value: 'V5', label: 'V5 (latest)' },
+    { value: 'V4_5PLUS', label: 'V4.5 Plus' },
+    { value: 'V4_5', label: 'V4.5' },
+    { value: 'V4', label: 'V4 (legacy)' },
+  ];
 
   const quickStyles = [
     'pop', 'rock', 'hip hop', 'electronic', 'jazz', 'classical',
@@ -173,9 +207,52 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
     }
   };
 
+  // Check if user has access to a feature and show upgrade modal if not
+  const checkFeatureAccess = async (featureName) => {
+    if (!user) return false;
+
+    const hasAccess = await hasFeatureAccess(user, featureName);
+    if (!hasAccess) {
+      const requirement = getUpgradeRequirement(featureName);
+      setUpgradeRequirement(requirement);
+      setShowUpgradeModal(true);
+      haptics.error();
+      return false;
+    }
+    return true;
+  };
+
+  // Handle mode change with plan checks
+  const handleModeChange = async (newMode) => {
+    if (newMode === 'custom') {
+      const canUseCustom = await checkFeatureAccess('custom_mode');
+      if (!canUseCustom) return;
+    } else if (newMode === 'instrumental') {
+      const canUseInstrumental = await checkFeatureAccess('instrumental_mode');
+      if (!canUseInstrumental) return;
+    }
+    setMode(newMode);
+    haptics.selection();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     haptics.medium();
+
+    // Check plan access based on mode
+    if (mode === 'custom') {
+      const canUseCustom = await checkFeatureAccess('custom_mode');
+      if (!canUseCustom) return;
+    } else if (mode === 'instrumental') {
+      const canUseInstrumental = await checkFeatureAccess('instrumental_mode');
+      if (!canUseInstrumental) return;
+    }
+
+    // Check advanced features access
+    if (showAdvancedOptions) {
+      const canUseAdvanced = await checkFeatureAccess('advanced_parameters');
+      if (!canUseAdvanced) return;
+    }
 
     const limits = getCharLimits();
 
@@ -264,10 +341,7 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
         <div className="flex gap-2 glass-surface p-1 rounded-full">
           <button
             type="button"
-            onClick={() => {
-              haptics.selection();
-              setMode('simple');
-            }}
+            onClick={() => handleModeChange('simple')}
             className={cn(
               "flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all",
               mode === 'simple'
@@ -279,27 +353,24 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
           </button>
           <button
             type="button"
-            onClick={() => {
-              haptics.selection();
-              setMode('custom');
-            }}
+            onClick={() => handleModeChange('custom')}
             className={cn(
-              "flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+              "flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all relative",
               mode === 'custom'
                 ? "bg-white/20 text-white"
                 : "text-slate-300 hover:text-white"
             )}
           >
             Custom
+            {userTier === FEATURE_TIERS.FREE && (
+              <Crown className="h-3 w-3 text-violet-400 absolute top-1 right-1" />
+            )}
           </button>
           <button
             type="button"
-            onClick={() => {
-              haptics.selection();
-              setMode('instrumental');
-            }}
+            onClick={() => handleModeChange('instrumental')}
             className={cn(
-              "flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+              "flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all relative",
               mode === 'instrumental'
                 ? "bg-white/20 text-white"
                 : "text-slate-300 hover:text-white"
@@ -312,6 +383,27 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
 
       {/* Form Content */}
       <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label className="text-slate-300">Model</Label>
+            <Select value={model} onValueChange={setModel}>
+              <SelectTrigger className="bg-slate-800/60 border-slate-700 text-slate-200">
+                <SelectValue placeholder="Select model" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-700">
+                {modelOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value} className="text-slate-200">
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="text-xs text-slate-500 leading-relaxed self-end">
+            Options: V5, V4_5PLUS, V4_5, V4
+          </div>
+        </div>
+
         {mode === 'simple' ? (
           <>
             {/* Simple Mode: Song Description */}
@@ -583,6 +675,15 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
           </p>
         )}
       </form>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        requiredTier={upgradeRequirement?.tier}
+        featureName={upgradeRequirement?.feature}
+        currentTier={userTier}
+      />
     </div>
   );
 }

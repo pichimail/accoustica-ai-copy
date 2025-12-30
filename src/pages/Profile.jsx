@@ -25,26 +25,74 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState('activity');
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
+  const [artistName, setArtistName] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
   const { theme, setTheme, themes } = useTheme();
   const queryClient = useQueryClient();
 
   useEffect(() => {
     const fetchUser = async () => {
       const userData = await base44.auth.me();
+      if (!userData) {
+        setUser(null);
+        setEditedName('');
+        setArtistName('');
+        return;
+      }
       setUser(userData);
       setEditedName(userData.full_name || '');
+      setArtistName(userData.artist_name || '');
     };
     fetchUser();
   }, []);
 
   const handleSaveProfile = async () => {
     try {
-      await base44.auth.updateMe({ full_name: editedName });
-      setUser({ ...user, full_name: editedName });
+      await base44.auth.updateMe({
+        full_name: editedName,
+        artist_name: artistName
+      });
+      setUser({ ...user, full_name: editedName, artist_name: artistName });
       setIsEditing(false);
       toast.success('Profile updated successfully!');
     } catch (error) {
       toast.error('Failed to update profile');
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      // Upload image to Supabase Storage
+      const uploadedFile = await base44.integrations.Core.UploadFile({
+        file,
+        pathPrefix: `avatars/${user.email}`,
+      });
+
+      // Update user profile with new avatar URL
+      await base44.auth.updateMe({ avatar_url: uploadedFile.url });
+      setUser({ ...user, avatar_url: uploadedFile.url });
+      toast.success('Profile image updated!');
+    } catch (error) {
+      console.error('Image upload error:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -219,7 +267,9 @@ export default function ProfilePage() {
     );
   }
 
-  const avatarUrl = user.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${user.full_name}`;
+  const displayName = user.full_name || 'User';
+  const avatarUrl = user.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${displayName}`;
+  const joinedDate = user.created_date ? new Date(user.created_date) : null;
 
   return (
     <div className="min-h-screen p-6">
@@ -239,7 +289,7 @@ export default function ProfilePage() {
             </Avatar>
             
             <div className="flex-1 text-center md:text-left">
-              <h1 className="text-4xl font-bold text-white mb-2">{user.full_name}</h1>
+              <h1 className="text-4xl font-bold text-white mb-2">{displayName}</h1>
               <p className="text-slate-400 mb-4">{user.email}</p>
               <div className="flex flex-wrap gap-3 justify-center md:justify-start">
                 <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30">
@@ -251,7 +301,7 @@ export default function ProfilePage() {
                 </Badge>
                 <Badge variant="outline" className="glass-surface text-slate-200">
                   <Calendar className="h-3 w-3 mr-1" />
-                  Joined {new Date(user.created_date).toLocaleDateString()}
+                  Joined {joinedDate ? joinedDate.toLocaleDateString() : 'Recently'}
                 </Badge>
               </div>
             </div>
@@ -615,23 +665,65 @@ export default function ProfilePage() {
                 <CardHeader>
                   <CardTitle className="text-white">Account Settings</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
+                  {/* Profile Image Upload */}
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Profile Image</Label>
+                    <div className="flex items-center gap-4">
+                      <Avatar className="w-20 h-20 border-2 border-violet-500/50">
+                        <img src={user.avatar_url || avatarUrl} alt={user.full_name} className="w-full h-full object-cover" />
+                        <AvatarFallback className="bg-violet-500 text-white text-2xl">
+                          {user.full_name?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col gap-2">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={uploadingImage}
+                          className="cursor-pointer"
+                          id="avatar-upload"
+                        />
+                        <p className="text-xs text-slate-400">
+                          {uploadingImage ? 'Uploading...' : 'Max size: 5MB (JPG, PNG, GIF)'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <Label className="text-slate-300">Full Name</Label>
-                    <Input 
-                      value={editedName} 
+                    <Input
+                      value={editedName}
                       onChange={(e) => setEditedName(e.target.value)}
+                      placeholder="Your full name"
                     />
                   </div>
+
+                  <div>
+                    <Label className="text-slate-300">Artist Name</Label>
+                    <Input
+                      value={artistName}
+                      onChange={(e) => setArtistName(e.target.value)}
+                      placeholder="Your artist name (shown on generated music)"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">
+                      This name will appear on all your generated music and videos
+                    </p>
+                  </div>
+
                   <div>
                     <Label className="text-slate-300">Email</Label>
-                    <Input 
-                      value={user.email} 
+                    <Input
+                      value={user.email}
                       disabled
                     />
                   </div>
-                  <Button 
+
+                  <Button
                     onClick={handleSaveProfile}
+                    disabled={uploadingImage}
                     className="bg-violet-600 hover:bg-violet-700"
                   >
                     Save Changes

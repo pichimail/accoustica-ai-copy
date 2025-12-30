@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Volume2, Loader2, Sparkles, Upload, Save, Trash2, Star } from 'lucide-react';
 import { toast } from 'sonner';
+import { hasFeatureAccess, getUserPlanTier, FEATURE_TIERS } from '@/lib/premium-features';
+import UpgradeModal from '@/components/premium/UpgradeModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from "@/lib/utils";
 

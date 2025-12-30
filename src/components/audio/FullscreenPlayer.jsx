@@ -1,132 +1,104 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Play, Pause, SkipBack, SkipForward, Repeat, Repeat1, Shuffle, Volume2, VolumeX, ChevronDown } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { cn } from "@/lib/utils";
-import EnhancedVisualizer from './EnhancedVisualizer';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { useAudioPlayer } from './AudioPlayerContext';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import {
+  ChevronDown,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Repeat,
+  Repeat1,
+  Shuffle,
+  Volume2,
+  Heart,
+  Share2,
+  MoreHorizontal,
+  ListMusic,
+  X
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { haptics } from '@/components/utils/haptics';
+import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-export default function FullscreenPlayer({ 
-  track, 
-  isOpen, 
-  onClose,
-  isPlaying,
-  onTogglePlay,
-  currentTime,
-  duration,
-  onSeek,
-  audioRef
-}) {
-  const [repeatMode, setRepeatMode] = useState('off');
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [volume, setVolume] = useState(0.7);
-  const [isMuted, setIsMuted] = useState(false);
-  const [visualizerData, setVisualizerData] = useState(Array(40).fill(0));
-  const [currentLyricIndex, setCurrentLyricIndex] = useState(0);
-  
-  const audioContextRef = useRef(null);
-  const analyserRef = useRef(null);
-  const animationFrameRef = useRef(null);
+export default function FullScreenPlayer() {
+  const {
+    currentTrack,
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    queue,
+    queueIndex,
+    repeatMode,
+    isShuffle,
+    isFullscreen,
+    togglePlayPause,
+    playNext,
+    playPrevious,
+    seek,
+    changeVolume,
+    toggleRepeat,
+    toggleShuffle,
+    setIsFullscreen,
+  } = useAudioPlayer();
 
-  // Parse lyrics with timestamps
-  const parseLyrics = (lyrics) => {
-    if (!lyrics) return [];
-    
-    const lines = lyrics.split('\n').filter(line => line.trim());
-    return lines.map((line, index) => ({
-      time: (duration / lines.length) * index,
-      text: line.trim()
-    }));
-  };
+  const [showLyrics, setShowLyrics] = useState(false);
+  const [showQueue, setShowQueue] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const queryClient = useQueryClient();
 
-  const lyricLines = parseLyrics(track?.lyrics);
+  // Swipe gesture detection
+  const y = useMotionValue(0);
+  const opacity = useTransform(y, [0, 300], [1, 0]);
+  const scale = useTransform(y, [0, 300], [1, 0.9]);
 
-  // Update current lyric based on time
   useEffect(() => {
-    if (!lyricLines.length) return;
-    
-    const currentIndex = lyricLines.findIndex((lyric, index) => {
-      const nextLyric = lyricLines[index + 1];
-      return currentTime >= lyric.time && (!nextLyric || currentTime < nextLyric.time);
-    });
-    
-    if (currentIndex !== -1) {
-      setCurrentLyricIndex(currentIndex);
+    if (currentTrack) {
+      setIsFavorite(currentTrack.is_favorite || false);
     }
-  }, [currentTime, lyricLines]);
+  }, [currentTrack?.id]);
 
-  // Visualizer setup
-  useEffect(() => {
-    if (!audioRef?.current || !isPlaying || !isOpen) return;
+  // Toggle favorite mutation
+  const toggleFavoriteMutation = useMutation({
+    mutationFn: async () => {
+      return await base44.entities.Track.update(currentTrack.id, {
+        is_favorite: !isFavorite,
+      });
+    },
+    onSuccess: () => {
+      setIsFavorite(!isFavorite);
+      queryClient.invalidateQueries({ queryKey: ['myTracks'] });
+      toast.success(isFavorite ? 'Removed from favorites' : 'Added to favorites');
+    },
+  });
 
-    if (!audioContextRef.current) {
-      try {
-        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-        analyserRef.current = audioContextRef.current.createAnalyser();
-        analyserRef.current.fftSize = 128;
-        
-        const source = audioContextRef.current.createMediaElementSource(audioRef.current);
-        source.connect(analyserRef.current);
-        analyserRef.current.connect(audioContextRef.current.destination);
-      } catch (error) {
-        console.error('Audio context error:', error);
-        return;
-      }
-    }
-
-    const bufferLength = analyserRef.current.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-
-    const updateVisualizer = () => {
-      if (!analyserRef.current) return;
-      
-      analyserRef.current.getByteFrequencyData(dataArray);
-      const normalizedData = Array.from(dataArray).slice(0, 40).map(v => v / 255);
-      setVisualizerData(normalizedData);
-      
-      animationFrameRef.current = requestAnimationFrame(updateVisualizer);
-    };
-
-    updateVisualizer();
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [isPlaying, isOpen, audioRef]);
-
-  const handleVolumeChange = (value) => {
-    if (!audioRef?.current) return;
-    const newVolume = value[0];
-    setVolume(newVolume);
-    audioRef.current.volume = newVolume;
-    setIsMuted(newVolume === 0);
+  const handleClose = () => {
+    haptics.light();
+    setIsFullscreen(false);
   };
 
-  const toggleMute = () => {
-    if (!audioRef?.current) return;
-    if (isMuted) {
-      audioRef.current.volume = volume;
-      setIsMuted(false);
-    } else {
-      audioRef.current.volume = 0;
-      setIsMuted(true);
-    }
+  const handlePlayPause = () => {
+    haptics.medium();
+    togglePlayPause();
   };
 
-  const skipForward = () => {
-    if (!audioRef?.current || !duration) return;
-    const newTime = Math.min(duration, currentTime + 10);
-    audioRef.current.currentTime = newTime;
-    onSeek?.([newTime]);
+  const handleNext = () => {
+    haptics.medium();
+    playNext();
   };
 
-  const skipBackward = () => {
-    if (!audioRef?.current) return;
-    const newTime = Math.max(0, currentTime - 10);
-    audioRef.current.currentTime = newTime;
-    onSeek?.([newTime]);
+  const handlePrevious = () => {
+    haptics.medium();
+    playPrevious();
+  };
+
+  const handleSeek = (value) => {
+    seek(value[0]);
   };
 
   const formatTime = (seconds) => {
@@ -136,203 +108,347 @@ export default function FullscreenPlayer({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (!track) return null;
+  const handleShare = async () => {
+    haptics.light();
+    try {
+      const shareUrl = `${window.location.origin}/PublicTrack?id=${currentTrack.id}`;
+      if (navigator.share) {
+        await navigator.share({
+          title: currentTrack.title,
+          text: `Listen to "${currentTrack.title}" on Accoustica AI Studio`,
+          url: shareUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('Link copied to clipboard!');
+      }
+    } catch (error) {
+      console.error('Share failed:', error);
+    }
+  };
+
+  if (!isFullscreen || !currentTrack) return null;
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+        className="fixed inset-0 z-[100] bg-gradient-to-b from-slate-900 via-slate-950 to-black"
+        style={{ opacity, scale }}
+      >
         <motion.div
-          initial={{ y: '100%' }}
-          animate={{ y: 0 }}
-          exit={{ y: '100%' }}
-          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-          className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950"
+          drag="y"
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={0.2}
+          onDragEnd={(_, info) => {
+            if (info.offset.y > 200) {
+              handleClose();
+            }
+          }}
+          style={{ y }}
+          className="h-full flex flex-col"
         >
-          {/* Animated Background */}
-          <div className="absolute inset-0 opacity-30">
-            <div className="absolute top-0 left-0 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
-            <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
-            <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 pt-safe">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleClose}
+              className="rounded-full"
+            >
+              <ChevronDown className="h-6 w-6 text-slate-400" />
+            </Button>
+            <div className="text-center flex-1">
+              <p className="text-xs text-slate-400 uppercase tracking-wider">
+                Playing from Library
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowQueue(!showQueue)}
+              className="rounded-full"
+            >
+              <ListMusic className="h-5 w-5 text-slate-400" />
+            </Button>
           </div>
 
-          {/* Content */}
-          <div className="relative z-10 h-full flex flex-col safe-top safe-bottom">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4">
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={onClose}
-                className="text-white hover:bg-white/10"
-              >
-                <ChevronDown className="h-6 w-6" />
-              </Button>
-              <div className="text-center">
-                <p className="text-sm text-slate-400">Now Playing</p>
-                <p className="text-xs text-slate-500">{track.style}</p>
+          {/* Drag Handle */}
+          <div className="flex justify-center py-2">
+            <div className="w-12 h-1 bg-slate-700 rounded-full" />
+          </div>
+
+          {/* Album Art Container */}
+          <div className="flex-1 flex items-center justify-center px-6 py-8">
+            <motion.div
+              animate={isPlaying ? { scale: [1, 1.02, 1] } : {}}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              className="relative w-full max-w-md aspect-square"
+            >
+              {/* Album Art */}
+              <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl">
+                <img
+                  src={
+                    currentTrack.cover_image_url ||
+                    'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&h=800&fit=crop'
+                  }
+                  alt={currentTrack.title}
+                  className="w-full h-full object-cover"
+                />
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
               </div>
-              <div className="w-10" />
-            </div>
 
-            {/* Album Art */}
-            <div className="flex-1 flex items-center justify-center px-6 py-8">
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="relative"
+              {/* Vinyl Effect (rotating when playing) */}
+              {isPlaying && (
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                  className="absolute -right-4 top-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-gradient-to-r from-violet-500 to-pink-500 opacity-20 blur-xl"
+                />
+              )}
+            </motion.div>
+          </div>
+
+          {/* Track Info */}
+          <div className="px-8 py-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold text-white mb-1 truncate">
+                  {currentTrack.title}
+                </h1>
+                <p className="text-slate-400 truncate">{currentTrack.style}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  haptics.light();
+                  toggleFavoriteMutation.mutate();
+                }}
+                className="flex-shrink-0"
               >
-                <div className="w-80 h-80 rounded-3xl overflow-hidden shadow-2xl shadow-purple-500/50">
-                  <img 
-                    src={track.cover_image_url} 
-                    alt={track.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                
-                {/* Enhanced Visualizer Overlay */}
-                <div className="absolute -bottom-6 left-0 right-0 h-24">
-                  <EnhancedVisualizer
-                    audioRef={audioRef}
-                    isPlaying={isPlaying}
-                    height={96}
-                    bassBoost={1.3}
-                    midBoost={1.1}
-                    trebleBoost={0.9}
-                    className="rounded-2xl"
-                  />
-                </div>
-              </motion.div>
+                <Heart
+                  className={cn(
+                    'h-6 w-6',
+                    isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-400'
+                  )}
+                />
+              </Button>
             </div>
 
-            {/* Track Info & Lyrics */}
-            <div className="px-6 py-4">
-              <h1 className="text-3xl font-bold text-white text-center mb-2">{track.title}</h1>
-              <p className="text-slate-400 text-center mb-6">{track.style}</p>
+            {/* Lyrics Toggle */}
+            {currentTrack.lyrics && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  haptics.selection();
+                  setShowLyrics(!showLyrics);
+                }}
+                className="mt-2 text-violet-400 hover:text-violet-300"
+              >
+                {showLyrics ? 'Hide Lyrics' : 'Show Lyrics'}
+              </Button>
+            )}
 
-              {/* Lyrics Display */}
-              {lyricLines.length > 0 && (
-                <div className="h-24 overflow-hidden mb-6">
-                  <div className="space-y-2 text-center">
-                    {lyricLines.map((lyric, index) => (
-                      <motion.p
-                        key={index}
-                        initial={{ opacity: 0.3 }}
-                        animate={{ 
-                          opacity: index === currentLyricIndex ? 1 : 0.3,
-                          scale: index === currentLyricIndex ? 1.1 : 1,
-                          y: (currentLyricIndex - index) * -30
-                        }}
-                        transition={{ duration: 0.3 }}
+            {/* Lyrics Display */}
+            <AnimatePresence>
+              {showLyrics && currentTrack.lyrics && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="mt-4 max-h-32 overflow-y-auto glass-surface rounded-xl p-4"
+                >
+                  <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                    {currentTrack.lyrics}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="px-8 py-4">
+            <Slider
+              value={[currentTime]}
+              max={duration || 100}
+              step={0.1}
+              onValueChange={handleSeek}
+              className="cursor-pointer"
+            />
+            <div className="flex justify-between text-xs text-slate-400 mt-2">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className="px-8 py-6">
+            {/* Main Controls */}
+            <div className="flex items-center justify-center gap-6 mb-6">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  haptics.selection();
+                  toggleShuffle();
+                }}
+                className={cn('rounded-full', isShuffle && 'text-violet-400')}
+              >
+                <Shuffle className="h-5 w-5" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handlePrevious}
+                className="rounded-full hover:scale-110 transition-transform"
+              >
+                <SkipBack className="h-7 w-7 fill-white" />
+              </Button>
+
+              <Button
+                onClick={handlePlayPause}
+                className="w-16 h-16 rounded-full bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 shadow-lg hover:scale-105 transition-transform"
+              >
+                {isPlaying ? (
+                  <Pause className="h-8 w-8 fill-white" />
+                ) : (
+                  <Play className="h-8 w-8 fill-white ml-1" />
+                )}
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleNext}
+                className="rounded-full hover:scale-110 transition-transform"
+              >
+                <SkipForward className="h-7 w-7 fill-white" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  haptics.selection();
+                  toggleRepeat();
+                }}
+                className={cn(
+                  'rounded-full',
+                  repeatMode !== 'off' && 'text-violet-400'
+                )}
+              >
+                {repeatMode === 'one' ? (
+                  <Repeat1 className="h-5 w-5" />
+                ) : (
+                  <Repeat className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
+
+            {/* Secondary Controls */}
+            <div className="flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleShare}
+                className="rounded-full"
+              >
+                <Share2 className="h-5 w-5 text-slate-400" />
+              </Button>
+
+              <div className="flex items-center gap-2 flex-1 max-w-xs mx-4">
+                <Volume2 className="h-4 w-4 text-slate-400" />
+                <Slider
+                  value={[volume]}
+                  max={100}
+                  step={1}
+                  onValueChange={(value) => changeVolume(value[0])}
+                  className="cursor-pointer"
+                />
+              </div>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+              >
+                <MoreHorizontal className="h-5 w-5 text-slate-400" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Queue Indicator */}
+          {queue.length > 0 && (
+            <div className="px-8 pb-safe">
+              <p className="text-xs text-slate-500 text-center">
+                {queueIndex + 1} of {queue.length} in queue
+              </p>
+            </div>
+          )}
+        </motion.div>
+
+        {/* Queue Panel */}
+        <AnimatePresence>
+          {showQueue && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowQueue(false)}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                className="absolute right-0 top-0 bottom-0 w-80 glass-surface border-l border-white/10 overflow-y-auto"
+              >
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">Queue</h3>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowQueue(false)}
+                    >
+                      <X className="h-5 w-5 text-slate-400" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {queue.map((track, index) => (
+                      <div
+                        key={track.id}
                         className={cn(
-                          "text-lg font-medium transition-all",
-                          index === currentLyricIndex 
-                            ? "text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400" 
-                            : "text-slate-500"
+                          'p-3 rounded-lg transition-colors cursor-pointer',
+                          index === queueIndex
+                            ? 'bg-violet-500/20 border border-violet-500/30'
+                            : 'bg-slate-800/50 hover:bg-slate-800'
                         )}
                       >
-                        {lyric.text}
-                      </motion.p>
+                        <p className="text-white font-medium text-sm truncate">
+                          {track.title}
+                        </p>
+                        <p className="text-slate-400 text-xs truncate">
+                          {track.style}
+                        </p>
+                      </div>
                     ))}
                   </div>
                 </div>
-              )}
-            </div>
-
-            {/* Progress Bar */}
-            <div className="px-6 mb-4">
-              <Slider
-                value={[currentTime]}
-                max={duration || 100}
-                step={0.1}
-                onValueChange={onSeek}
-                className="cursor-pointer mb-2"
-              />
-              <div className="flex justify-between text-xs text-slate-400">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-            </div>
-
-            {/* Controls */}
-            <div className="px-6 pb-6">
-              <div className="flex items-center justify-center gap-4 mb-6">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => setIsShuffle(!isShuffle)}
-                  className={cn(
-                    "h-10 w-10 hover:bg-white/10",
-                    isShuffle ? "text-cyan-400" : "text-slate-400"
-                  )}
-                >
-                  <Shuffle className="h-5 w-5" />
-                </Button>
-
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={skipBackward}
-                  className="h-12 w-12 text-white hover:bg-white/10"
-                >
-                  <SkipBack className="h-6 w-6" />
-                </Button>
-
-                <Button
-                  size="icon"
-                  onClick={onTogglePlay}
-                  className="h-20 w-20 rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 hover:from-cyan-600 hover:via-blue-600 hover:to-purple-600 text-white shadow-2xl shadow-purple-500/50"
-                >
-                  {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 ml-1" />}
-                </Button>
-
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={skipForward}
-                  className="h-12 w-12 text-white hover:bg-white/10"
-                >
-                  <SkipForward className="h-6 w-6" />
-                </Button>
-
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => {
-                    const modes = ['off', 'all', 'one'];
-                    const currentIndex = modes.indexOf(repeatMode);
-                    setRepeatMode(modes[(currentIndex + 1) % modes.length]);
-                  }}
-                  className={cn(
-                    "h-10 w-10 hover:bg-white/10",
-                    repeatMode !== 'off' ? "text-cyan-400" : "text-slate-400"
-                  )}
-                >
-                  {repeatMode === 'one' ? <Repeat1 className="h-5 w-5" /> : <Repeat className="h-5 w-5" />}
-                </Button>
-              </div>
-
-              {/* Volume Control */}
-              <div className="flex items-center gap-3 justify-center">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={toggleMute}
-                  className="h-8 w-8 text-slate-400 hover:text-white hover:bg-white/10"
-                >
-                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                </Button>
-                <Slider
-                  value={[isMuted ? 0 : volume]}
-                  max={1}
-                  step={0.01}
-                  onValueChange={handleVolumeChange}
-                  className="w-48 cursor-pointer"
-                />
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </AnimatePresence>
   );
 }

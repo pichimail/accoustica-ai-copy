@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
 
         // Create Track records (Suno generates 2 by default)
         const trackPromises = [];
-        
+
         // Generate auto title from prompt if not provided
         let finalTitle = title;
         if (!finalTitle && prompt) {
@@ -112,13 +112,22 @@ Deno.serve(async (req) => {
         if (!finalTitle) {
             finalTitle = 'Untitled Track';
         }
-        
+
+        // Get user's artist name from profile
+        const artistName = user.artist_name || user.full_name || 'Unknown Artist';
+
+        // Generate 2 songs with different titles
+        const songTitles = [
+            `${finalTitle}`,
+            `${finalTitle} (Variation)`
+        ];
+
         for (let i = 0; i < 2; i++) {
             trackPromises.push(
                 base44.entities.Track.create({
-                    title: `${finalTitle}`,
+                    title: songTitles[i],
                     prompt: prompt || '',
-                    style: style || user.full_name,
+                    style: style || artistName,
                     task_id: data.data.taskId,
                     status: 'queued',
                     is_instrumental: instrumental,

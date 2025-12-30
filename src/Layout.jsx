@@ -28,6 +28,7 @@ import DynamicGradient from '@/components/background/DynamicGradient';
 import { cn } from "@/lib/utils";
 import { AudioPlayerProvider } from '@/components/audio/AudioPlayerContext';
 import GlobalAudioPlayer from '@/components/audio/GlobalAudioPlayer';
+import FullScreenPlayer from '@/components/audio/FullScreenPlayer';
 import { useAppSettings } from '@/lib/use-app-settings';
 
 const publicPages = ['Home', 'PublicTrack', 'Discover'];
@@ -257,6 +258,9 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Global Audio Player */}
       <GlobalAudioPlayer />
+
+      {/* Full-Screen Mobile Player */}
+      <FullScreenPlayer />
 
       {/* Mobile Bottom Navigation */}
       <nav className={cn(
