@@ -29,7 +29,7 @@ import DynamicGradient from '@/components/background/DynamicGradient';
 import { cn } from "@/lib/utils";
 import { AudioPlayerProvider } from '@/components/audio/AudioPlayerContext';
 import GlobalAudioPlayer from '@/components/audio/GlobalAudioPlayer';
-import FullScreenPlayer from '@/components/audio/FullScreenPlayer';
+import FullScreenPlayer from '@/components/audio/FullscreenPlayer';
 import { useAppSettings } from '@/lib/use-app-settings';
 import BrandLogo from '@/components/brand/BrandLogo';
 import PWAInstallPrompt from '@/components/mobile/PWAInstallPrompt';
