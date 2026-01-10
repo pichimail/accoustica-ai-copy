@@ -1,5 +1,5 @@
 import React from 'react';
-import { useMediaQuery } from '@/lib/use-media-query';
+import { useMediaQuery } from '@/components/utils/use-media-query';
 import EnhancedMasteringDialog from './EnhancedMasteringDialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Sparkles } from 'lucide-react';
