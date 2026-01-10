@@ -32,6 +32,7 @@ import GlobalAudioPlayer from '@/components/audio/GlobalAudioPlayer';
 import FullScreenPlayer from '@/components/audio/FullScreenPlayer';
 import { useAppSettings } from '@/lib/use-app-settings';
 import BrandLogo from '@/components/brand/BrandLogo';
+import PWAInstallPrompt from '@/components/mobile/PWAInstallPrompt';
 
 const publicPages = ['Home', 'PublicTrack', 'Discover'];
 
@@ -85,8 +86,11 @@ export default function Layout({ children, currentPageName }) {
   });
 
   const mobileNavLinks = filteredNavLinks.filter((link) =>
-    ['Home', 'Create', 'Studio', 'Library', 'Discover', 'Profile'].includes(link.page)
+    ['Home', 'Library', 'Discover', 'Profile'].includes(link.page)
   );
+  
+  // Add Create link separately (will be centered with special style)
+  const createLink = filteredNavLinks.find(link => link.page === 'Create');
 
   // Hide layout on public track page
   if (currentPageName === 'PublicTrack') {
@@ -258,21 +262,53 @@ export default function Layout({ children, currentPageName }) {
       {/* Full-Screen Mobile Player */}
       <FullScreenPlayer />
 
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
+
       {/* Mobile Bottom Navigation */}
       <nav className={cn(
         "lg:hidden fixed bottom-0 left-0 right-0 z-40 glass-surface border-t border-white/10 safe-bottom",
         currentPageName === 'Home' && "hidden"
       )}>
-        <div className={cn(
-          "grid gap-1 px-2 py-2",
-          mobileNavLinks.length > 5 ? "grid-cols-6" : "grid-cols-5"
-        )}>
-          {mobileNavLinks.map((link) => (
+        <div className="relative flex items-center justify-around px-2 py-2">
+          {mobileNavLinks.slice(0, 2).map((link) => (
             <Link key={link.page} to={createPageUrl(link.page)}>
               <button 
                 onClick={() => haptics.light()}
                 className={cn(
-                "w-full flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all",
+                "flex flex-col items-center justify-center gap-1 py-2 px-3 rounded-xl transition-all",
+                currentPageName === link.page
+                  ? "bg-gradient-to-r from-violet-500 to-pink-500 text-white shadow-lg shadow-violet-500/25"
+                  : "text-slate-400 active:bg-slate-800/50"
+              )}>
+                <link.icon className="h-5 w-5" />
+                <span className="text-[10px] font-medium">{link.name}</span>
+              </button>
+            </Link>
+          ))}
+          
+          {/* Center Create Button */}
+          {createLink && (
+            <Link to={createPageUrl('Create')}>
+              <button 
+                onClick={() => haptics.medium()}
+                className={cn(
+                  "w-14 h-14 rounded-full -mt-8 flex items-center justify-center shadow-2xl transition-all",
+                  currentPageName === 'Create'
+                    ? "bg-gradient-to-r from-violet-500 to-pink-500 text-white shadow-violet-500/50"
+                    : "bg-gradient-to-r from-violet-600 to-pink-600 text-white hover:shadow-violet-500/50"
+                )}>
+                <PlusCircle className="h-7 w-7" />
+              </button>
+            </Link>
+          )}
+          
+          {mobileNavLinks.slice(2).map((link) => (
+            <Link key={link.page} to={createPageUrl(link.page)}>
+              <button 
+                onClick={() => haptics.light()}
+                className={cn(
+                "flex flex-col items-center justify-center gap-1 py-2 px-3 rounded-xl transition-all",
                 currentPageName === link.page
                   ? "bg-gradient-to-r from-violet-500 to-pink-500 text-white shadow-lg shadow-violet-500/25"
                   : "text-slate-400 active:bg-slate-800/50"

@@ -342,11 +342,27 @@ export default function MusicVideoGenerator({ track, open, onClose, onSuccess })
                   Open in New Tab
                 </Button>
                 <Button
-                  onClick={() => {
-                    const a = document.createElement('a');
-                    a.href = videoUrl;
-                    a.download = `${track.title}-video.mp4`;
-                    a.click();
+                  onClick={async () => {
+                    try {
+                      const sanitizedTitle = track.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                      const filename = `accoustica-${sanitizedTitle}-video.mp4`;
+                      
+                      const response = await fetch(videoUrl);
+                      const blob = await response.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = filename;
+                      document.body.appendChild(a);
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                      document.body.removeChild(a);
+                      toast.success('Video download started!');
+                    } catch (error) {
+                      console.error('Download failed:', error);
+                      toast.error('Failed to download video. Opening in new tab instead...');
+                      window.open(videoUrl, '_blank');
+                    }
                   }}
                   className="flex-1 bg-green-600 hover:bg-green-700"
                 >

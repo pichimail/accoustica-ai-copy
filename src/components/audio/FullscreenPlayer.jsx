@@ -17,7 +17,8 @@ import {
   Share2,
   MoreHorizontal,
   ListMusic,
-  X
+  X,
+  Music2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/components/utils/haptics';
@@ -240,21 +241,6 @@ export default function FullScreenPlayer() {
               </Button>
             </div>
 
-            {/* Lyrics Toggle */}
-            {currentTrack.lyrics && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  haptics.selection();
-                  setShowLyrics(!showLyrics);
-                }}
-                className="mt-2 text-violet-400 hover:text-violet-300"
-              >
-                {showLyrics ? 'Hide Lyrics' : 'Show Lyrics'}
-              </Button>
-            )}
-
             {/* Lyrics Display */}
             <AnimatePresence>
               {showLyrics && currentTrack.lyrics && (
@@ -289,6 +275,47 @@ export default function FullScreenPlayer() {
 
           {/* Controls */}
           <div className="px-8 py-6">
+            {/* Quick Skip Buttons */}
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  haptics.light();
+                  seek(Math.max(0, currentTime - 15));
+                }}
+                className="text-slate-400 hover:text-white"
+              >
+                <span className="text-xs font-medium">-15s</span>
+              </Button>
+              
+              {currentTrack.lyrics && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    haptics.selection();
+                    setShowLyrics(!showLyrics);
+                  }}
+                  className="text-violet-400 hover:text-violet-300"
+                >
+                  <span className="text-xs font-medium">{showLyrics ? 'Hide' : 'Show'} Lyrics</span>
+                </Button>
+              )}
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  haptics.light();
+                  seek(Math.min(duration, currentTime + 15));
+                }}
+                className="text-slate-400 hover:text-white"
+              >
+                <span className="text-xs font-medium">+15s</span>
+              </Button>
+            </div>
+
             {/* Main Controls */}
             <div className="flex items-center justify-center gap-6 mb-6">
               <Button
