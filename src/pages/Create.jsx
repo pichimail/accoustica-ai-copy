@@ -1,178 +1,241 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '../utils';
-import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
+import CreateMusicForm from '@/components/create/CreateMusicForm';
+import GeneratingStatus from '@/components/tracks/GeneratingStatus';
+import TrackCard from '@/components/tracks/TrackCard';
+import AudioPlayer from '@/components/audio/AudioPlayer';
+import FullscreenPlayer from '@/components/audio/FullscreenPlayer';
+import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
+import { Button } from "@/components/ui/button";
+import { ArrowRight, Music, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Music, ArrowRight, Share2, Trash2, Heart, Lock, Globe, Pause, Play } from 'lucide-react';
 
-import CreateMusicForm from '../components/create/CreateMusicForm';
-import GeneratingStatus from '../components/tracks/GeneratingStatus';
-import TrackCard from '../components/tracks/TrackCard';
-import OnboardingFlow from '../components/onboarding/OnboardingFlow';
-
-export default function Create() {
-  const queryClient = useQueryClient();
+export default function CreatePage() {
   const [currentTrack, setCurrentTrack] = useState(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [playingTrack, setPlayingTrack] = useState(null);
-
-  const audioRef = useRef(null);
+  const [fullscreenPlayerOpen, setFullscreenPlayerOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const audioRef = React.useRef(null);
+  const [user, setUser] = useState(null);
+  const [userPlan, setUserPlan] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Simple mobile detection (keeps desktop unchanged)
-  const isMobile = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+  // Fetch user data and check onboarding
+  useEffect(() => {
+    const fetchUser = async () => {
+      const userData = await base44.auth.me();
+      setUser(userData);
+      
+      // Check if user needs onboarding
+      const progress = await base44.entities.OnboardingProgress.filter({ created_by: userData.email });
+      if (progress.length === 0 || (!progress[0].is_completed && !progress[0].skipped)) {
+        setShowOnboarding(true);
+      }
+    };
+    fetchUser();
   }, []);
 
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+  // Fetch user's plan
+  const { data: plans = [] } = useQuery({
+    queryKey: ['plans'],
+    queryFn: () => base44.entities.Plan.list(),
   });
 
-  const { data: userPlan } = useQuery({
-    queryKey: ['userPlan', user?.email],
-    queryFn: async () => {
-      const plans = await base44.entities.UserPlan.filter({ user_email: user.email }, '-created_date', 1);
-      return plans?.[0] || null;
-    },
-    enabled: !!user?.email,
-  });
+  useEffect(() => {
+    if (user?.plan_id && plans.length > 0) {
+      const plan = plans.find(p => p.id === user.plan_id);
+      setUserPlan(plan);
+    } else if (plans.length > 0) {
+      // Default to free plan
+      const freePlan = plans.find(p => p.name.toLowerCase() === 'free');
+      setUserPlan(freePlan || plans[0]);
+    }
+  }, [user, plans]);
 
+  // Fetch recent tracks
   const { data: recentTracks = [] } = useQuery({
-    queryKey: ['recentTracks', user?.email],
+    queryKey: ['recentTracks'],
     queryFn: async () => {
-      if (!user?.email) return [];
-      return base44.entities.Track.filter({ created_by: user.email }, '-created_date', 12);
+      const tracks = await base44.entities.Track.filter(
+        { created_by: user?.email },
+        '-created_date',
+        5
+      );
+      return tracks;
     },
     enabled: !!user?.email,
+    refetchInterval: (data) => {
+      // Refetch every 2 seconds if any track is generating for faster updates
+      const hasGenerating = Array.isArray(data) && data.some(t => t.status === 'generating' || t.status === 'queued');
+      return hasGenerating ? 2000 : false;
+    },
   });
 
+  // Create track mutation
   const createTrackMutation = useMutation({
-    mutationFn: async (payload) => {
-      // Create track entity immediately (UI shows "generating")
-      const created = await base44.entities.Track.create({
-        created_by: user?.email,
-        title: payload?.title || payload?.prompt?.slice(0, 40) || 'Untitled',
-        prompt: payload?.prompt || '',
-        style: payload?.style || '',
-        model: payload?.model || 'V5',
-        mode: payload?.mode || 'simple',
-        instrumental: !!payload?.instrumental,
-        status: 'queued',
-        is_public: false,
-        is_favorite: false,
+    mutationFn: async (data) => {
+      // Check daily limit
+      const today = new Date().toISOString().split('T')[0];
+      const dailyUsage = user?.last_usage_reset === today ? (user?.daily_usage || 0) : 0;
+      const dailyLimit = userPlan?.daily_limit || 5;
+
+      if (dailyUsage >= dailyLimit) {
+        throw new Error('Daily generation limit reached');
+      }
+
+      // Update user usage first
+      await base44.auth.updateMe({
+        daily_usage: dailyUsage + 1,
+        last_usage_reset: today,
+        monthly_usage: (user?.monthly_usage || 0) + 1,
+        total_tracks: (user?.total_tracks || 0) + 1,
+        last_active: new Date().toISOString(),
       });
 
-      setCurrentTrack(created);
-
-      // Kick backend generation
-      await base44.functions.invoke('generateMusic', {
-        track_id: created.id,
-        ...payload,
+      // Call backend function to generate music with Suno API
+      const response = await base44.functions.invoke('generateMusic', {
+        prompt: data.prompt,
+        style: data.style,
+        title: data.title,
+        instrumental: data.is_instrumental || false,
+        creativity_level: data.creativity_level || 50,
+        complexity_level: data.complexity_level || 50,
+        variation_count: data.variation_count || 1,
+        genre_fusion: data.genre_fusion || '',
       });
 
-      return created;
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to start generation');
+      }
+
+      // Poll for status updates
+      const taskId = response.data.taskId;
+      pollMusicStatus(taskId);
+
+      return track;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
-      toast.success('Queued for generation');
+      toast.success('Generation started!', {
+        description: 'Your track is being created...',
+      });
     },
-    onError: (e) => {
-      console.error(e);
-      toast.error('Failed to start generation');
-      setCurrentTrack(null);
+    onError: (error) => {
+      toast.error('Generation failed', {
+        description: error.message,
+      });
     },
   });
 
-  const generateMutation = useMutation({
-    mutationFn: async (trackId) => {
-      // Poll track until ready
-      const maxTries = 120;
-      for (let i = 0; i < maxTries; i++) {
-        const t = await base44.entities.Track.get(trackId);
-        setCurrentTrack(t);
+  // Poll music generation status
+  const pollMusicStatus = async (taskId) => {
+    const maxAttempts = 60; // 5 minutes max (60 * 5 seconds)
+    let attempts = 0;
+    let hasShownFirstTrack = false;
 
-        if (t.status === 'ready' || t.status === 'failed') return t;
+    const poll = async () => {
+      try {
+        attempts++;
 
-        await new Promise((r) => setTimeout(r, 2000));
+        const statusResponse = await base44.functions.invoke('checkMusicStatus', {
+          taskId,
+        });
+
+        if (statusResponse.data.success) {
+          const updatedTracks = statusResponse.data.tracks || [];
+
+          // Show progress for first track that's still generating
+          const generatingTrack = updatedTracks.find(t => t.status === 'generating' || t.status === 'queued');
+          if (generatingTrack) {
+            setCurrentTrack(generatingTrack);
+          }
+
+          // Check if all tracks are ready
+          const allReady = updatedTracks.length > 0 && updatedTracks.every(t => t.status === 'ready');
+          const anyFailed = updatedTracks.some(t => t.status === 'failed');
+
+          if (allReady) {
+            queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
+            toast.success(`${updatedTracks.length} tracks generated successfully!`);
+            setCurrentTrack(null);
+            return;
+          } else if (anyFailed) {
+            queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
+            const failedCount = updatedTracks.filter(t => t.status === 'failed').length;
+            toast.error(`${failedCount} track(s) failed to generate`);
+            setCurrentTrack(null);
+            return;
+          }
+
+          // Show notification when first track completes
+          if (!hasShownFirstTrack && updatedTracks.some(t => t.status === 'ready')) {
+            hasShownFirstTrack = true;
+            toast.success('First track ready! Generating second track...');
+            queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
+          }
+        }
+
+        // Continue polling if not finished and under max attempts
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 2000); // Poll every 2 seconds for faster updates
+        } else {
+          toast.error('Generation timeout - check your library later');
+          setCurrentTrack(null);
+        }
+      } catch (error) {
+        console.error('Error polling status:', error);
+        toast.error('Failed to check generation status');
+        setCurrentTrack(null);
       }
-      return await base44.entities.Track.get(trackId);
-    },
-    onSuccess: (t) => {
-      queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
-      if (t?.status === 'ready') toast.success('Track ready');
-      if (t?.status === 'failed') toast.error('Generation failed');
-    },
-  });
-
-  // When a track is created (queued), start polling.
-  useEffect(() => {
-    if (currentTrack?.id && (currentTrack.status === 'queued' || currentTrack.status === 'generating')) {
-      generateMutation.mutate(currentTrack.id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTrack?.id]);
-
-  const handleSubmit = async (data) => {
-    if (!user?.email) {
-      toast.error('Please login');
-      return;
-    }
-    const created = await createTrackMutation.mutateAsync(data);
-    setCurrentTrack(created);
-  };
-
-  // audio controls
-  const handlePlay = (track) => {
-    if (!track?.audio_url) return;
-
-    if (playingTrack?.id === track.id) {
-      // toggle play/pause
-      const a = audioRef.current;
-      if (!a) return;
-      if (a.paused) a.play();
-      else a.pause();
-      return;
-    }
-
-    setPlayingTrack(track);
-  };
-
-  useEffect(() => {
-    if (!playingTrack?.audio_url) return;
-
-    const a = audioRef.current;
-    if (!a) return;
-
-    a.src = playingTrack.audio_url;
-    a.play().catch(() => {});
-    setIsPlaying(true);
-
-    const updateTime = () => {
-      if (!a.duration) return;
-      setProgress(a.currentTime);
-      setDuration(a.duration);
     };
-    const handlePause = () => setIsPlaying(false);
-    const handlePlayEvt = () => setIsPlaying(true);
+
+    // Start polling
+    poll();
+  };
+
+  const handlePlay = (track) => {
+    // Now handled by global player
+  };
+
+  const togglePlayPause = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleSeek = (value) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = value[0];
+    setCurrentTime(value[0]);
+  };
+
+  React.useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateDuration = () => setDuration(audio.duration);
     const handleEnded = () => setIsPlaying(false);
 
-    a.addEventListener('timeupdate', updateTime);
-    a.addEventListener('pause', handlePause);
-    a.addEventListener('play', handlePlayEvt);
-    a.addEventListener('ended', handleEnded);
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('loadedmetadata', updateDuration);
+    audio.addEventListener('ended', handleEnded);
 
     return () => {
-      a.removeEventListener('timeupdate', updateTime);
-      a.removeEventListener('pause', handlePause);
-      a.removeEventListener('play', handlePlayEvt);
-      a.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('loadedmetadata', updateDuration);
+      audio.removeEventListener('ended', handleEnded);
     };
   }, [playingTrack]);
 
@@ -201,39 +264,12 @@ export default function Create() {
     toast.success(track.is_favorite ? 'Removed from favorites' : 'Added to favorites');
   };
 
-  const dailyUsage = user?.last_usage_reset === new Date().toISOString().split('T')[0]
-    ? (user?.daily_usage || 0)
+  const dailyUsage = user?.last_usage_reset === new Date().toISOString().split('T')[0] 
+    ? (user?.daily_usage || 0) 
     : 0;
   const dailyLimit = userPlan?.daily_limit || 5;
   const remainingGenerations = Math.max(0, dailyLimit - dailyUsage);
   const limitReached = remainingGenerations <= 0;
-
-  // MOBILE: show only the full-screen generator form.
-  // (No hero copy, no stats, no recent list, no extra padding)
-  if (isMobile) {
-    return (
-      <div className="min-h-screen relative overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-black" />
-        <div className="absolute inset-0 opacity-40">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-orange-500/20 rounded-full blur-3xl" />
-        </div>
-
-        <div className="relative z-10">
-          <CreateMusicForm
-            onSubmit={handleSubmit}
-            isLoading={generateMutation.isLoading}
-            disabled={generateMutation.isLoading}
-            limitReached={limitReached}
-            remainingGenerations={remainingGenerations}
-          />
-        </div>
-
-        <audio ref={audioRef} />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -265,7 +301,7 @@ export default function Create() {
               <Sparkles className="h-4 w-4 text-violet-400" />
               <span className="text-sm text-slate-300">AI-Powered Music Generation</span>
             </motion.div>
-
+            
             <h1 className="text-6xl md:text-7xl font-bold mb-6">
               <span className="text-white">Create</span>
               <br />
@@ -273,9 +309,9 @@ export default function Create() {
                 Your Sound
               </span>
             </h1>
-
+            
             <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              Transform your imagination into professional music.
+              Transform your imagination into professional music. 
               No instruments needed, just your creativity.
             </p>
 
@@ -348,11 +384,11 @@ export default function Create() {
                   Your Tracks
                 </h2>
                 <Link to={createPageUrl('Library')}>
-                  <Button
-                    variant="ghost"
+                  <Button 
+                    variant="ghost" 
                     className="text-slate-400 hover:text-white hover:bg-white/5 rounded-xl"
                   >
-                    View All
+                    View All 
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 </Link>
@@ -375,7 +411,7 @@ export default function Create() {
                         onToggleVisibility={handleToggleVisibility}
                         onToggleFavorite={handleToggleFavorite}
                         showActions={true}
-                      />
+                        />
                     </motion.div>
                   ))}
                 </AnimatePresence>
@@ -385,13 +421,13 @@ export default function Create() {
         </div>
       </div>
 
-      {/* Onboarding Flow */}
-      <OnboardingFlow
-        open={showOnboarding}
-        onComplete={() => setShowOnboarding(false)}
-      />
 
-      <audio ref={audioRef} />
+
+      {/* Onboarding Flow */}
+      <OnboardingFlow 
+        open={showOnboarding} 
+        onComplete={() => setShowOnboarding(false)} 
+      />
 
       <style jsx>{`
         @keyframes blob {
