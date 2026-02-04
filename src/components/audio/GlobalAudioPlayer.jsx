@@ -64,25 +64,6 @@ export default function GlobalAudioPlayer() {
     // Set initial volume
     audio.volume = volume / 100;
 
-    // Enable background audio for mobile
-    if ('mediaSession' in navigator && currentTrack) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentTrack.title,
-        artist: 'Accoustica',
-        album: currentTrack.style || 'AI Generated',
-        artwork: [
-          { src: currentTrack.cover_image_url || '', sizes: '512x512', type: 'image/jpeg' }
-        ]
-      });
-
-      navigator.mediaSession.setActionHandler('play', () => togglePlayPause());
-      navigator.mediaSession.setActionHandler('pause', () => togglePlayPause());
-      navigator.mediaSession.setActionHandler('previoustrack', () => playPrevious());
-      navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
-      navigator.mediaSession.setActionHandler('seekbackward', () => seek(Math.max(0, currentTime - 10)));
-      navigator.mediaSession.setActionHandler('seekforward', () => seek(Math.min(duration, currentTime + 10)));
-    }
-
     return () => {
       audio.removeEventListener('timeupdate', updateTime);
       audio.removeEventListener('loadedmetadata', updateDuration);

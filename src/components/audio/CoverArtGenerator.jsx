@@ -9,10 +9,8 @@ import { haptics } from '@/components/utils/haptics';
 import { Image, RefreshCw, Check, Wand2 } from 'lucide-react';
 import BottomSheet from '@/components/mobile/BottomSheet';
 import { cn } from '@/lib/utils';
-import { useAppSettings } from '@/lib/use-app-settings';
 
 export default function CoverArtGenerator({ open, onClose, track, onSelectCover }) {
-  const { settings } = useAppSettings();
   const [generatedCovers, setGeneratedCovers] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
@@ -27,21 +25,8 @@ export default function CoverArtGenerator({ open, onClose, track, onSelectCover 
         : `Album cover art for ${track.style} music titled "${track.title}": ${track.prompt}. Modern, artistic, professional.`;
 
       const response = await base44.integrations.Core.GenerateImage({ prompt });
-      let finalUrl = response.url;
-
-      try {
-        const watermarkResponse = await base44.functions.invoke('watermarkImage', {
-          imageUrl: response.url,
-          fileName: `cover-${track.id}-${Date.now()}.jpg`,
-        });
-        if (watermarkResponse.data?.success && watermarkResponse.data?.fileUrl) {
-          finalUrl = watermarkResponse.data.fileUrl;
-        }
-      } catch (error) {
-        console.error('Watermark failed, using original cover:', error);
-      }
-
-      setGeneratedCovers([...generatedCovers, finalUrl]);
+      
+      setGeneratedCovers([...generatedCovers, response.url]);
       toast.success('Cover art generated!');
       haptics.success();
     } catch (error) {
@@ -77,11 +62,6 @@ export default function CoverArtGenerator({ open, onClose, track, onSelectCover 
   return (
     <BottomSheet open={open} onClose={onClose} title="Generate Cover Art" snapPoints={[0.9]}>
       <div className="space-y-6 pb-6">
-        {!settings.features.cover_art && (
-          <div className="glass-surface rounded-xl p-4 text-center text-slate-300">
-            Cover art generation is currently disabled by the admin.
-          </div>
-        )}
         {/* Current Cover */}
         <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
           <p className="text-sm text-slate-400 mb-3">Current Cover:</p>
@@ -123,7 +103,7 @@ export default function CoverArtGenerator({ open, onClose, track, onSelectCover 
         {/* Generate Button */}
         <Button
           onClick={() => generateCovers(true)}
-          disabled={isGenerating || !settings.features.cover_art}
+          disabled={isGenerating}
           className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
         >
           {isGenerating ? (

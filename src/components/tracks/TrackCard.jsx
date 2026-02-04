@@ -44,8 +44,6 @@ export default function TrackCard({
   onShare,
   onViewVersions,
   onGenerateVideo,
-  onGenerateLyricVideo,
-  onGenerateMusicVideo,
   onMaster,
   onSeparateStems,
   onCreatePersona,
@@ -116,7 +114,7 @@ export default function TrackCard({
         </div>
       }
       className={cn(
-        "glass-surface group relative rounded-xl overflow-hidden hover:border-violet-500/50 transition-all duration-300",
+        "group relative bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden hover:border-violet-500/50 transition-all duration-300",
         viewMode === 'list' && "flex-row"
       )}
     >
@@ -211,7 +209,7 @@ export default function TrackCard({
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
                     {isReady && (
                       <>
                         <DropdownMenuItem 
@@ -235,24 +233,13 @@ export default function TrackCard({
                           <GitBranch className="h-4 w-4 mr-2" />
                           Version History
                         </DropdownMenuItem>
-                        {(onGenerateLyricVideo || onGenerateVideo) && (
-                          <DropdownMenuItem
-                            onClick={() => (onGenerateLyricVideo || onGenerateVideo)?.(track)}
-                            className="text-pink-400 focus:text-pink-300 focus:bg-pink-500/10"
-                          >
-                            <Video className="h-4 w-4 mr-2" />
-                            Generate Lyric Video
-                          </DropdownMenuItem>
-                        )}
-                        {onGenerateMusicVideo && (
-                          <DropdownMenuItem
-                            onClick={() => onGenerateMusicVideo(track)}
-                            className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-500/10"
-                          >
-                            <Video className="h-4 w-4 mr-2" />
-                            Generate Music Video
-                          </DropdownMenuItem>
-                        )}
+                        <DropdownMenuItem 
+                          onClick={() => onGenerateVideo?.(track)}
+                          className="text-green-400 focus:text-green-300 focus:bg-green-500/10"
+                        >
+                          <Video className="h-4 w-4 mr-2" />
+                          Generate Music Video
+                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => onMaster?.(track)}
                           className="text-blue-400 focus:text-blue-300 focus:bg-blue-500/10"

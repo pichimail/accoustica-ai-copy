@@ -1,4 +1,4 @@
-import { createClientFromRequest } from './_shared/supabaseClient.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
 Deno.serve(async (req) => {
     try {

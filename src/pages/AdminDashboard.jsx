@@ -5,20 +5,13 @@ import StatsCard from '@/components/ui/StatsCard';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Users, Music, TrendingUp, Zap, Crown, ArrowRight,
-  BarChart3, Calendar, Clock, CheckCircle2, Settings
+  BarChart3, Calendar, Clock, CheckCircle2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
-import { useAppSettings, DEFAULT_APP_FEATURES } from '@/lib/use-app-settings';
-import { useAppSecrets } from '@/lib/use-app-secrets';
-import { SUPABASE_AUTH_ENABLED } from '@/lib/auth-config';
 import {
   AreaChart,
   Area,
@@ -37,19 +30,6 @@ const COLORS = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b'];
 export default function AdminDashboardPage() {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
-  const { settings, data: settingsRecord, refetch: refetchSettings } = useAppSettings();
-  const { secrets, data: secretsRecord, refetch: refetchSecrets } = useAppSecrets(Boolean(user));
-  const [settingsDraft, setSettingsDraft] = useState(settings);
-  const [secretsDraft, setSecretsDraft] = useState(secrets);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-
-  useEffect(() => {
-    setSettingsDraft(settings);
-  }, [settings]);
-
-  useEffect(() => {
-    setSecretsDraft(secrets);
-  }, [secrets]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -80,53 +60,6 @@ export default function AdminDashboardPage() {
     queryFn: () => base44.entities.Plan.list(),
     enabled: !!user,
   });
-
-  const handleFeatureToggle = (key) => {
-    setSettingsDraft((prev) => ({
-      ...prev,
-      features: {
-        ...prev.features,
-        [key]: !prev.features?.[key],
-      },
-    }));
-  };
-
-  const handleSaveSettings = async () => {
-    setIsSavingSettings(true);
-    try {
-      const requests = [];
-      if (settingsRecord?.id) {
-        requests.push(base44.entities.AppSettings.update(settingsRecord.id, settingsDraft));
-      } else {
-        requests.push(base44.entities.AppSettings.create({
-          ...settingsDraft,
-          app_key: 'primary',
-        }));
-      }
-
-      const shouldSaveSecrets =
-        secretsRecord?.id ||
-        Object.values(secretsDraft || {}).some((value) => Boolean(value));
-
-      if (shouldSaveSecrets) {
-        if (secretsRecord?.id) {
-          requests.push(base44.entities.AppSecrets.update(secretsRecord.id, secretsDraft));
-        } else {
-          requests.push(base44.entities.AppSecrets.create({
-            ...secretsDraft,
-            app_key: 'primary',
-          }));
-        }
-      }
-
-      await Promise.all(requests);
-      await Promise.all([refetchSettings(), refetchSecrets()]);
-    } catch (error) {
-      console.error('Failed to save app settings:', error);
-    } finally {
-      setIsSavingSettings(false);
-    }
-  };
 
   // Calculate stats
   const stats = {
@@ -195,13 +128,6 @@ export default function AdminDashboardPage() {
           <p className="text-slate-400">Overview of your platform</p>
         </motion.div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="controls">App Controls</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview">
         {/* Stats Grid */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -210,25 +136,29 @@ export default function AdminDashboardPage() {
           className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
         >
           <StatsCard
-                title="Total Users"
-                value={stats.totalUsers}
-                icon={Users}
-                iconClassName="bg-blue-500/20" trend={undefined} trendUp={undefined} className={undefined}          />
+            title="Total Users"
+            value={stats.totalUsers}
+            icon={Users}
+            iconClassName="bg-blue-500/20"
+          />
           <StatsCard
-                title="Active Users"
-                value={stats.activeUsers}
-                icon={CheckCircle2}
-                iconClassName="bg-green-500/20" trend={undefined} trendUp={undefined} className={undefined}          />
+            title="Active Users"
+            value={stats.activeUsers}
+            icon={CheckCircle2}
+            iconClassName="bg-green-500/20"
+          />
           <StatsCard
-                title="Total Tracks"
-                value={stats.totalTracks}
-                icon={Music}
-                iconClassName="bg-violet-500/20" trend={undefined} trendUp={undefined} className={undefined}          />
+            title="Total Tracks"
+            value={stats.totalTracks}
+            icon={Music}
+            iconClassName="bg-violet-500/20"
+          />
           <StatsCard
-                title="Public Tracks"
-                value={stats.publicTracks}
-                icon={TrendingUp}
-                iconClassName="bg-pink-500/20" trend={undefined} trendUp={undefined} className={undefined}          />
+            title="Public Tracks"
+            value={stats.publicTracks}
+            icon={TrendingUp}
+            iconClassName="bg-pink-500/20"
+          />
         </motion.div>
 
         {/* Charts Row */}
@@ -407,135 +337,6 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
         </motion.div>
-          </TabsContent>
-
-          <TabsContent value="controls">
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-emerald-400" />
-                  App Controls
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">KIE API Key</Label>
-                    <Input
-                      type="password"
-                      value={settingsDraft.kie_api_key || ''}
-                      onChange={(e) => setSettingsDraft((prev) => ({ ...prev, kie_api_key: e.target.value }))}
-                      placeholder="Paste API key"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">Watermark Text</Label>
-                    <Input
-                      value={settingsDraft.watermark_text || ''}
-                      onChange={(e) => setSettingsDraft((prev) => ({ ...prev, watermark_text: e.target.value }))}
-                      placeholder="Accoustica"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">Watermark Logo URL</Label>
-                    <Input
-                      value={settingsDraft.watermark_logo_url || ''}
-                      onChange={(e) => setSettingsDraft((prev) => ({ ...prev, watermark_logo_url: e.target.value }))}
-                      placeholder="https://..."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">Default Theme</Label>
-                    <Select
-                      value={settingsDraft.default_theme || 'radiant-dusk'}
-                      onValueChange={(value) => setSettingsDraft((prev) => ({ ...prev, default_theme: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Theme" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pastel-neon">Pastel Neon</SelectItem>
-                        <SelectItem value="radiant-dusk">Radiant Dusk</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-slate-200">Authentication</h3>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">Supabase Auth (env)</Label>
-                      <div className="rounded-lg border border-slate-700 bg-slate-900/40 px-3 py-2 text-sm text-slate-300">
-                        {SUPABASE_AUTH_ENABLED ? 'Enabled' : 'Disabled'} via VITE_SUPABASE_AUTH
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between glass-surface rounded-xl px-4 py-3">
-                      <span className="text-sm text-slate-200">Enable Google sign-in</span>
-                      <Switch
-                        checked={Boolean(settingsDraft.google_auth_enabled)}
-                        onCheckedChange={() =>
-                          setSettingsDraft((prev) => ({
-                            ...prev,
-                            google_auth_enabled: !prev.google_auth_enabled,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">Google Client ID</Label>
-                      <Input
-                        value={settingsDraft.google_client_id || ''}
-                        onChange={(e) =>
-                          setSettingsDraft((prev) => ({
-                            ...prev,
-                            google_client_id: e.target.value,
-                          }))
-                        }
-                        placeholder="Google OAuth client ID"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-slate-300">Google Client Secret</Label>
-                      <Input
-                        type="password"
-                        value={secretsDraft.google_client_secret || ''}
-                        onChange={(e) =>
-                          setSecretsDraft((prev) => ({
-                            ...prev,
-                            google_client_secret: e.target.value,
-                          }))
-                        }
-                        placeholder="Google OAuth client secret"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-slate-200">Feature Toggles</h3>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {Object.keys(DEFAULT_APP_FEATURES).map((key) => (
-                      <div key={key} className="flex items-center justify-between glass-surface rounded-xl px-4 py-3">
-                        <span className="text-sm text-slate-200 capitalize">
-                          {key.replace(/_/g, ' ')}
-                        </span>
-                        <Switch
-                          checked={settingsDraft.features?.[key]}
-                          onCheckedChange={() => handleFeatureToggle(key)}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <Button onClick={handleSaveSettings} disabled={isSavingSettings} className="bg-emerald-500 hover:bg-emerald-600">
-                  {isSavingSettings ? 'Saving…' : 'Save Settings'}
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
       </div>
     </div>
   );

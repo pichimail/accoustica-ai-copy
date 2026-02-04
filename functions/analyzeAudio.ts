@@ -1,6 +1,4 @@
-import { createClientFromRequest } from './_shared/supabaseClient.ts';
-
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
 Deno.serve(async (req) => {
   try {
@@ -17,51 +15,38 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'audio_url is required' }, { status: 400 });
     }
 
-    const apiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!apiKey) {
-      return Response.json({ error: 'OPENAI_API_KEY not configured' }, { status: 500 });
-    }
+    // Use AI to analyze the audio track
+    const analysis = await base44.integrations.Core.InvokeLLM({
+      prompt: `Analyze this audio file and provide detailed music characteristics. Listen carefully and identify:
+      
+1. Genre: Main genre and sub-genres (e.g., "Electronic/House", "Rock/Alternative")
+2. Mood: Overall emotional tone (e.g., "Energetic", "Melancholic", "Uplifting")
+3. Tempo: BPM (beats per minute) - estimate as accurately as possible
+4. Key: Musical key (e.g., "C Major", "A Minor")
+5. Energy Level: Rate from 1-10 (1=very calm, 10=very intense)
+6. Style Tags: Array of relevant descriptive tags (e.g., ["upbeat", "synth-heavy", "danceable"])
+7. Instruments: Main instruments you can hear
+8. Vocal Style: If vocals present, describe them (or "instrumental" if none)
 
-    const prompt = `Analyze this audio file and provide detailed music characteristics.
-Audio URL: ${audio_url}
-
-Identify:
-1. Genre and sub-genres
-2. Mood
-3. Tempo (BPM estimate)
-4. Key
-5. Energy level (1-10)
-6. Style tags (array)
-7. Instruments
-8. Vocal style (or "instrumental")
-
-Return a JSON object with keys: genre, mood, tempo, key, energy_level, style_tags, instruments, vocal_style.`;
-
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: Deno.env.get('OPENAI_MODEL') || 'gpt-4o-mini',
-        temperature: 0.4,
-        messages: [{ role: 'user', content: prompt }]
-      })
+Be specific and accurate in your analysis.`,
+      file_urls: audio_url,
+      response_json_schema: {
+        type: 'object',
+        properties: {
+          genre: { type: 'string' },
+          mood: { type: 'string' },
+          tempo: { type: 'number' },
+          key: { type: 'string' },
+          energy_level: { type: 'number' },
+          style_tags: {
+            type: 'array',
+            items: { type: 'string' }
+          },
+          instruments: { type: 'string' },
+          vocal_style: { type: 'string' }
+        }
+      }
     });
-
-    const data = await response.json();
-    if (!response.ok) {
-      return Response.json({ error: data?.error?.message || 'Analysis failed' }, { status: 400 });
-    }
-
-    const content = data?.choices?.[0]?.message?.content || '{}';
-    let analysis;
-    try {
-      analysis = JSON.parse(content);
-    } catch {
-      analysis = { text: content };
-    }
 
     return Response.json({
       success: true,

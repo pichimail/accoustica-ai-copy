@@ -1,4 +1,4 @@
-import { createClientFromRequest } from './_shared/supabaseClient.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
 Deno.serve(async (req) => {
     try {
@@ -11,7 +11,6 @@ Deno.serve(async (req) => {
         const code = payload.code || payload.status || 200;
         const taskId = payload.taskId || payload.task_id || payload.data?.taskId || payload.data?.task_id;
         const videoUrl = payload.videoUrl || payload.video_url || payload.data?.videoUrl || payload.data?.video_url;
-        const imageUrl = payload.imageUrl || payload.image_url || payload.data?.imageUrl || payload.data?.image_url;
         const errorMsg = payload.msg || payload.message || payload.error;
 
         console.log('Parsed callback:', { code, taskId, videoUrl, errorMsg });
@@ -36,7 +35,6 @@ Deno.serve(async (req) => {
             await base44.asServiceRole.entities.VideoGeneration.update(videoRecords[0].id, {
                 status: 'ready',
                 video_url: videoUrl,
-                thumbnail_url: imageUrl || null,
             });
             console.log('✅ Video record updated successfully:', videoRecords[0].id);
         } else {

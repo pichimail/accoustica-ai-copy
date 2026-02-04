@@ -4,12 +4,11 @@ import { useQuery } from '@tanstack/react-query';
 import AudioPlayer from '@/components/audio/AudioPlayer';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Calendar, Music, Play, Share2 } from 'lucide-react';
+import { Clock, Calendar, Music, Play, Share2, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import BrandLogo from '@/components/brand/BrandLogo';
 
 export default function PublicTrackPage() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -98,7 +97,10 @@ export default function PublicTrackPage() {
         <div className="py-4 px-4 border-b border-slate-800/50 backdrop-blur-xl">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <Link to={createPageUrl('Home')} className="flex items-center gap-2">
-              <BrandLogo variant="wordmark" className="h-6 w-auto" />
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-violet-500 to-pink-500 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <span className="font-bold text-white">Accoustica</span>
             </Link>
             <Link to={createPageUrl('Discover')}>
               <Button variant="ghost" className="text-slate-400 hover:text-white">
@@ -212,7 +214,7 @@ export default function PublicTrackPage() {
             <p className="text-slate-400 mb-6">
               Join Accoustica and start generating amazing AI music
             </p>
-            <Link to={createPageUrl('Studio')}>
+            <Link to={createPageUrl('Create')}>
               <Button size="lg" className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600">
                 <Sparkles className="h-5 w-5 mr-2" />
                 Start Creating

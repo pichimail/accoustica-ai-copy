@@ -3,8 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Video, Loader2, Download, ExternalLink, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -160,7 +160,7 @@ export default function MusicVideoGenerator({ track, open, onClose, onSuccess })
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="bg-slate-900 border-slate-700 max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-2">
             <Video className="h-5 w-5 text-violet-400" />
@@ -178,7 +178,7 @@ export default function MusicVideoGenerator({ track, open, onClose, onSuccess })
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="Describe specific scenes, visual style, colors, camera movements, and atmosphere you want... e.g., 'Start with a sunrise over mountains, transition to abstract geometric patterns pulsing with the beat, end with starry night sky'"
-                  className="h-32"
+                  className="bg-slate-800 border-slate-700 text-white h-32"
                   disabled={generating}
                 />
                 <p className="text-xs text-slate-500 mt-1">
@@ -199,7 +199,7 @@ export default function MusicVideoGenerator({ track, open, onClose, onSuccess })
                       className={`p-2 rounded-lg border text-left text-sm transition-all ${
                         visualStyle === key
                           ? 'bg-violet-500/20 border-violet-500/50 text-white'
-                          : 'glass-surface text-slate-300 hover:text-white'
+                          : 'bg-slate-800/50 border-slate-700 text-slate-300 hover:border-slate-600'
                       }`}
                     >
                       {label}
@@ -221,7 +221,7 @@ export default function MusicVideoGenerator({ track, open, onClose, onSuccess })
                       className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
                         aspectRatio === ratio
                           ? 'bg-violet-500/20 border-violet-500/50 text-white'
-                          : 'glass-surface text-slate-300 hover:text-white'
+                          : 'bg-slate-800/50 border-slate-700 text-slate-300 hover:border-slate-600'
                       }`}
                     >
                       {ratio}
@@ -249,7 +249,7 @@ export default function MusicVideoGenerator({ track, open, onClose, onSuccess })
                       className={`p-2 rounded-lg border text-xs transition-all ${
                         effects.includes(effect.id)
                           ? 'bg-pink-500/20 border-pink-500/50 text-pink-300'
-                          : 'glass-surface text-slate-300 hover:text-white'
+                          : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600'
                       }`}
                     >
                       {effect.name}
@@ -261,10 +261,12 @@ export default function MusicVideoGenerator({ track, open, onClose, onSuccess })
               {/* Author Credit */}
               <div>
                 <Label className="text-slate-300">Artist Credit (Optional)</Label>
-                <Input
+                <input
+                  type="text"
                   value={author}
                   onChange={(e) => setAuthor(e.target.value)}
                   placeholder="Your artist name..."
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
                   disabled={generating}
                   maxLength={50}
                 />
@@ -293,12 +295,12 @@ export default function MusicVideoGenerator({ track, open, onClose, onSuccess })
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="glass-surface rounded-lg p-6 text-center space-y-4"
+                  className="bg-slate-800/50 rounded-lg p-6 text-center space-y-4"
                 >
                   <Loader2 className="h-10 w-10 text-violet-400 animate-spin mx-auto" />
                   <div className="space-y-2">
                     <p className="text-white font-medium">Creating your music video...</p>
-                    <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
                       <motion.div 
                         className="h-full bg-gradient-to-r from-violet-500 to-pink-500"
                         initial={{ width: 0 }}
@@ -322,7 +324,7 @@ export default function MusicVideoGenerator({ track, open, onClose, onSuccess })
               animate={{ opacity: 1, scale: 1 }}
               className="space-y-4"
             >
-              <div className="glass-surface rounded-lg overflow-hidden">
+              <div className="bg-slate-800/50 rounded-lg overflow-hidden">
                 <video
                   src={videoUrl}
                   controls
@@ -342,27 +344,11 @@ export default function MusicVideoGenerator({ track, open, onClose, onSuccess })
                   Open in New Tab
                 </Button>
                 <Button
-                  onClick={async () => {
-                    try {
-                      const sanitizedTitle = track.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                      const filename = `accoustica-${sanitizedTitle}-video.mp4`;
-                      
-                      const response = await fetch(videoUrl);
-                      const blob = await response.blob();
-                      const url = window.URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = filename;
-                      document.body.appendChild(a);
-                      a.click();
-                      window.URL.revokeObjectURL(url);
-                      document.body.removeChild(a);
-                      toast.success('Video download started!');
-                    } catch (error) {
-                      console.error('Download failed:', error);
-                      toast.error('Failed to download video. Opening in new tab instead...');
-                      window.open(videoUrl, '_blank');
-                    }
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = videoUrl;
+                    a.download = `${track.title}-video.mp4`;
+                    a.click();
                   }}
                   className="flex-1 bg-green-600 hover:bg-green-700"
                 >

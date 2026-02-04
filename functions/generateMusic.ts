@@ -1,5 +1,4 @@
-import { createClientFromRequest } from './_shared/supabaseClient.ts';
-import { getAppSettings, getKieApiKey, isFeatureEnabled } from './_shared/appSettings.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
 const SUNO_API_BASE = 'https://api.kie.ai/api/v1';
 
@@ -25,13 +24,9 @@ Deno.serve(async (req) => {
             styleInfluence,
         } = await req.json();
 
-        const settings = await getAppSettings(base44);
-        if (!isFeatureEnabled(settings, 'music_generation')) {
-            return Response.json({ error: 'Music generation is disabled' }, { status: 403 });
-        }
-        const apiKey = getKieApiKey(settings);
+        const apiKey = Deno.env.get('SUNO_API_KEY');
         if (!apiKey) {
-            return Response.json({ error: 'KIE API key not configured' }, { status: 500 });
+            return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500 });
         }
 
         // Build API payload based on mode
@@ -39,7 +34,7 @@ Deno.serve(async (req) => {
             customMode: customMode,
             instrumental: instrumental,
             model: model,
-            callBackUrl: `${Deno.env.get('SUPABASE_FUNCTION_URL') || ''}/sunoCallback`,
+            callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`,
         };
 
         if (mode === 'simple') {
@@ -101,7 +96,7 @@ Deno.serve(async (req) => {
 
         // Create Track records (Suno generates 2 by default)
         const trackPromises = [];
-
+        
         // Generate auto title from prompt if not provided
         let finalTitle = title;
         if (!finalTitle && prompt) {
@@ -112,22 +107,13 @@ Deno.serve(async (req) => {
         if (!finalTitle) {
             finalTitle = 'Untitled Track';
         }
-
-        // Get user's artist name from profile
-        const artistName = user.artist_name || user.full_name || 'Unknown Artist';
-
-        // Generate 2 songs with different titles
-        const songTitles = [
-            `${finalTitle}`,
-            `${finalTitle} (Variation)`
-        ];
-
+        
         for (let i = 0; i < 2; i++) {
             trackPromises.push(
                 base44.entities.Track.create({
-                    title: songTitles[i],
+                    title: `${finalTitle}`,
                     prompt: prompt || '',
-                    style: style || artistName,
+                    style: style || user.full_name,
                     task_id: data.data.taskId,
                     status: 'queued',
                     is_instrumental: instrumental,

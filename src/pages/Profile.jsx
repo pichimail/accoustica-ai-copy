@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,14 +10,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { 
   User, Music, TrendingUp, Calendar, Award, 
-  Settings, Zap, Crown, Clock, Target, Heart, Video, Download, Share2, Wand2, Play
+  Settings, Zap, Crown, Clock, Target, Heart, Video, Download, Share2, ExternalLink, Wand2, Play
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { cn } from "@/lib/utils";
-import { useTheme } from '@/lib/theme-context';
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
@@ -25,86 +24,24 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState('activity');
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
-  const [artistName, setArtistName] = useState('');
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const { theme, setTheme, themes } = useTheme();
-  const queryClient = useQueryClient();
 
   useEffect(() => {
     const fetchUser = async () => {
       const userData = await base44.auth.me();
-      if (!userData) {
-        setUser(null);
-        setEditedName('');
-        setArtistName('');
-        return;
-      }
       setUser(userData);
       setEditedName(userData.full_name || '');
-      setArtistName(userData.artist_name || '');
     };
     fetchUser();
   }, []);
 
   const handleSaveProfile = async () => {
     try {
-      await base44.auth.updateMe({
-        full_name: editedName,
-        artist_name: artistName
-      });
-      setUser({ ...user, full_name: editedName, artist_name: artistName });
+      await base44.auth.updateMe({ full_name: editedName });
+      setUser({ ...user, full_name: editedName });
       setIsEditing(false);
       toast.success('Profile updated successfully!');
     } catch (error) {
       toast.error('Failed to update profile');
-    }
-  };
-
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size must be less than 5MB');
-      return;
-    }
-
-    setUploadingImage(true);
-    try {
-      // Upload image to Supabase Storage
-      const uploadedFile = await base44.integrations.Core.UploadFile({
-        file,
-        pathPrefix: `avatars/${user.email}`,
-      });
-
-      // Update user profile with new avatar URL
-      await base44.auth.updateMe({ avatar_url: uploadedFile.url });
-      setUser({ ...user, avatar_url: uploadedFile.url });
-      toast.success('Profile image updated!');
-    } catch (error) {
-      console.error('Image upload error:', error);
-      toast.error('Failed to upload image');
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
-  const handleToggleVideoVisibility = async (video) => {
-    try {
-      await base44.entities.VideoGeneration.update(video.id, {
-        is_public: !video.is_public,
-      });
-      queryClient.invalidateQueries({ queryKey: ['userVideos', user?.email] });
-      toast.success(video.is_public ? 'Video is now private' : 'Video is now public');
-    } catch (error) {
-      toast.error('Failed to update video visibility');
     }
   };
 
@@ -177,20 +114,13 @@ export default function ProfilePage() {
     queryKey: ['userVideos', user?.email],
     queryFn: async () => {
       if (!user?.email) return [];
-      const allVideos = await base44.entities.VideoGeneration.filter(
-        { created_by: user.email },
-        '-created_date',
-        100
-      );
+      const allVideos = await base44.entities.VideoGeneration.filter({ status: 'ready' });
       
       // Filter videos that belong to user's tracks
-      const videoPromises = allVideos
-        .filter((video) => video.status === 'ready')
-        .map(async (video) => {
+      const videoPromises = allVideos.map(async (video) => {
         try {
-          if (!video.track_id) return { ...video, track: null };
           const tracks = await base44.entities.Track.filter({ id: video.track_id });
-          if (tracks.length > 0) {
+          if (tracks.length > 0 && tracks[0].created_by === user.email) {
             return { ...video, track: tracks[0] };
           }
         } catch (e) {
@@ -245,11 +175,6 @@ export default function ProfilePage() {
     },
   ];
 
-  const themePreview = {
-    'pastel-neon': 'from-pink-200 via-cyan-100 to-emerald-100',
-    'radiant-dusk': 'from-pink-500/40 via-orange-500/30 to-emerald-400/20',
-  };
-
   const recentActivity = userTracks
     .sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
     .slice(0, 10)
@@ -267,18 +192,16 @@ export default function ProfilePage() {
     );
   }
 
-  const displayName = user.full_name || 'User';
-  const avatarUrl = user.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${displayName}`;
-  const joinedDate = user.created_date ? new Date(user.created_date) : null;
+  const avatarUrl = user.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${user.full_name}`;
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-surface rounded-2xl p-8"
+          className="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-800 p-8"
         >
           <div className="flex flex-col md:flex-row items-center gap-6">
             <Avatar className="w-32 h-32 border-4 border-violet-500/50">
@@ -289,19 +212,19 @@ export default function ProfilePage() {
             </Avatar>
             
             <div className="flex-1 text-center md:text-left">
-              <h1 className="text-4xl font-bold text-white mb-2">{displayName}</h1>
+              <h1 className="text-4xl font-bold text-white mb-2">{user.full_name}</h1>
               <p className="text-slate-400 mb-4">{user.email}</p>
               <div className="flex flex-wrap gap-3 justify-center md:justify-start">
                 <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30">
                   <Crown className="h-3 w-3 mr-1" />
                   {userPlan?.name || 'Free'} Plan
                 </Badge>
-                <Badge variant="outline" className="glass-surface text-slate-200">
+                <Badge variant="outline" className="bg-slate-800 text-slate-300 border-slate-700">
                   {user.role === 'admin' ? 'Admin' : 'User'}
                 </Badge>
-                <Badge variant="outline" className="glass-surface text-slate-200">
+                <Badge variant="outline" className="bg-slate-800 text-slate-300 border-slate-700">
                   <Calendar className="h-3 w-3 mr-1" />
-                  Joined {joinedDate ? joinedDate.toLocaleDateString() : 'Recently'}
+                  Joined {new Date(user.created_date).toLocaleDateString()}
                 </Badge>
               </div>
             </div>
@@ -309,7 +232,7 @@ export default function ProfilePage() {
             <Button 
               onClick={() => setIsEditing(!isEditing)}
               variant="outline" 
-              className="glass-surface text-slate-200 hover:text-white"
+              className="border-slate-700 hover:bg-slate-800"
             >
               <Settings className="h-4 w-4 mr-2" />
               {isEditing ? 'Cancel' : 'Edit Profile'}
@@ -326,12 +249,12 @@ export default function ProfilePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
             >
-              <Card className="glass-surface">
+              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between mb-4">
                     <stat.icon className={`h-8 w-8 text-${stat.color}-400`} />
                     {stat.max && (
-                      <Badge variant="outline" className="glass-surface text-slate-200">
+                      <Badge variant="outline" className="bg-slate-800 text-slate-300 border-slate-700">
                         {stat.value}/{stat.max}
                       </Badge>
                     )}
@@ -341,7 +264,7 @@ export default function ProfilePage() {
                   </h3>
                   <p className="text-sm text-slate-400">{stat.label}</p>
                   {stat.max && (
-                    <div className="mt-3 bg-white/10 rounded-full h-2 overflow-hidden">
+                    <div className="mt-3 bg-slate-800 rounded-full h-2 overflow-hidden">
                       <div 
                         className={`h-full bg-gradient-to-r from-${stat.color}-500 to-${stat.color}-400 transition-all duration-300`}
                         style={{ width: `${(stat.value / stat.max) * 100}%` }}
@@ -361,7 +284,7 @@ export default function ProfilePage() {
           transition={{ delay: 0.4 }}
         >
           <Tabs defaultValue="activity" className="space-y-6">
-            <TabsList className="glass-surface border border-white/10">
+            <TabsList className="bg-slate-900/50 border border-slate-800">
               <TabsTrigger value="activity" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
                 <Clock className="h-4 w-4 mr-2" />
                 Recent Activity
@@ -386,14 +309,10 @@ export default function ProfilePage() {
                 <Settings className="h-4 w-4 mr-2" />
                 Settings
               </TabsTrigger>
-              <TabsTrigger value="appearance" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
-                <Sparkles className="h-4 w-4 mr-2" />
-                Appearance
-              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="activity">
-              <Card className="glass-surface">
+              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
                 <CardHeader>
                   <CardTitle className="text-white">Recent Activity</CardTitle>
                 </CardHeader>
@@ -436,7 +355,7 @@ export default function ProfilePage() {
             </TabsContent>
 
             <TabsContent value="favorites">
-              <Card className="glass-surface">
+              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
                 <CardHeader>
                   <CardTitle className="text-white">Favorite Tracks</CardTitle>
                 </CardHeader>
@@ -484,7 +403,7 @@ export default function ProfilePage() {
             </TabsContent>
 
             <TabsContent value="mastered">
-              <Card className="glass-surface">
+              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
                     <Wand2 className="h-5 w-5 text-purple-400" />
@@ -528,7 +447,7 @@ export default function ProfilePage() {
             </TabsContent>
 
             <TabsContent value="videos">
-              <Card className="glass-surface">
+              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
                 <CardHeader>
                   <CardTitle className="text-white">Music Videos</CardTitle>
                 </CardHeader>
@@ -546,13 +465,13 @@ export default function ProfilePage() {
                           key={video.id}
                           initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          className="glass-surface rounded-xl overflow-hidden hover:border-violet-500/50 transition-all"
+                          className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden hover:border-violet-500/50 transition-all"
                         >
-                        <div className="relative aspect-video bg-black/30">
+                          <div className="relative aspect-video bg-slate-900">
                             <video 
                               src={video.video_url} 
                               controls 
-                              poster={video.thumbnail_url || video.track?.cover_image_url}
+                              poster={video.track?.cover_image_url}
                               className="w-full h-full object-cover"
                             >
                               Your browser does not support video.
@@ -562,20 +481,6 @@ export default function ProfilePage() {
                           <div className="p-4">
                             <h3 className="font-semibold text-white mb-1 truncate">{video.track?.title || 'Untitled'}</h3>
                             <p className="text-sm text-slate-400 mb-3 truncate">{video.track?.style || 'Unknown'}</p>
-
-                            <div className="flex flex-wrap gap-2 mb-3">
-                              <Badge variant="outline" className="glass-surface text-slate-200">
-                                {(video.provider || 'suno').toUpperCase()}
-                              </Badge>
-                              {video.generation_type && (
-                                <Badge variant="outline" className="glass-surface text-slate-200">
-                                  {video.generation_type}
-                                </Badge>
-                              )}
-                              <Badge variant="outline" className="glass-surface text-slate-200">
-                                {video.is_public ? 'Public' : 'Private'}
-                              </Badge>
-                            </div>
                             
                             <div className="flex items-center gap-2 text-xs text-slate-500 mb-3">
                               <Calendar className="h-3 w-3" />
@@ -592,7 +497,7 @@ export default function ProfilePage() {
                                   a.download = `${video.track?.title || 'video'}.mp4`;
                                   a.click();
                                 }}
-                                className="flex-1"
+                                className="flex-1 bg-slate-700/50 border-slate-600 text-white hover:bg-slate-700"
                               >
                                 <Download className="h-3 w-3 mr-1" />
                                 Download
@@ -604,21 +509,20 @@ export default function ProfilePage() {
                                   navigator.clipboard.writeText(video.video_url);
                                   toast.success('Video link copied!');
                                 }}
-                                className="flex-1"
+                                className="flex-1 bg-slate-700/50 border-slate-600 text-white hover:bg-slate-700"
                               >
                                 <Share2 className="h-3 w-3 mr-1" />
                                 Share
                               </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.open(video.video_url, '_blank')}
+                                className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-700"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                              </Button>
                             </div>
-
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleToggleVideoVisibility(video)}
-                              className="mt-2 w-full"
-                            >
-                              {video.is_public ? 'Make Private' : 'Publish to Discover'}
-                            </Button>
                           </div>
                         </motion.div>
                       ))}
@@ -629,7 +533,7 @@ export default function ProfilePage() {
             </TabsContent>
 
             <TabsContent value="achievements">
-              <Card className="glass-surface">
+              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
                 <CardHeader>
                   <CardTitle className="text-white">Achievements</CardTitle>
                 </CardHeader>
@@ -661,110 +565,33 @@ export default function ProfilePage() {
             </TabsContent>
 
             <TabsContent value="settings">
-              <Card className="glass-surface">
+              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
                 <CardHeader>
                   <CardTitle className="text-white">Account Settings</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Profile Image Upload */}
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">Profile Image</Label>
-                    <div className="flex items-center gap-4">
-                      <Avatar className="w-20 h-20 border-2 border-violet-500/50">
-                        <img src={user.avatar_url || avatarUrl} alt={user.full_name} className="w-full h-full object-cover" />
-                        <AvatarFallback className="bg-violet-500 text-white text-2xl">
-                          {user.full_name?.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col gap-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          disabled={uploadingImage}
-                          className="cursor-pointer"
-                          id="avatar-upload"
-                        />
-                        <p className="text-xs text-slate-400">
-                          {uploadingImage ? 'Uploading...' : 'Max size: 5MB (JPG, PNG, GIF)'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
+                <CardContent className="space-y-4">
                   <div>
                     <Label className="text-slate-300">Full Name</Label>
-                    <Input
-                      value={editedName}
+                    <Input 
+                      value={editedName} 
                       onChange={(e) => setEditedName(e.target.value)}
-                      placeholder="Your full name"
+                      className="bg-slate-800 border-slate-700 text-white"
                     />
                   </div>
-
-                  <div>
-                    <Label className="text-slate-300">Artist Name</Label>
-                    <Input
-                      value={artistName}
-                      onChange={(e) => setArtistName(e.target.value)}
-                      placeholder="Your artist name (shown on generated music)"
-                    />
-                    <p className="text-xs text-slate-400 mt-1">
-                      This name will appear on all your generated music and videos
-                    </p>
-                  </div>
-
                   <div>
                     <Label className="text-slate-300">Email</Label>
-                    <Input
-                      value={user.email}
+                    <Input 
+                      value={user.email} 
                       disabled
+                      className="bg-slate-800 border-slate-700 text-slate-400"
                     />
                   </div>
-
-                  <Button
+                  <Button 
                     onClick={handleSaveProfile}
-                    disabled={uploadingImage}
                     className="bg-violet-600 hover:bg-violet-700"
                   >
                     Save Changes
                   </Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="appearance">
-              <Card className="glass-surface">
-                <CardHeader>
-                  <CardTitle className="text-white">Appearance</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-slate-400">
-                    Choose a theme for your studio. Changes sync to your profile.
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {themes.map((option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => setTheme(option.id)}
-                        className={cn(
-                          "rounded-2xl border p-4 text-left transition-all",
-                          theme === option.id
-                            ? "border-emerald-400/60 bg-emerald-500/10"
-                            : "glass-surface hover:border-white/30"
-                        )}
-                      >
-                        <div className={cn(
-                          "h-20 w-full rounded-xl bg-gradient-to-br",
-                          themePreview[option.id]
-                        )} />
-                        <div className="mt-3">
-                          <p className="text-white font-medium">{option.name}</p>
-                          <p className="text-xs text-slate-400">{option.description}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

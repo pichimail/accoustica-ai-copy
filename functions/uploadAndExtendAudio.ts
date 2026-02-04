@@ -1,4 +1,4 @@
-import { createClientFromRequest } from './_shared/supabaseClient.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
 const SUNO_API_BASE = 'https://api.kie.ai/api/v1';
 
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500 });
         }
 
-        const callbackUrl = `${Deno.env.get('SUPABASE_FUNCTION_URL') || ''}/sunoCallback`;
+        const callbackUrl = `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`;
 
         const body = {
             uploadUrl,

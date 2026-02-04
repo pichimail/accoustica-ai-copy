@@ -5,22 +5,17 @@ import { toast } from 'sonner';
 import CreateMusicForm from '@/components/create/CreateMusicForm';
 import GeneratingStatus from '@/components/tracks/GeneratingStatus';
 import TrackCard from '@/components/tracks/TrackCard';
+import AudioPlayer from '@/components/audio/AudioPlayer';
+import FullscreenPlayer from '@/components/audio/FullscreenPlayer';
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
-import VideoGeneratorDialog from '@/components/create/VideoGeneratorDialog';
-import MusicVideoGenerator from '@/components/video/MusicVideoGenerator';
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Music, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAppSettings } from '@/lib/use-app-settings';
 
-export default function CreatePage({ embedded = false }) {
+export default function CreatePage() {
   const [currentTrack, setCurrentTrack] = useState(null);
-  const [videoTrack, setVideoTrack] = useState(null);
-  const [showLyricVideo, setShowLyricVideo] = useState(false);
-  const [musicVideoTrack, setMusicVideoTrack] = useState(null);
-  const [showMusicVideo, setShowMusicVideo] = useState(false);
   const [playingTrack, setPlayingTrack] = useState(null);
   const [fullscreenPlayerOpen, setFullscreenPlayerOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -30,7 +25,6 @@ export default function CreatePage({ embedded = false }) {
   const [user, setUser] = useState(null);
   const [userPlan, setUserPlan] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const { settings } = useAppSettings();
   const queryClient = useQueryClient();
 
   // Fetch user data and check onboarding
@@ -107,16 +101,10 @@ export default function CreatePage({ embedded = false }) {
 
       // Call backend function to generate music with Suno API
       const response = await base44.functions.invoke('generateMusic', {
-        mode: data.mode,
-        model: data.model,
         prompt: data.prompt,
         style: data.style,
         title: data.title,
-        customMode: data.customMode,
-        instrumental: data.instrumental || false,
-        vocalGender: data.vocalGender,
-        weirdness: data.weirdness,
-        styleInfluence: data.styleInfluence,
+        instrumental: data.is_instrumental || false,
         creativity_level: data.creativity_level || 50,
         complexity_level: data.complexity_level || 50,
         variation_count: data.variation_count || 1,
@@ -131,10 +119,7 @@ export default function CreatePage({ embedded = false }) {
       const taskId = response.data.taskId;
       pollMusicStatus(taskId);
 
-      return {
-        taskId,
-        trackIds: response.data.trackIds || [],
-      };
+      return track;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
@@ -287,23 +272,20 @@ export default function CreatePage({ embedded = false }) {
   const limitReached = remainingGenerations <= 0;
 
   return (
-    <div className={embedded ? "relative" : "min-h-screen relative overflow-hidden"}>
+    <div className="min-h-screen relative overflow-hidden">
       {/* Animated Background */}
-      {!embedded && (
-        <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
-          <div className="absolute inset-0 opacity-30">
-            <div className="absolute top-0 -left-4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
-            <div className="absolute top-0 -right-4 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
-            <div className="absolute -bottom-8 left-20 w-96 h-96 bg-violet-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
-          </div>
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-0 -left-4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
+          <div className="absolute top-0 -right-4 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
+          <div className="absolute -bottom-8 left-20 w-96 h-96 bg-violet-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
         </div>
-      )}
+      </div>
 
       {/* Main Content */}
       <div className="relative z-10">
-        <div className={embedded ? "max-w-[1400px] mx-auto px-0 py-0" : "max-w-[1600px] mx-auto px-6 py-12"}>
+        <div className="max-w-[1600px] mx-auto px-6 py-12">
           {/* Hero Section */}
-          {!embedded && (
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -314,13 +296,13 @@ export default function CreatePage({ embedded = false }) {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-surface mb-6"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 mb-6"
             >
               <Sparkles className="h-4 w-4 text-violet-400" />
               <span className="text-sm text-slate-300">AI-Powered Music Generation</span>
             </motion.div>
             
-            <h1 className="app-title text-6xl md:text-7xl font-bold mb-6">
+            <h1 className="text-6xl md:text-7xl font-bold mb-6">
               <span className="text-white">Create</span>
               <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400 animate-gradient">
@@ -351,47 +333,40 @@ export default function CreatePage({ embedded = false }) {
               </div>
             </motion.div>
           </motion.div>
-          )}
 
           {/* Centered Creation Form */}
           <div className="max-w-3xl mx-auto mb-12">
-            {!settings.features.music_generation ? (
-              <div className="glass-surface rounded-3xl p-8 text-center text-slate-300">
-                Music generation is currently disabled by the admin.
-              </div>
-            ) : (
-              <AnimatePresence mode="wait">
-                {currentTrack && currentTrack.status !== 'ready' ? (
-                  <motion.div
-                    key="generating"
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                    className="relative overflow-hidden rounded-3xl glass-surface p-8"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-pink-500/20 animate-pulse"></div>
-                    <div className="relative z-10">
-                      <GeneratingStatus status={currentTrack.status} />
-                    </div>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="form"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <CreateMusicForm
-                      onSubmit={(data) => createTrackMutation.mutate(data)}
-                      isLoading={createTrackMutation.isPending}
-                      disabled={currentTrack?.status === 'generating'}
-                      limitReached={limitReached}
-                      remainingGenerations={remainingGenerations}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            )}
+            <AnimatePresence mode="wait">
+              {currentTrack && currentTrack.status !== 'ready' ? (
+                <motion.div
+                  key="generating"
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                  className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-500/10 to-pink-500/10 backdrop-blur-xl border border-white/10 p-8"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-pink-500/20 animate-pulse"></div>
+                  <div className="relative z-10">
+                    <GeneratingStatus status={currentTrack.status} />
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="form"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <CreateMusicForm
+                    onSubmit={(data) => createTrackMutation.mutate(data)}
+                    isLoading={createTrackMutation.isPending}
+                    disabled={currentTrack?.status === 'generating'}
+                    limitReached={limitReached}
+                    remainingGenerations={remainingGenerations}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Generated Tracks Grid */}
@@ -435,14 +410,6 @@ export default function CreatePage({ embedded = false }) {
                         onDelete={handleDelete}
                         onToggleVisibility={handleToggleVisibility}
                         onToggleFavorite={handleToggleFavorite}
-                        onGenerateLyricVideo={settings.features.lyric_video ? (selected) => {
-                          setVideoTrack(selected);
-                          setShowLyricVideo(true);
-                        } : undefined}
-                        onGenerateMusicVideo={settings.features.lyric_video ? (selected) => {
-                          setMusicVideoTrack(selected);
-                          setShowMusicVideo(true);
-                        } : undefined}
                         showActions={true}
                         />
                     </motion.div>
@@ -461,28 +428,6 @@ export default function CreatePage({ embedded = false }) {
         open={showOnboarding} 
         onComplete={() => setShowOnboarding(false)} 
       />
-
-      {videoTrack && (
-        <VideoGeneratorDialog
-          track={videoTrack}
-          open={showLyricVideo}
-          onClose={() => {
-            setShowLyricVideo(false);
-            setVideoTrack(null);
-          }}
-        />
-      )}
-
-      {musicVideoTrack && (
-        <MusicVideoGenerator
-          track={musicVideoTrack}
-          open={showMusicVideo}
-          onClose={() => {
-            setShowMusicVideo(false);
-            setMusicVideoTrack(null);
-          }}
-        />
-      )}
 
       <style jsx>{`
         @keyframes blob {

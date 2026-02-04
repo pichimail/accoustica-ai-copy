@@ -30,7 +30,6 @@ import { Search, Music, Filter, Plus, Library as LibraryIcon, Eye, EyeOff, Loade
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAppSettings } from '@/lib/use-app-settings';
 
 export default function LibraryPage() {
   const [user, setUser] = useState(null);
@@ -48,7 +47,6 @@ export default function LibraryPage() {
   const [personaCreationTrack, setPersonaCreationTrack] = useState(null);
   const [showAdvancedMastering, setShowAdvancedMastering] = useState(false);
   const [showMusicTheory, setShowMusicTheory] = useState(false);
-  const { settings } = useAppSettings();
   const [selectedTrack, setSelectedTrack] = useState(null);
   const [genreFilter, setGenreFilter] = useState('all');
   const [instrumentalFilter, setInstrumentalFilter] = useState('all');
@@ -188,7 +186,7 @@ export default function LibraryPage() {
   };
 
   return (
-        <div className="min-h-screen pb-32">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-violet-950 pb-32">
       <div className="max-w-7xl mx-auto px-4 py-8">
         <PullToRefresh onRefresh={handleRefresh}>
         {/* Header */}
@@ -206,7 +204,7 @@ export default function LibraryPage() {
               {stats.total} tracks • {stats.ready} ready • {stats.public} public
             </p>
           </div>
-          <Link to={createPageUrl('Studio')}>
+          <Link to={createPageUrl('Create')}>
             <Button className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white">
               <Plus className="h-4 w-4 mr-2" />
               Create New
@@ -221,19 +219,19 @@ export default function LibraryPage() {
           transition={{ delay: 0.1 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
         >
-          <div className="glass-surface rounded-xl p-4">
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50">
             <p className="text-slate-400 text-sm">Total Tracks</p>
             <p className="text-2xl font-bold text-white mt-1">{stats.total}</p>
           </div>
-          <div className="glass-surface rounded-xl p-4">
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50">
             <p className="text-slate-400 text-sm">Ready to Play</p>
             <p className="text-2xl font-bold text-green-400 mt-1">{stats.ready}</p>
           </div>
-          <div className="glass-surface rounded-xl p-4">
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50">
             <p className="text-slate-400 text-sm">Favorites</p>
             <p className="text-2xl font-bold text-red-400 mt-1">{stats.favorites}</p>
           </div>
-          <div className="glass-surface rounded-xl p-4">
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50">
             <p className="text-slate-400 text-sm">Generating</p>
             <p className="text-2xl font-bold text-blue-400 mt-1">{stats.generating}</p>
           </div>
@@ -253,58 +251,58 @@ export default function LibraryPage() {
                 placeholder="Search tracks..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 placeholder:text-slate-500"
+                className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
               />
             </div>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full md:w-40">
+              <SelectTrigger className="w-full md:w-40 bg-slate-800/50 border-slate-700 text-white">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="-created_date" className="text-slate-300 focus:text-white focus:bg-white/10">Newest First</SelectItem>
-                <SelectItem value="created_date" className="text-slate-300 focus:text-white focus:bg-white/10">Oldest First</SelectItem>
-                <SelectItem value="title" className="text-slate-300 focus:text-white focus:bg-white/10">Title A-Z</SelectItem>
-                <SelectItem value="-duration" className="text-slate-300 focus:text-white focus:bg-white/10">Longest</SelectItem>
-                <SelectItem value="duration" className="text-slate-300 focus:text-white focus:bg-white/10">Shortest</SelectItem>
-                <SelectItem value="-plays" className="text-slate-300 focus:text-white focus:bg-white/10">Most Played</SelectItem>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="-created_date" className="text-slate-300 focus:text-white focus:bg-slate-700">Newest First</SelectItem>
+                <SelectItem value="created_date" className="text-slate-300 focus:text-white focus:bg-slate-700">Oldest First</SelectItem>
+                <SelectItem value="title" className="text-slate-300 focus:text-white focus:bg-slate-700">Title A-Z</SelectItem>
+                <SelectItem value="-duration" className="text-slate-300 focus:text-white focus:bg-slate-700">Longest</SelectItem>
+                <SelectItem value="duration" className="text-slate-300 focus:text-white focus:bg-slate-700">Shortest</SelectItem>
+                <SelectItem value="-plays" className="text-slate-300 focus:text-white focus:bg-slate-700">Most Played</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-32 text-sm">
+              <SelectTrigger className="w-32 bg-slate-800/50 border-slate-700 text-white text-sm">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-white/10">All Status</SelectItem>
-                <SelectItem value="ready" className="text-slate-300 focus:text-white focus:bg-white/10">Ready</SelectItem>
-                <SelectItem value="generating" className="text-slate-300 focus:text-white focus:bg-white/10">Generating</SelectItem>
-                <SelectItem value="queued" className="text-slate-300 focus:text-white focus:bg-white/10">Queued</SelectItem>
-                <SelectItem value="failed" className="text-slate-300 focus:text-white focus:bg-white/10">Failed</SelectItem>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-slate-700">All Status</SelectItem>
+                <SelectItem value="ready" className="text-slate-300 focus:text-white focus:bg-slate-700">Ready</SelectItem>
+                <SelectItem value="generating" className="text-slate-300 focus:text-white focus:bg-slate-700">Generating</SelectItem>
+                <SelectItem value="queued" className="text-slate-300 focus:text-white focus:bg-slate-700">Queued</SelectItem>
+                <SelectItem value="failed" className="text-slate-300 focus:text-white focus:bg-slate-700">Failed</SelectItem>
               </SelectContent>
             </Select>
 
             <Select value={visibilityFilter} onValueChange={setVisibilityFilter}>
-              <SelectTrigger className="w-32 text-sm">
+              <SelectTrigger className="w-32 bg-slate-800/50 border-slate-700 text-white text-sm">
                 <SelectValue placeholder="Visibility" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-white/10">All</SelectItem>
-                <SelectItem value="public" className="text-slate-300 focus:text-white focus:bg-white/10">Public</SelectItem>
-                <SelectItem value="private" className="text-slate-300 focus:text-white focus:bg-white/10">Private</SelectItem>
-                <SelectItem value="favorites" className="text-slate-300 focus:text-white focus:bg-white/10">Favorites</SelectItem>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-slate-700">All</SelectItem>
+                <SelectItem value="public" className="text-slate-300 focus:text-white focus:bg-slate-700">Public</SelectItem>
+                <SelectItem value="private" className="text-slate-300 focus:text-white focus:bg-slate-700">Private</SelectItem>
+                <SelectItem value="favorites" className="text-slate-300 focus:text-white focus:bg-slate-700">Favorites</SelectItem>
               </SelectContent>
             </Select>
 
             <Select value={genreFilter} onValueChange={setGenreFilter}>
-              <SelectTrigger className="w-32 text-sm">
+              <SelectTrigger className="w-32 bg-slate-800/50 border-slate-700 text-white text-sm">
                 <SelectValue placeholder="Genre" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-white/10">All Genres</SelectItem>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-slate-700">All Genres</SelectItem>
                 {uniqueGenres.map(genre => (
-                  <SelectItem key={genre} value={genre} className="text-slate-300 focus:text-white focus:bg-white/10">
+                  <SelectItem key={genre} value={genre} className="text-slate-300 focus:text-white focus:bg-slate-700">
                     {genre}
                   </SelectItem>
                 ))}
@@ -312,13 +310,13 @@ export default function LibraryPage() {
             </Select>
 
             <Select value={instrumentalFilter} onValueChange={setInstrumentalFilter}>
-              <SelectTrigger className="w-32 text-sm">
+              <SelectTrigger className="w-32 bg-slate-800/50 border-slate-700 text-white text-sm">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-white/10">All Types</SelectItem>
-                <SelectItem value="vocals" className="text-slate-300 focus:text-white focus:bg-white/10">With Vocals</SelectItem>
-                <SelectItem value="instrumental" className="text-slate-300 focus:text-white focus:bg-white/10">Instrumental</SelectItem>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="all" className="text-slate-300 focus:text-white focus:bg-slate-700">All Types</SelectItem>
+                <SelectItem value="vocals" className="text-slate-300 focus:text-white focus:bg-slate-700">With Vocals</SelectItem>
+                <SelectItem value="instrumental" className="text-slate-300 focus:text-white focus:bg-slate-700">Instrumental</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -340,7 +338,7 @@ export default function LibraryPage() {
             <p className="text-slate-400 mb-6">
               {searchQuery ? 'Try adjusting your search' : 'Start creating your first track'}
             </p>
-            <Link to={createPageUrl('Studio')}>
+            <Link to={createPageUrl('Create')}>
               <Button className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Track
@@ -370,7 +368,7 @@ export default function LibraryPage() {
                     onEdit={handleEdit}
                     onShare={handleShare}
                     onViewVersions={handleViewVersions}
-                    onGenerateMusicVideo={settings.features.lyric_video ? handleGenerateVideo : undefined}
+                    onGenerateVideo={handleGenerateVideo}
                     onMaster={handleMaster}
                     onSeparateStems={handleSeparateStems}
                     onCreatePersona={handleCreatePersona}

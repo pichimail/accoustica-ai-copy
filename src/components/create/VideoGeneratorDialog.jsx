@@ -2,81 +2,114 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Video, Loader2, Download, Share2 } from 'lucide-react';
+import { Slider } from "@/components/ui/slider";
+import { Video, Loader2, Download, Share2, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { useAppSettings } from '@/lib/use-app-settings';
+
+const visualStyles = [
+  { id: 'cinematic', name: 'Cinematic', desc: 'Movie-quality visuals' },
+  { id: 'abstract', name: 'Abstract', desc: 'Artistic patterns' },
+  { id: 'nature', name: 'Nature', desc: 'Landscapes' },
+  { id: 'urban', name: 'Urban', desc: 'City scenes' },
+  { id: 'cosmic', name: 'Cosmic', desc: 'Space themes' },
+  { id: 'retro', name: 'Retro', desc: 'Vintage 80s/90s' },
+  { id: 'psychedelic', name: 'Psychedelic', desc: 'Trippy colors' },
+  { id: 'minimalist', name: 'Minimalist', desc: 'Clean & simple' },
+];
+
+const effects = ['Particles', 'Glow', 'Vignette', 'Color Grade', 'Motion Blur', 'Film Grain'];
 
 export default function VideoGeneratorDialog({ track, open, onClose }) {
-  const [author, setAuthor] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [selectedStyle, setSelectedStyle] = useState('cinematic');
+  const [aspectRatio, setAspectRatio] = useState('16:9');
+  const [videoLength, setVideoLength] = useState([30]);
+  const [selectedEffects, setSelectedEffects] = useState([]);
   const [generating, setGenerating] = useState(false);
-  const [videoUrl, setVideoUrl] = useState(null);
   const [progress, setProgress] = useState(0);
-  const { settings } = useAppSettings();
+  const [videoUrl, setVideoUrl] = useState(null);
+
+  const toggleEffect = (effect) => {
+    setSelectedEffects(prev =>
+      prev.includes(effect) ? prev.filter(e => e !== effect) : [...prev, effect]
+    );
+  };
 
   const handleGenerate = async () => {
+    if (!prompt.trim()) {
+      toast.error('Please describe the video you want');
+      return;
+    }
+
     setGenerating(true);
     setProgress(0);
 
     try {
-      const response = await base44.functions.invoke('generateLyricVideo', {
+      const response = await base44.functions.invoke('generateMusicVideoWithLyrics', {
         taskId: track.task_id,
         audioId: track.external_audio_id,
-        author: author || 'Accoustica',
+        author: 'Accoustica',
         domainName: 'accoustica.app',
+        prompt: prompt,
+        visualStyle: selectedStyle,
+        aspectRatio: aspectRatio,
+        effects: selectedEffects,
       });
 
-      if (response.data?.success) {
-        toast.success('Lyric video generation started!');
+      if (response.data.success) {
+        toast.success('Video generation started!');
         pollVideoStatus(response.data.taskId);
       } else {
-        toast.error(response.data?.error || 'Failed to start lyric video');
+        toast.error(response.data.error || 'Failed to start generation');
         setGenerating(false);
       }
     } catch (error) {
-      toast.error('Failed to generate lyric video');
+      toast.error('Failed to generate video');
       setGenerating(false);
     }
   };
 
   const pollVideoStatus = async (videoTaskId) => {
-    const maxAttempts = 120;
+    const maxAttempts = 120; // 10 minutes max
     let attempts = 0;
 
     const poll = async () => {
       try {
         attempts++;
-        setProgress(Math.min(95, (attempts / maxAttempts) * 100));
+        const estimatedProgress = Math.min(95, (attempts / maxAttempts) * 100);
+        setProgress(estimatedProgress);
 
+        // Check VideoGeneration entity for status
         const videoRecords = await base44.entities.VideoGeneration.filter({ task_id: videoTaskId });
+        
         if (videoRecords.length > 0) {
           const videoRecord = videoRecords[0];
-
+          
           if (videoRecord.status === 'ready' && videoRecord.video_url) {
             setVideoUrl(videoRecord.video_url);
             setProgress(100);
             setGenerating(false);
-            toast.success('Lyric video ready! Find it in your profile.');
+            toast.success('Video ready! View it in your profile.');
+            onClose(); // Close dialog after success
             return;
-          }
-
-          if (videoRecord.status === 'failed') {
-            toast.error(videoRecord.error_message || 'Lyric video generation failed');
+          } else if (videoRecord.status === 'failed') {
+            toast.error(videoRecord.error_message || 'Video generation failed');
             setGenerating(false);
             return;
           }
         }
 
         if (attempts < maxAttempts) {
-          setTimeout(poll, 5000);
+          setTimeout(poll, 5000); // Check every 5 seconds
         } else {
-          toast.error('Lyric video generation timeout. Check your profile later.');
+          toast.error('Video generation timeout. Please check your profile later.');
           setGenerating(false);
         }
       } catch (error) {
-        console.error('Lyric video polling error:', error);
+        console.error('Polling error:', error);
         if (attempts < maxAttempts) {
           setTimeout(poll, 5000);
         } else {
@@ -92,7 +125,7 @@ export default function VideoGeneratorDialog({ track, open, onClose }) {
     if (!videoUrl) return;
     const a = document.createElement('a');
     a.href = videoUrl;
-    a.download = `${track.title}-lyric-video.mp4`;
+    a.download = `${track.title}-video.mp4`;
     a.click();
   };
 
@@ -106,72 +139,144 @@ export default function VideoGeneratorDialog({ track, open, onClose }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="bg-slate-900 border-slate-700 max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-2">
-            <Video className="h-5 w-5 text-pink-400" />
-            Lyric Video for {track.title}
+            <Video className="h-5 w-5 text-violet-400" />
+            Generate Music Video: {track.title}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {!videoUrl ? (
             <>
-              <div className="glass-surface rounded-2xl p-4 text-sm text-slate-300">
-                Generates a lyric video synced to your track. Uses 2 credits.
-              </div>
-
+              {/* Scene Description */}
               <div>
-                <Label className="text-slate-300">Artist Credit (Optional)</Label>
-                <Input
-                  value={author}
-                  onChange={(e) => setAuthor(e.target.value)}
-                  placeholder="Artist name for credits"
+                <Label className="text-slate-300 mb-2 block">Video Description</Label>
+                <Textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Describe scenes, visual style, camera movements, atmosphere..."
+                  className="bg-slate-800 border-slate-700 text-white h-24"
+                  disabled={generating}
                 />
               </div>
 
-              <div className="text-xs text-slate-400">
-                Watermark: {settings.watermark_text || 'Accoustica'} logo is applied automatically.
+              {/* Visual Style */}
+              <div>
+                <Label className="text-slate-300 mb-3 block">Visual Style</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {visualStyles.map((style) => (
+                    <button
+                      key={style.id}
+                      type="button"
+                      onClick={() => setSelectedStyle(style.id)}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        selectedStyle === style.id
+                          ? 'bg-violet-500/20 border-violet-500/50 text-white'
+                          : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                      }`}
+                    >
+                      <p className="font-medium text-sm">{style.name}</p>
+                      <p className="text-xs opacity-70">{style.desc}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <Button
-                onClick={handleGenerate}
-                disabled={generating}
-                className="w-full bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600"
-              >
-                {generating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating Lyric Video...
-                  </>
-                ) : (
-                  <>
-                    <Video className="h-4 w-4 mr-2" />
-                    Generate Lyric Video
-                  </>
-                )}
-              </Button>
+              {/* Aspect Ratio & Length */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-slate-300 mb-2 block">Aspect Ratio</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['16:9', '9:16', '1:1', '4:3'].map((ratio) => (
+                      <button
+                        key={ratio}
+                        type="button"
+                        onClick={() => setAspectRatio(ratio)}
+                        className={`py-2 rounded-lg text-sm transition-all ${
+                          aspectRatio === ratio
+                            ? 'bg-violet-500/20 border border-violet-500/50 text-white'
+                            : 'bg-slate-800 border border-slate-700 text-slate-400'
+                        }`}
+                      >
+                        {ratio}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
+                <div>
+                  <Label className="text-slate-300 mb-2 block">Length: {videoLength[0]}s</Label>
+                  <Slider
+                    value={videoLength}
+                    onValueChange={setVideoLength}
+                    min={15}
+                    max={120}
+                    step={5}
+                    className="mt-3"
+                  />
+                </div>
+              </div>
+
+              {/* Effects */}
+              <div>
+                <Label className="text-slate-300 mb-2 block">Effects</Label>
+                <div className="flex flex-wrap gap-2">
+                  {effects.map((effect) => (
+                    <button
+                      key={effect}
+                      type="button"
+                      onClick={() => toggleEffect(effect)}
+                      className={`px-3 py-1.5 rounded-lg text-xs transition-all ${
+                        selectedEffects.includes(effect)
+                          ? 'bg-pink-500/20 border border-pink-500/50 text-pink-300'
+                          : 'bg-slate-800 border border-slate-700 text-slate-400'
+                      }`}
+                    >
+                      {effect}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Progress */}
               {generating && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="glass-surface rounded-2xl p-6 text-center space-y-3"
+                  className="bg-slate-800/50 rounded-xl p-6 text-center"
                 >
-                  <Loader2 className="h-8 w-8 text-pink-400 animate-spin mx-auto" />
-                  <div className="space-y-2">
-                    <p className="text-white font-medium">Processing your lyric video…</p>
-                    <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                      <motion.div
-                        className="h-full bg-gradient-to-r from-pink-500 to-orange-500"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progress}%` }}
-                        transition={{ duration: 0.5 }}
-                      />
-                    </div>
+                  <Loader2 className="h-8 w-8 text-violet-400 animate-spin mx-auto mb-3" />
+                  <p className="text-white font-medium mb-2">Generating video...</p>
+                  <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-violet-500 to-pink-500 transition-all duration-500"
+                      style={{ width: `${progress}%` }}
+                    />
                   </div>
+                  <p className="text-xs text-slate-400 mt-2">{Math.round(progress)}%</p>
                 </motion.div>
               )}
+
+              {/* Generate Button */}
+              <Button
+                onClick={handleGenerate}
+                disabled={generating || !prompt.trim()}
+                className="w-full bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Video className="h-4 w-4 mr-2" />
+                    Generate Video
+                  </>
+                )}
+              </Button>
             </>
           ) : (
             <motion.div
@@ -179,16 +284,18 @@ export default function VideoGeneratorDialog({ track, open, onClose }) {
               animate={{ opacity: 1, scale: 1 }}
               className="space-y-4"
             >
-              <div className="glass-surface rounded-2xl overflow-hidden">
-                <video src={videoUrl} controls className="w-full" />
+              <div className="bg-slate-800/50 rounded-xl overflow-hidden">
+                <video src={videoUrl} controls className="w-full" poster={track.cover_image_url}>
+                  Your browser does not support video.
+                </video>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <Button onClick={handleDownload} className="bg-emerald-500 hover:bg-emerald-600">
+                <Button onClick={handleDownload} className="bg-green-600 hover:bg-green-700">
                   <Download className="h-4 w-4 mr-2" />
                   Download
                 </Button>
-                <Button variant="outline" onClick={handleShare}>
+                <Button onClick={handleShare} variant="outline" className="border-slate-700">
                   <Share2 className="h-4 w-4 mr-2" />
                   Share
                 </Button>
