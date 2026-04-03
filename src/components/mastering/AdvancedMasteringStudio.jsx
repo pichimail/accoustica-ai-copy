@@ -5,10 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import {
-  Wand2, Music, Download, Play, Pause, RefreshCw,
-  Sparkles, Sliders, Waves, Volume2, Zap } from
-'lucide-react';
+import { 
+  Wand2, Music, Download, Play, Pause, RefreshCw, 
+  Sparkles, Sliders, Waves, Volume2, Zap 
+} from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';
@@ -22,14 +22,14 @@ const genrePresets = {
   jazz: { loudness: -18, compression: 40, bass: 1, highs: 2, width: 100 },
   classical: { loudness: -20, compression: 30, bass: 0, highs: 1, width: 100 },
   indie: { loudness: -16, compression: 55, bass: 2, highs: 3, width: 85 },
-  ambient: { loudness: -19, compression: 35, bass: 1, highs: 2, width: 100 }
+  ambient: { loudness: -19, compression: 35, bass: 1, highs: 2, width: 100 },
 };
 
 export default function AdvancedMasteringStudio({ open, onClose, track, onSuccess }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState('pop');
   const [activeTab, setActiveTab] = useState('presets');
-
+  
   // Mastering parameters
   const [loudness, setLoudness] = useState([-14]);
   const [compression, setCompression] = useState([70]);
@@ -91,7 +91,7 @@ export default function AdvancedMasteringStudio({ open, onClose, track, onSucces
       setHighBoost([response.high_boost]);
       setStereoWidth([response.stereo_width]);
       setSpectralRepair([response.spectral_repair]);
-
+      
       toast.success('AI analysis complete!');
       haptics.success();
     } catch (error) {
@@ -115,7 +115,7 @@ export default function AdvancedMasteringStudio({ open, onClose, track, onSucces
         high_boost: highBoost[0],
         stereo_width: stereoWidth[0],
         spectral_repair: spectralRepair[0],
-        multiband_compression: multibandComp[0]
+        multiband_compression: multibandComp[0],
       });
 
       if (response.data.success) {
@@ -140,37 +140,37 @@ export default function AdvancedMasteringStudio({ open, onClose, track, onSucces
           onClick={analyzeTrack}
           disabled={isAnalyzing}
           size="sm"
-          variant="outline" className="bg-pink-600 text-gray-50 px-3 text-xs font-medium rounded-md inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border shadow-sm hover:text-accent-foreground h-8 w-full border-purple-500/30 hover:bg-purple-500/10">
-
-          
-          {isAnalyzing ?
-          <>
+          variant="outline"
+          className="w-full border-purple-500/30 text-purple-300 hover:bg-purple-500/10"
+        >
+          {isAnalyzing ? (
+            <>
               <RefreshCw className="h-3 w-3 mr-2 animate-spin" />
               Analyzing...
-            </> :
-
-          <>
+            </>
+          ) : (
+            <>
               <Wand2 className="h-3 w-3 mr-2" />
               AI Analyze
             </>
-          }
+          )}
         </Button>
 
         {/* Presets */}
         <div className="grid grid-cols-4 gap-2">
-          {Object.keys(genrePresets).map((preset) =>
-          <button
-            key={preset}
-            onClick={() => applyPreset(preset)}
-            className={`p-2 rounded-lg border text-xs transition-all ${
-            selectedPreset === preset ?
-            'bg-purple-500/20 border-purple-400/50 text-white' :
-            'bg-slate-800/30 border-slate-700 text-slate-400'}`
-            }>
-            
+          {Object.keys(genrePresets).map((preset) => (
+            <button
+              key={preset}
+              onClick={() => applyPreset(preset)}
+              className={`p-2 rounded-lg border text-xs transition-all ${
+                selectedPreset === preset
+                  ? 'bg-purple-500/20 border-purple-400/50 text-white'
+                  : 'bg-slate-800/30 border-slate-700 text-slate-400'
+              }`}
+            >
               {preset}
             </button>
-          )}
+          ))}
         </div>
 
         {/* Controls */}
@@ -219,21 +219,21 @@ export default function AdvancedMasteringStudio({ open, onClose, track, onSucces
         <Button
           onClick={handleMaster}
           disabled={isProcessing}
-          className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
-          
-          {isProcessing ?
-          <>
+          className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+        >
+          {isProcessing ? (
+            <>
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
               Mastering...
-            </> :
-
-          <>
+            </>
+          ) : (
+            <>
               <Sparkles className="h-4 w-4 mr-2" />
               Master Track
             </>
-          }
+          )}
         </Button>
       </div>
-    </BottomSheet>);
-
+    </BottomSheet>
+  );
 }
