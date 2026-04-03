@@ -140,7 +140,7 @@ export default function AdvancedMasteringStudio({ open, onClose, track, onSucces
           onClick={analyzeTrack}
           disabled={isAnalyzing}
           size="sm"
-          variant="outline" className="bg-background text-slate-800 px-3 text-xs font-medium rounded-md inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border shadow-sm hover:text-accent-foreground h-8 w-full border-purple-500/30 hover:bg-purple-500/10">
+          variant="outline" className="bg-pink-600 text-gray-50 px-3 text-xs font-medium rounded-md inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border shadow-sm hover:text-accent-foreground h-8 w-full border-purple-500/30 hover:bg-purple-500/10">
 
           
           {isAnalyzing ?
