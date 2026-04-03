@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from 'framer-motion';
 import { AudioPlayerProvider } from '@/components/audio/AudioPlayerContext';
 import GlobalAudioPlayer from '@/components/audio/GlobalAudioPlayer';
+import MobileNav from '@/components/mobile/MobileNav';
 
 const publicPages = ['Home', 'PublicTrack', 'Discover'];
 
@@ -228,10 +229,10 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main Content — extra bottom padding on mobile accounts for nav bar (56px) + player (60px) */}
       <main className={cn(
         "flex-1 lg:transition-all lg:duration-300 relative z-10",
-        currentPageName === 'Home' ? "pt-0 pb-20 lg:pb-0" : "pt-16 pb-20 lg:pt-0 lg:pb-0",
+        currentPageName === 'Home' ? "pt-0 pb-0 lg:pb-0" : "pt-14 pb-[140px] lg:pt-0 lg:pb-20",
         showSidebar && (sidebarOpen ? "lg:ml-64" : "lg:ml-20")
       )}>
         {children}
@@ -241,28 +242,9 @@ export default function Layout({ children, currentPageName }) {
       <GlobalAudioPlayer />
 
       {/* Mobile Bottom Navigation */}
-      <nav className={cn(
-        "lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/30 backdrop-blur-md border-t border-white/10 safe-bottom",
-        currentPageName === 'Home' && "hidden"
-      )}>
-        <div className="grid grid-cols-5 gap-1 px-2 py-2">
-          {filteredNavLinks.map((link) => (
-            <Link key={link.page} to={createPageUrl(link.page)}>
-              <button 
-                onClick={() => haptics.light()}
-                className={cn(
-                "w-full flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all",
-                currentPageName === link.page
-                  ? "bg-gradient-to-r from-violet-500 to-pink-500 text-white shadow-lg shadow-violet-500/25"
-                  : "text-slate-400 active:bg-slate-800/50"
-              )}>
-                <link.icon className="h-5 w-5" />
-                <span className="text-[10px] font-medium">{link.name}</span>
-              </button>
-            </Link>
-          ))}
-        </div>
-      </nav>
+      {currentPageName !== 'Home' && (
+        <MobileNav currentPageName={currentPageName} user={user} />
+      )}
     </div>
     </AudioPlayerProvider>
   );

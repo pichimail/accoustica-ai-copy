@@ -119,7 +119,7 @@ export default function CreatePage() {
       const taskId = response.data.taskId;
       pollMusicStatus(taskId);
 
-      return track;
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
