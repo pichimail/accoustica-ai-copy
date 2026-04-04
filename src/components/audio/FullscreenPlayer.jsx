@@ -71,13 +71,9 @@ function MiniVisualizer({ audioRef, isPlaying, colors }) {
         const x = i * barW + barW * 0.2;
         const w = barW * 0.6;
 
-        const grad = ctx.createLinearGradient(x, H - h, x, H);
-        grad.addColorStop(0, colors[0] || 'rgba(124,58,237,');
-        grad.addColorStop(1, colors[1] || 'rgba(236,72,153,');
-
-        // thin smoky lines
+        // thin smoky glow
         ctx.globalAlpha = 0.15;
-        ctx.fillStyle = typeof grad.addColorStop === 'function' ? `rgba(168,85,247,0.12)` : 'rgba(168,85,247,0.1)';
+        ctx.fillStyle = `rgba(124,58,237,${v * 0.4})`;
         ctx.fillRect(x, H - h * 1.4, w, h * 1.4);
 
         ctx.globalAlpha = 0.7;
@@ -205,7 +201,7 @@ export default function FullscreenPlayer() {
 
   if (!currentTrack) return null;
 
-  const vizColors = ['rgba(124,58,237,', 'rgba(236,72,153,'];
+  const vizColors = ['rgba(124,58,237,1)', 'rgba(236,72,153,1)'];
 
   return (
     <AnimatePresence>
