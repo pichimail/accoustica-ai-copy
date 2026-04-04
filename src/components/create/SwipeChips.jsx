@@ -22,6 +22,11 @@ export default function SwipeChips({ label, chips, selected, onToggle, accent = 
       x: 'text-pink-400',
       chip: 'bg-pink-500/25 border-pink-500/40 text-pink-200',
     },
+    blue: {
+      tag: 'bg-blue-500/20 border-blue-500/50 text-blue-300',
+      x: 'text-blue-400',
+      chip: 'bg-blue-500/25 border-blue-500/40 text-blue-200',
+    },
   }[accent] || {};
 
   return (

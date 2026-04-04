@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import OledBackground from '@/components/audio/OledBackground';
 
 const FILTERS = ['All', 'Ready', 'Favorites', 'Public', 'Instrumental'];
 const SORT_OPTIONS = [
@@ -99,9 +100,10 @@ export default function LibraryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black pb-32">
+    <div className="min-h-screen bg-black pb-32 relative">
+      <OledBackground intensity={0.6} />
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-xl border-b border-white/5 px-4 pt-2 pb-3">
+      <div className="relative z-10 sticky top-0 bg-black/70 backdrop-blur-2xl border-b border-white/[0.06] px-4 pt-2 pb-3">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-xl font-bold text-white">Library</h1>
           <Link to={createPageUrl('Create')}>
@@ -156,7 +158,7 @@ export default function LibraryPage() {
       </div>
 
       {/* Track List */}
-      <div className="px-4 pt-4">
+      <div className="relative z-10 px-4 pt-4">
         {isLoading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 text-violet-400 animate-spin" />
@@ -192,6 +194,7 @@ export default function LibraryPage() {
       </div>
 
       {/* Bottom Sheet Track Actions */}
+      <div className="relative z-10">
       <TrackActionsSheet
         track={bottomSheetTrack}
         onClose={() => setBottomSheetTrack(null)}
@@ -232,6 +235,7 @@ export default function LibraryPage() {
         open={!!videoTrack}
         onClose={() => setVideoTrack(null)}
       />
+      </div>
     </div>
   );
 }
@@ -270,9 +274,11 @@ function LibraryTrackRow({ track, index, isCurrentlyPlaying, onPlay, onFavorite,
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className={cn('text-sm font-medium truncate', isCurrentlyPlaying ? 'text-violet-400' : 'text-white')}>
-          {track.title}
-        </p>
+        <Link to={`/TrackInfo?id=${track.id}`}>
+          <p className={cn('text-sm font-medium truncate hover:text-violet-300 transition-colors', isCurrentlyPlaying ? 'text-violet-400' : 'text-white')}>
+            {track.title}
+          </p>
+        </Link>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-xs text-white/40 truncate">{track.style || 'Unknown style'}</span>
           {!isReady && (

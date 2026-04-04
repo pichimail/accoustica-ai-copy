@@ -7,6 +7,7 @@ import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import { Sparkles, TrendingUp, Clock, Zap, Loader2, Play, Pause, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
+import OledBackground from '@/components/audio/OledBackground';
 
 export default function ForYouPage() {
   const [user, setUser] = useState(null);
@@ -65,9 +66,10 @@ export default function ForYouPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-black pb-32">
+    <div className="min-h-screen bg-black pb-32 relative">
+      <OledBackground intensity={0.6} />
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-xl border-b border-white/5 px-4 pt-2 pb-4">
+      <div className="relative z-10 sticky top-0 bg-black/70 backdrop-blur-2xl border-b border-white/[0.06] px-4 pt-2 pb-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-white">For You</h1>
@@ -84,11 +86,11 @@ export default function ForYouPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-20">
+        <div className="relative z-10 flex justify-center py-20">
           <Loader2 className="h-8 w-8 text-violet-400 animate-spin" />
         </div>
       ) : (
-        <div className="pb-6">
+        <div className="relative z-10 pb-6">
           {sections.map(({ id, title, icon: Icon, color, tracks }) => (
             <div key={id} className="mt-6">
               <div className="flex items-center gap-2 px-4 mb-3">

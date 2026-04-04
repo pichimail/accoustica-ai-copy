@@ -12,9 +12,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { 
-        Sparkles, Music, Globe, User, LogOut, Menu, X, 
-        Plus, Library, Crown, Home, PanelLeftClose, PanelLeftOpen,
-        Video, Users, Disc
+        Sparkles, Music, Globe, User, LogOut,
+        Plus, Library, Crown, Home,
+        Disc, MessageCircle, PanelLeftClose, PanelLeftOpen
       } from 'lucide-react';
       import DynamicGradient from '@/components/background/DynamicGradient';
 import { cn } from "@/lib/utils";
@@ -52,12 +52,10 @@ export default function Layout({ children, currentPageName }) {
     { name: 'For You', icon: Sparkles, page: 'ForYou', requireAuth: true },
     { name: 'Create', icon: Plus, page: 'Create', requireAuth: true },
     { name: 'Library', icon: Library, page: 'Library', requireAuth: true },
+    { name: 'Feed', icon: MessageCircle, page: 'SocialFeed' },
     { name: 'Discover', icon: Globe, page: 'Discover' },
     { name: 'Studio', icon: Music, page: 'CollaborativeStudio', requireAuth: true },
-    { name: 'Mastering', icon: Crown, page: 'MasteringStudio', requireAuth: true },
-    { name: 'Video', icon: Sparkles, page: 'VideoStudio', requireAuth: true },
-    { name: 'Personas', icon: User, page: 'PersonasHub', requireAuth: true },
-    { name: 'Stems', icon: PanelLeftClose, page: 'StemStudio', requireAuth: true },
+    { name: 'Stems', icon: Disc, page: 'StemStudio', requireAuth: true },
     { name: 'Profile', icon: User, page: 'Profile', requireAuth: true },
   ];
 

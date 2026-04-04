@@ -15,6 +15,9 @@ import VideoStudio from './pages/VideoStudio';
 import PersonasHub from './pages/PersonasHub';
 import StemStudio from './pages/StemStudio';
 import ForYou from './pages/ForYou';
+import TrackInfo from './pages/TrackInfo';
+import ArtistInfo from './pages/ArtistInfo';
+import SocialFeed from './pages/SocialFeed';
 import __Layout from './Layout.jsx';
 
 
@@ -36,6 +39,9 @@ export const PAGES = {
     "PersonasHub": PersonasHub,
     "StemStudio": StemStudio,
     "ForYou": ForYou,
+    "TrackInfo": TrackInfo,
+    "ArtistInfo": ArtistInfo,
+    "SocialFeed": SocialFeed,
 }
 
 export const pagesConfig = {

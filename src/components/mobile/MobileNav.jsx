@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Home, Sparkles, Plus, Library, Globe, Music, Crown, User, Video, Disc, PanelLeftClose, MoreHorizontal, X, ChevronRight } from 'lucide-react';
+import { Home, Sparkles, Plus, Library, Globe, Music, User, Disc, MoreHorizontal, X, Users, MessageCircle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { haptics } from '@/components/utils/haptics';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MORE_ITEMS = [
   { name: 'Studio',    icon: Music,          page: 'CollaborativeStudio' },
-  { name: 'Mastering', icon: Crown,          page: 'MasteringStudio' },
-  { name: 'Video',     icon: Video,          page: 'VideoStudio' },
-  { name: 'Personas',  icon: User,           page: 'PersonasHub' },
   { name: 'Stems',     icon: Disc,           page: 'StemStudio' },
   { name: 'Profile',   icon: User,           page: 'Profile' },
 ];
@@ -20,17 +17,17 @@ export default function MobileNav({ currentPageName, user }) {
 
   const primaryLinks = user
     ? [
-        { name: 'Home',    icon: Home,     page: 'Home' },
-        { name: 'For You', icon: Sparkles, page: 'ForYou' },
-        { name: 'Create',  icon: Plus,     page: 'Create', isCreate: true },
-        { name: 'Library', icon: Library,  page: 'Library' },
+        { name: 'For You', icon: Sparkles,       page: 'ForYou' },
+        { name: 'Feed',    icon: MessageCircle,  page: 'SocialFeed' },
+        { name: 'Create',  icon: Plus,           page: 'Create', isCreate: true },
+        { name: 'Library', icon: Library,        page: 'Library' },
         { name: 'More',    icon: MoreHorizontal, page: null, isMore: true },
       ]
     : [
-        { name: 'Home',     icon: Home,     page: 'Home' },
-        { name: 'Discover', icon: Globe,    page: 'Discover' },
-        { name: 'Create',   icon: Plus,     page: 'Create', isCreate: true },
-        { name: 'For You',  icon: Sparkles, page: 'ForYou' },
+        { name: 'Home',     icon: Home,           page: 'Home' },
+        { name: 'Discover', icon: Globe,          page: 'Discover' },
+        { name: 'Create',   icon: Plus,           page: 'Create', isCreate: true },
+        { name: 'Feed',     icon: MessageCircle,  page: 'SocialFeed' },
         { name: 'More',     icon: MoreHorizontal, page: null, isMore: true },
       ];
 
