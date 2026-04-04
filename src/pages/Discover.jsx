@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { haptics } from '@/components/utils/haptics';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
-import { Search, Globe, TrendingUp, Clock, Sparkles, Loader2, Play, Pause, Heart } from 'lucide-react';
+import { Search, Globe, TrendingUp, Clock, Sparkles, Loader2, Play, Pause } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 const GENRES = ['All', 'Pop', 'Rock', 'Hip-Hop', 'Electronic', 'Jazz', 'Classical', 'Ambient', 'Lo-Fi', 'R&B'];

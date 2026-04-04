@@ -1,0 +1,63 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "user"
+      ],
+      "default": "user"
+    },
+    "avatar_url": {
+      "type": "string",
+      "description": "URL to user avatar image"
+    },
+    "bio": {
+      "type": "string",
+      "description": "Short user bio"
+    },
+    "plan_id": {
+      "type": "string",
+      "description": "ID of the user's subscription plan"
+    },
+    "daily_usage": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of generations today"
+    },
+    "monthly_usage": {
+      "type": "number",
+      "default": 0,
+      "description": "Generations this month"
+    },
+    "total_tracks": {
+      "type": "number",
+      "default": 0,
+      "description": "Total tracks generated"
+    },
+    "last_usage_reset": {
+      "type": "string",
+      "description": "Date of last daily usage reset"
+    },
+    "last_active": {
+      "type": "string",
+      "description": "Last active timestamp"
+    },
+    "preferred_genres": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "User's preferred music genres"
+    },
+    "following": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Emails of creators the user follows"
+    }
+  }
+}
