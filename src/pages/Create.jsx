@@ -16,8 +16,8 @@ import MultiTrackTimeline from '@/components/studio/MultiTrackTimeline';
 import WaveformVisualizer from '@/components/studio/WaveformVisualizer';
 
 const MODES = [
-  { id: 'simple', label: 'Sketch', icon: Sparkles },
-  { id: 'custom', label: 'Studio', icon: Wand2 },
+  { id: 'simple', label: 'Simple', icon: Sparkles },
+  { id: 'custom', label: 'Custom', icon: Wand2 },
   { id: 'mashup', label: 'Mashup', icon: Shuffle },
 ];
 
