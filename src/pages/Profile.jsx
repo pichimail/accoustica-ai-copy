@@ -1,603 +1,285 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { 
-  User, Music, TrendingUp, Calendar, Award, 
-  Settings, Zap, Crown, Clock, Target, Heart, Video, Download, Share2, ExternalLink, Wand2, Play
-} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { haptics } from '@/components/utils/haptics';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
+import {
+  User, Music, TrendingUp, Award, Settings,
+  Zap, Crown, Clock, Heart, LogOut, ChevronRight,
+  Edit3, Check, X, Camera
+} from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { createPageUrl } from '@/utils';
+
+const TABS = [
+  { id: 'stats', label: 'Stats' },
+  { id: 'activity', label: 'Activity' },
+  { id: 'achievements', label: 'Badges' },
+  { id: 'settings', label: 'Settings' },
+];
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [userPlan, setUserPlan] = useState(null);
-  const [activeTab, setActiveTab] = useState('activity');
+  const [tab, setTab] = useState('stats');
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const userData = await base44.auth.me();
-      setUser(userData);
-      setEditedName(userData.full_name || '');
-    };
-    fetchUser();
+    base44.auth.me().then(u => { setUser(u); setEditedName(u.full_name || ''); });
   }, []);
 
-  const handleSaveProfile = async () => {
-    try {
-      await base44.auth.updateMe({ full_name: editedName });
-      setUser({ ...user, full_name: editedName });
-      setIsEditing(false);
-      toast.success('Profile updated successfully!');
-    } catch (error) {
-      toast.error('Failed to update profile');
-    }
-  };
-
-  // Fetch user's plan
   const { data: plans = [] } = useQuery({
     queryKey: ['plans'],
     queryFn: () => base44.entities.Plan.list(),
   });
 
   useEffect(() => {
-    if (user?.plan_id && plans.length > 0) {
-      const plan = plans.find(p => p.id === user.plan_id);
-      setUserPlan(plan);
-    } else if (plans.length > 0) {
-      const freePlan = plans.find(p => p.name.toLowerCase() === 'free');
-      setUserPlan(freePlan || plans[0]);
+    if (plans.length > 0) {
+      const plan = user?.plan_id ? plans.find(p => p.id === user.plan_id) : null;
+      setUserPlan(plan || plans.find(p => p.name?.toLowerCase() === 'free') || plans[0]);
     }
   }, [user, plans]);
 
-  // Fetch user's tracks for stats
-  const { data: userTracks = [] } = useQuery({
+  const { data: tracks = [] } = useQuery({
     queryKey: ['userTracks', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return [];
-      return await base44.entities.Track.filter({ created_by: user.email }, '-created_date', 100);
-    },
+    queryFn: () => base44.entities.Track.filter({ created_by: user.email }, '-created_date', 100),
     enabled: !!user?.email,
   });
 
-  const { data: recentTracks = [] } = useQuery({
-    queryKey: ['recentTracks', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return [];
-      return await base44.entities.Track.filter(
-        { created_by: user.email },
-        '-created_date',
-        10
-      );
-    },
-    enabled: !!user?.email,
-  });
+  const handleSave = async () => {
+    await base44.auth.updateMe({ full_name: editedName });
+    setUser(u => ({ ...u, full_name: editedName }));
+    setIsEditing(false);
+    haptics.success();
+    toast.success('Profile updated!');
+  };
 
-  const { data: favoriteTracks = [] } = useQuery({
-    queryKey: ['favoriteTracks', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return [];
-      return await base44.entities.Track.filter(
-        { created_by: user.email, is_favorite: true },
-        '-updated_date',
-        20
-      );
-    },
-    enabled: !!user?.email,
-  });
+  if (!user) return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+    </div>
+  );
 
-  const { data: masteredTracks = [] } = useQuery({
-    queryKey: ['masteredTracks', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return [];
-      return await base44.entities.Track.filter(
-        { created_by: user.email },
-        '-created_date',
-        50
-      ).then(tracks => tracks.filter(t => t.parent_track_id)); // Only mastered versions
-    },
-    enabled: !!user?.email,
-  });
-
-  const { data: userVideos = [] } = useQuery({
-    queryKey: ['userVideos', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return [];
-      const allVideos = await base44.entities.VideoGeneration.filter({ status: 'ready' });
-      
-      // Filter videos that belong to user's tracks
-      const videoPromises = allVideos.map(async (video) => {
-        try {
-          const tracks = await base44.entities.Track.filter({ id: video.track_id });
-          if (tracks.length > 0 && tracks[0].created_by === user.email) {
-            return { ...video, track: tracks[0] };
-          }
-        } catch (e) {
-          return null;
-        }
-        return null;
-      });
-      
-      const videosWithTracks = await Promise.all(videoPromises);
-      return videosWithTracks.filter(v => v !== null).sort((a, b) => 
-        new Date(b.created_date) - new Date(a.created_date)
-      );
-    },
-    enabled: !!user?.email,
-    refetchInterval: 10000,
-  });
-
-  const dailyUsage = user?.last_usage_reset === new Date().toISOString().split('T')[0] 
-    ? (user?.daily_usage || 0) 
-    : 0;
+  const dailyUsage = user?.last_usage_reset === new Date().toISOString().split('T')[0] ? (user?.daily_usage || 0) : 0;
   const dailyLimit = userPlan?.daily_limit || 5;
-  const monthlyUsage = user?.monthly_usage || 0;
-  const monthlyLimit = userPlan?.monthly_limit || 50;
-  const totalTracks = user?.total_tracks || 0;
+  const totalTracks = tracks.length;
+  const readyTracks = tracks.filter(t => t.status === 'ready').length;
+  const favTracks = tracks.filter(t => t.is_favorite).length;
+  const avatarUrl = user.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${user.full_name}&backgroundColor=7c3aed`;
 
-  const stats = [
-    {
-      icon: Zap,
-      label: 'Daily Usage',
-      value: dailyUsage,
-      max: dailyLimit,
-      color: 'violet',
-    },
-    {
-      icon: TrendingUp,
-      label: 'Monthly Usage',
-      value: monthlyUsage,
-      max: monthlyLimit,
-      color: 'blue',
-    },
-    {
-      icon: Music,
-      label: 'Total Tracks',
-      value: totalTracks,
-      color: 'pink',
-    },
-    {
-      icon: Award,
-      label: 'Ready Tracks',
-      value: userTracks.filter(t => t.status === 'ready').length,
-      color: 'green',
-    },
+  const achievements = [
+    { id: 'first', label: 'First Track', desc: 'Create 1 track', unlocked: totalTracks >= 1, icon: Music },
+    { id: 'ten', label: 'Prolific Creator', desc: 'Create 10 tracks', unlocked: totalTracks >= 10, icon: Zap },
+    { id: 'fifty', label: 'Music Machine', desc: 'Create 50 tracks', unlocked: totalTracks >= 50, icon: TrendingUp },
+    { id: 'hundred', label: 'Legendary', desc: 'Create 100 tracks', unlocked: totalTracks >= 100, icon: Crown },
+    { id: 'fav', label: 'Curator', desc: 'Favorite 5 tracks', unlocked: favTracks >= 5, icon: Heart },
+    { id: 'award', label: 'Power User', desc: '50 ready tracks', unlocked: readyTracks >= 50, icon: Award },
   ];
 
-  const recentActivity = userTracks
-    .sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
-    .slice(0, 10)
-    .map(track => ({
-      title: track.title,
-      date: new Date(track.created_date).toLocaleDateString(),
-      status: track.status,
-    }));
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-500"></div>
-      </div>
-    );
-  }
-
-  const avatarUrl = user.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${user.full_name}`;
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-800 p-8"
-        >
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            <Avatar className="w-32 h-32 border-4 border-violet-500/50">
+    <div className="min-h-screen bg-black pb-32">
+      {/* Hero */}
+      <div className="relative px-4 pt-8 pb-6">
+        <div className="absolute inset-0 bg-gradient-to-b from-violet-950/40 to-black" />
+        <div className="relative flex flex-col items-center text-center">
+          <div className="relative mb-4">
+            <div className="w-24 h-24 rounded-3xl overflow-hidden border-2 border-violet-500/30">
               <img src={avatarUrl} alt={user.full_name} className="w-full h-full object-cover" />
-              <AvatarFallback className="bg-violet-500 text-white text-4xl">
-                {user.full_name?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            
-            <div className="flex-1 text-center md:text-left">
-              <h1 className="text-4xl font-bold text-white mb-2">{user.full_name}</h1>
-              <p className="text-slate-400 mb-4">{user.email}</p>
-              <div className="flex flex-wrap gap-3 justify-center md:justify-start">
-                <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30">
-                  <Crown className="h-3 w-3 mr-1" />
-                  {userPlan?.name || 'Free'} Plan
-                </Badge>
-                <Badge variant="outline" className="bg-slate-800 text-slate-300 border-slate-700">
-                  {user.role === 'admin' ? 'Admin' : 'User'}
-                </Badge>
-                <Badge variant="outline" className="bg-slate-800 text-slate-300 border-slate-700">
-                  <Calendar className="h-3 w-3 mr-1" />
-                  Joined {new Date(user.created_date).toLocaleDateString()}
-                </Badge>
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-xl bg-violet-500 flex items-center justify-center">
+              <Crown className="h-3.5 w-3.5 text-white" />
+            </div>
+          </div>
+
+          {isEditing ? (
+            <div className="flex items-center gap-2 mb-1">
+              <input
+                value={editedName}
+                onChange={e => setEditedName(e.target.value)}
+                className="bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 text-white text-lg font-bold text-center focus:outline-none"
+                autoFocus
+              />
+              <button onClick={handleSave} className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <Check className="h-4 w-4" />
+              </button>
+              <button onClick={() => setIsEditing(false)} className="w-8 h-8 rounded-lg bg-white/10 text-white/40 flex items-center justify-center">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setIsEditing(true); haptics.light(); }}
+              className="flex items-center gap-1.5 mb-1 group"
+            >
+              <h2 className="text-2xl font-bold text-white">{user.full_name}</h2>
+              <Edit3 className="h-4 w-4 text-white/30 group-hover:text-white/60 transition-colors" />
+            </button>
+          )}
+          <p className="text-sm text-white/40 mb-3">{user.email}</p>
+          <div className="flex items-center gap-1.5 bg-violet-500/15 border border-violet-500/25 px-3 py-1.5 rounded-full">
+            <Crown className="h-3 w-3 text-violet-400" />
+            <span className="text-xs font-medium text-violet-300">{userPlan?.name || 'Free'} Plan</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-3 gap-2 px-4 mb-4">
+        {[
+          { label: 'Total', value: totalTracks },
+          { label: 'Ready', value: readyTracks },
+          { label: 'Favorites', value: favTracks },
+        ].map(s => (
+          <div key={s.label} className="bg-white/5 border border-white/8 rounded-xl py-3 text-center">
+            <p className="text-xl font-bold text-white">{s.value}</p>
+            <p className="text-[10px] text-white/40 mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mx-4 bg-white/5 rounded-xl p-1 mb-4">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => { setTab(t.id); haptics.selection(); }}
+            className={cn(
+              'flex-1 py-2 rounded-lg text-xs font-medium transition-all',
+              tab === t.id ? 'bg-white/10 text-white' : 'text-white/40'
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className="px-4"
+        >
+          {tab === 'stats' && (
+            <div className="space-y-3">
+              <UsageMeter label="Daily Usage" used={dailyUsage} max={dailyLimit} color="from-violet-500 to-pink-500" />
+              <UsageMeter label="Monthly Usage" used={user?.monthly_usage || 0} max={userPlan?.monthly_limit || 50} color="from-blue-500 to-cyan-500" />
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Total Tracks', value: totalTracks, color: 'text-violet-400' },
+                  { label: 'Ready Tracks', value: readyTracks, color: 'text-emerald-400' },
+                  { label: 'Favorites', value: favTracks, color: 'text-red-400' },
+                  { label: 'Public', value: tracks.filter(t => t.is_public).length, color: 'text-blue-400' },
+                ].map(s => (
+                  <div key={s.label} className="bg-white/5 border border-white/8 rounded-xl p-4">
+                    <p className={cn('text-2xl font-bold', s.color)}>{s.value}</p>
+                    <p className="text-xs text-white/40 mt-0.5">{s.label}</p>
+                  </div>
+                ))}
               </div>
             </div>
+          )}
 
-            <Button 
-              onClick={() => setIsEditing(!isEditing)}
-              variant="outline" 
-              className="border-slate-700 hover:bg-slate-800"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              {isEditing ? 'Cancel' : 'Edit Profile'}
-            </Button>
-          </div>
+          {tab === 'activity' && (
+            <div className="space-y-2">
+              {tracks.slice(0, 15).map(track => (
+                <div key={track.id} className="flex items-center gap-3 bg-white/5 border border-white/8 rounded-xl p-3">
+                  <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
+                    {track.cover_image_url ? <img src={track.cover_image_url} alt="" className="w-full h-full object-cover" /> : <Music className="h-4 w-4 text-white/20 m-auto" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{track.title}</p>
+                    <p className="text-xs text-white/40">{new Date(track.created_date).toLocaleDateString()}</p>
+                  </div>
+                  <span className={cn('text-xs px-2 py-0.5 rounded-full',
+                    track.status === 'ready' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-yellow-500/15 text-yellow-400'
+                  )}>
+                    {track.status}
+                  </span>
+                </div>
+              ))}
+              {tracks.length === 0 && <p className="text-center text-white/30 py-12 text-sm">No activity yet</p>}
+            </div>
+          )}
+
+          {tab === 'achievements' && (
+            <div className="grid grid-cols-2 gap-3">
+              {achievements.map(({ id, label, desc, unlocked, icon: Icon }) => (
+                <div key={id} className={cn(
+                  'p-4 rounded-xl border transition-all',
+                  unlocked
+                    ? 'bg-violet-500/10 border-violet-500/30'
+                    : 'bg-white/3 border-white/8 opacity-40'
+                )}>
+                  <Icon className={cn('h-6 w-6 mb-2', unlocked ? 'text-violet-400' : 'text-white/20')} />
+                  <p className="text-sm font-semibold text-white">{label}</p>
+                  <p className="text-xs text-white/40 mt-0.5">{desc}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tab === 'settings' && (
+            <div className="space-y-3">
+              <div className="bg-white/5 border border-white/8 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-white/8">
+                  <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Account</p>
+                </div>
+                <div className="divide-y divide-white/5">
+                  <SettingsRow label="Full Name" value={user.full_name} onClick={() => setTab('_edit')} />
+                  <SettingsRow label="Email" value={user.email} />
+                  <SettingsRow label="Plan" value={userPlan?.name || 'Free'} badge />
+                </div>
+              </div>
+              <button
+                onClick={() => base44.auth.logout(createPageUrl('Home'))}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-semibold"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </button>
+            </div>
+          )}
         </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <stat.icon className={`h-8 w-8 text-${stat.color}-400`} />
-                    {stat.max && (
-                      <Badge variant="outline" className="bg-slate-800 text-slate-300 border-slate-700">
-                        {stat.value}/{stat.max}
-                      </Badge>
-                    )}
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-1">
-                    {stat.value}
-                  </h3>
-                  <p className="text-sm text-slate-400">{stat.label}</p>
-                  {stat.max && (
-                    <div className="mt-3 bg-slate-800 rounded-full h-2 overflow-hidden">
-                      <div 
-                        className={`h-full bg-gradient-to-r from-${stat.color}-500 to-${stat.color}-400 transition-all duration-300`}
-                        style={{ width: `${(stat.value / stat.max) * 100}%` }}
-                      />
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Tabs Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Tabs defaultValue="activity" className="space-y-6">
-            <TabsList className="bg-slate-900/50 border border-slate-800">
-              <TabsTrigger value="activity" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
-                <Clock className="h-4 w-4 mr-2" />
-                Recent Activity
-              </TabsTrigger>
-              <TabsTrigger value="favorites" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
-                <Heart className="h-4 w-4 mr-2" />
-                Favorites
-              </TabsTrigger>
-              <TabsTrigger value="mastered" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
-                <Wand2 className="h-4 w-4 mr-2" />
-                Mastered
-              </TabsTrigger>
-              <TabsTrigger value="videos" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
-                <Video className="h-4 w-4 mr-2" />
-                Videos
-              </TabsTrigger>
-              <TabsTrigger value="achievements" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
-                <Award className="h-4 w-4 mr-2" />
-                Achievements
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="data-[state=active]:bg-violet-500/20 data-[state=active]:text-violet-400">
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="activity">
-              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
-                <CardHeader>
-                  <CardTitle className="text-white">Recent Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {recentTracks.length === 0 ? (
-                      <p className="text-slate-400 text-center py-8">No activity yet</p>
-                    ) : (
-                      recentTracks.map((track) => (
-                        <Link key={track.id} to={createPageUrl('TrackView') + `?id=${track.id}`}>
-                          <motion.div
-                            whileHover={{ scale: 1.02 }}
-                            className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 hover:border-violet-500/50 transition-all cursor-pointer"
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-700 flex-shrink-0">
-                                <img 
-                                  src={track.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop'} 
-                                  alt={track.title}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-white truncate">{track.title}</h4>
-                                <p className="text-sm text-slate-400">{track.style}</p>
-                              </div>
-                              <Badge className={cn(
-                                track.status === 'ready' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                              )}>
-                                {track.status}
-                              </Badge>
-                            </div>
-                          </motion.div>
-                        </Link>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="favorites">
-              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
-                <CardHeader>
-                  <CardTitle className="text-white">Favorite Tracks</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {favoriteTracks.length === 0 ? (
-                      <div className="text-center py-12">
-                        <Heart className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-                        <p className="text-slate-400">No favorite tracks yet</p>
-                        <p className="text-sm text-slate-500 mt-2">Mark tracks as favorites to see them here</p>
-                      </div>
-                    ) : (
-                      favoriteTracks.map((track) => (
-                        <Link key={track.id} to={createPageUrl('TrackView') + `?id=${track.id}`}>
-                          <motion.div
-                            whileHover={{ scale: 1.02 }}
-                            className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 hover:border-violet-500/50 transition-all cursor-pointer"
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-700 flex-shrink-0">
-                                <img 
-                                  src={track.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop'} 
-                                  alt={track.title}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <Heart className="h-4 w-4 text-red-500 fill-red-500" />
-                                  <h4 className="font-medium text-white truncate">{track.title}</h4>
-                                </div>
-                                <p className="text-sm text-slate-400">{track.style}</p>
-                              </div>
-                              <div className="text-sm text-slate-400">
-                                {track.plays || 0} plays
-                              </div>
-                            </div>
-                          </motion.div>
-                        </Link>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="mastered">
-              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <Wand2 className="h-5 w-5 text-purple-400" />
-                    Mastered Tracks
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {masteredTracks.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Wand2 className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-                      <p className="text-slate-400">No mastered tracks yet</p>
-                      <p className="text-sm text-slate-500 mt-2">Use the AI Mastering Studio on your tracks</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {masteredTracks.map((track) => (
-                        <Link key={track.id} to={createPageUrl('TrackView') + `?id=${track.id}`}>
-                          <motion.div
-                            whileHover={{ scale: 1.02 }}
-                            className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 hover:border-purple-500/50 transition-all cursor-pointer"
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-lg overflow-hidden bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center flex-shrink-0">
-                                <Wand2 className="h-6 w-6 text-purple-400" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-white truncate">{track.title}</h4>
-                                <p className="text-sm text-slate-400">{track.style}</p>
-                              </div>
-                              <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
-                                Mastered
-                              </Badge>
-                            </div>
-                          </motion.div>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="videos">
-              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
-                <CardHeader>
-                  <CardTitle className="text-white">Music Videos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {userVideos.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Video className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-                      <p className="text-slate-400">No music videos yet</p>
-                      <p className="text-sm text-slate-500 mt-2">Generate videos from your tracks to see them here</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {userVideos.map((video) => (
-                        <motion.div
-                          key={video.id}
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden hover:border-violet-500/50 transition-all"
-                        >
-                          <div className="relative aspect-video bg-slate-900">
-                            <video 
-                              src={video.video_url} 
-                              controls 
-                              poster={video.track?.cover_image_url}
-                              className="w-full h-full object-cover"
-                            >
-                              Your browser does not support video.
-                            </video>
-                          </div>
-
-                          <div className="p-4">
-                            <h3 className="font-semibold text-white mb-1 truncate">{video.track?.title || 'Untitled'}</h3>
-                            <p className="text-sm text-slate-400 mb-3 truncate">{video.track?.style || 'Unknown'}</p>
-                            
-                            <div className="flex items-center gap-2 text-xs text-slate-500 mb-3">
-                              <Calendar className="h-3 w-3" />
-                              {new Date(video.created_date).toLocaleDateString()}
-                            </div>
-
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  const a = document.createElement('a');
-                                  a.href = video.video_url;
-                                  a.download = `${video.track?.title || 'video'}.mp4`;
-                                  a.click();
-                                }}
-                                className="flex-1 bg-slate-700/50 border-slate-600 text-white hover:bg-slate-700"
-                              >
-                                <Download className="h-3 w-3 mr-1" />
-                                Download
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(video.video_url);
-                                  toast.success('Video link copied!');
-                                }}
-                                className="flex-1 bg-slate-700/50 border-slate-600 text-white hover:bg-slate-700"
-                              >
-                                <Share2 className="h-3 w-3 mr-1" />
-                                Share
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => window.open(video.video_url, '_blank')}
-                                className="bg-slate-700/50 border-slate-600 text-white hover:bg-slate-700"
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="achievements">
-              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
-                <CardHeader>
-                  <CardTitle className="text-white">Achievements</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className={`p-4 rounded-lg border-2 ${totalTracks >= 1 ? 'bg-violet-500/10 border-violet-500/30' : 'bg-slate-800/30 border-slate-700 opacity-50'}`}>
-                      <Award className={`h-8 w-8 mb-2 ${totalTracks >= 1 ? 'text-violet-400' : 'text-slate-600'}`} />
-                      <h4 className="text-white font-semibold mb-1">First Track</h4>
-                      <p className="text-sm text-slate-400">Create your first track</p>
-                    </div>
-                    <div className={`p-4 rounded-lg border-2 ${totalTracks >= 10 ? 'bg-blue-500/10 border-blue-500/30' : 'bg-slate-800/30 border-slate-700 opacity-50'}`}>
-                      <Target className={`h-8 w-8 mb-2 ${totalTracks >= 10 ? 'text-blue-400' : 'text-slate-600'}`} />
-                      <h4 className="text-white font-semibold mb-1">10 Tracks</h4>
-                      <p className="text-sm text-slate-400">Create 10 tracks</p>
-                    </div>
-                    <div className={`p-4 rounded-lg border-2 ${totalTracks >= 50 ? 'bg-pink-500/10 border-pink-500/30' : 'bg-slate-800/30 border-slate-700 opacity-50'}`}>
-                      <Zap className={`h-8 w-8 mb-2 ${totalTracks >= 50 ? 'text-pink-400' : 'text-slate-600'}`} />
-                      <h4 className="text-white font-semibold mb-1">50 Tracks</h4>
-                      <p className="text-sm text-slate-400">Create 50 tracks</p>
-                    </div>
-                    <div className={`p-4 rounded-lg border-2 ${totalTracks >= 100 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-800/30 border-slate-700 opacity-50'}`}>
-                      <Crown className={`h-8 w-8 mb-2 ${totalTracks >= 100 ? 'text-amber-400' : 'text-slate-600'}`} />
-                      <h4 className="text-white font-semibold mb-1">100 Tracks</h4>
-                      <p className="text-sm text-slate-400">Create 100 tracks</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="settings">
-              <Card className="bg-slate-900/50 backdrop-blur-xl border-slate-800">
-                <CardHeader>
-                  <CardTitle className="text-white">Account Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label className="text-slate-300">Full Name</Label>
-                    <Input 
-                      value={editedName} 
-                      onChange={(e) => setEditedName(e.target.value)}
-                      className="bg-slate-800 border-slate-700 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-slate-300">Email</Label>
-                    <Input 
-                      value={user.email} 
-                      disabled
-                      className="bg-slate-800 border-slate-700 text-slate-400"
-                    />
-                  </div>
-                  <Button 
-                    onClick={handleSaveProfile}
-                    className="bg-violet-600 hover:bg-violet-700"
-                  >
-                    Save Changes
-                  </Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </motion.div>
+function UsageMeter({ label, used, max, color }) {
+  const pct = Math.min(100, (used / max) * 100);
+  return (
+    <div className="bg-white/5 border border-white/8 rounded-xl px-4 py-3">
+      <div className="flex justify-between text-sm mb-2">
+        <span className="text-white/60">{label}</span>
+        <span className="text-white font-medium">{used}/{max}</span>
+      </div>
+      <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+        <div className={cn('h-full bg-gradient-to-r rounded-full transition-all', color)} style={{ width: `${pct}%` }} />
       </div>
     </div>
+  );
+}
+
+function SettingsRow({ label, value, onClick, badge }) {
+  return (
+    <button
+      className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-white/5 transition-colors text-left"
+      onClick={onClick}
+    >
+      <span className="text-sm text-white/60">{label}</span>
+      <div className="flex items-center gap-2">
+        {badge ? (
+          <span className="text-xs bg-violet-500/20 text-violet-400 px-2 py-0.5 rounded-full">{value}</span>
+        ) : (
+          <span className="text-sm text-white/40">{value}</span>
+        )}
+        {onClick && <ChevronRight className="h-4 w-4 text-white/20" />}
+      </div>
+    </button>
   );
 }

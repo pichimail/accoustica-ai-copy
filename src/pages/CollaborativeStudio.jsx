@@ -1,312 +1,344 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import AudioPlayer from '@/components/audio/AudioPlayer';
-import CommentsPanel from '@/components/collaboration/CommentsPanel';
-import AICollaborationPanel from '@/components/studio/AICollaborationPanel';
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Avatar } from "@/components/ui/avatar";
-import { 
-  Users, MessageSquare, History, Save, Download, 
-  Play, Pause, Video, Sparkles, Volume2, Loader2
-} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { haptics } from '@/components/utils/haptics';
+import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
+import {
+  Music, MessageSquare, Sparkles, Loader2, Search,
+  Send, Play, Pause, Users, History, Save, ChevronDown, X
+} from 'lucide-react';
+import { cn } from "@/lib/utils";
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+
+const STUDIO_TABS = [
+  { id: 'tracks', label: 'My Tracks', icon: Music },
+  { id: 'chat', label: 'Chat', icon: MessageSquare },
+  { id: 'ai', label: 'AI Tools', icon: Sparkles },
+];
 
 export default function CollaborativeStudio() {
-  const [searchParams] = useSearchParams();
-  const trackId = searchParams.get('id');
   const [user, setUser] = useState(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [chatMessage, setChatMessage] = useState('');
-  const [showChat, setShowChat] = useState(true);
-  const [showVersions, setShowVersions] = useState(false);
-  const [activeCollaborators, setActiveCollaborators] = useState([]);
+  const [studioTab, setStudioTab] = useState('tracks');
+  const [selectedTrack, setSelectedTrack] = useState(null);
+  const [chatMsg, setChatMsg] = useState('');
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiResponse, setAiResponse] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
   const queryClient = useQueryClient();
-  const audioRef = useRef(null);
+  const { playTrack, currentTrack, isPlaying } = useAudioPlayer();
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const userData = await base44.auth.me();
-      setUser(userData);
-    };
-    fetchUser();
+    base44.auth.me().then(setUser);
   }, []);
 
-  // Fetch track data with auto-refresh
-  const { data: track } = useQuery({
-    queryKey: ['track', trackId],
-    queryFn: async () => {
-      const tracks = await base44.entities.Track.filter({ id: trackId });
-      return tracks[0];
-    },
-    enabled: !!trackId,
-    refetchInterval: 3000, // Refresh every 3 seconds for pseudo-real-time
+  const { data: tracks = [], isLoading: tracksLoading } = useQuery({
+    queryKey: ['studioTracks', user?.email],
+    queryFn: () => base44.entities.Track.filter({ created_by: user.email, status: 'ready' }, '-created_date', 30),
+    enabled: !!user?.email,
   });
 
-  // Fetch collaborators
-  const { data: shares = [] } = useQuery({
-    queryKey: ['trackShares', trackId],
-    queryFn: async () => {
-      if (!trackId) return [];
-      return await base44.entities.TrackShare.filter({ track_id: trackId, status: 'accepted' });
-    },
-    enabled: !!trackId,
-    refetchInterval: 5000,
-  });
-
-  // Fetch chat messages
   const { data: chatMessages = [] } = useQuery({
-    queryKey: ['studioChat', trackId],
-    queryFn: async () => {
-      if (!trackId) return [];
-      return await base44.entities.TrackComment.filter({ track_id: trackId }, '-created_date', 50);
-    },
-    enabled: !!trackId && showChat,
-    refetchInterval: 2000,
+    queryKey: ['studioChat', selectedTrack?.id],
+    queryFn: () => base44.entities.TrackComment.filter({ track_id: selectedTrack.id }, '-created_date', 50),
+    enabled: !!selectedTrack?.id && studioTab === 'chat',
+    refetchInterval: 3000,
   });
 
-  // Fetch version history
   const { data: versions = [] } = useQuery({
-    queryKey: ['trackVersions', trackId],
-    queryFn: async () => {
-      if (!trackId) return [];
-      return await base44.entities.TrackVersion.filter({ parent_track_id: trackId }, '-created_date');
-    },
-    enabled: !!trackId && showVersions,
+    queryKey: ['trackVersions', selectedTrack?.id],
+    queryFn: () => base44.entities.TrackVersion.filter({ parent_track_id: selectedTrack.id }, '-created_date'),
+    enabled: !!selectedTrack?.id,
   });
 
-  const sendChatMutation = useMutation({
-    mutationFn: async (message) => {
-      return await base44.entities.TrackComment.create({
-        track_id: trackId,
-        user_email: user.email,
-        user_name: user.full_name,
-        comment_text: message,
-        timestamp_seconds: null,
-      });
-    },
+  const sendChat = useMutation({
+    mutationFn: (msg) => base44.entities.TrackComment.create({
+      track_id: selectedTrack.id,
+      user_email: user.email,
+      user_name: user.full_name,
+      comment_text: msg,
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['studioChat', trackId] });
-      setChatMessage('');
+      queryClient.invalidateQueries({ queryKey: ['studioChat', selectedTrack?.id] });
+      setChatMsg('');
     },
   });
 
-  const createSnapshotMutation = useMutation({
-    mutationFn: async (description) => {
-      return await base44.entities.TrackVersion.create({
-        track_id: trackId,
-        parent_track_id: trackId,
-        changes_description: description,
-        edit_type: 'other',
-        edited_by: user.email,
-        version_number: versions.length + 1,
-      });
-    },
+  const saveSnapshot = useMutation({
+    mutationFn: () => base44.entities.TrackVersion.create({
+      track_id: selectedTrack.id,
+      parent_track_id: selectedTrack.id,
+      changes_description: `Snapshot at ${new Date().toLocaleTimeString()}`,
+      edit_type: 'other',
+      edited_by: user.email,
+      version_number: versions.length + 1,
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['trackVersions', trackId] });
-      toast.success('Snapshot saved');
+      queryClient.invalidateQueries({ queryKey: ['trackVersions', selectedTrack?.id] });
+      haptics.success();
+      toast.success('Snapshot saved!');
     },
   });
 
-  const handleSendChat = () => {
-    if (!chatMessage.trim()) return;
-    sendChatMutation.mutate(chatMessage);
+  const handleAI = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsAiLoading(true);
+    haptics.light();
+    try {
+      const ctx = selectedTrack
+        ? `Track: "${selectedTrack.title}", Style: ${selectedTrack.style}, Prompt: ${selectedTrack.prompt}`
+        : 'No track selected';
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `Music collaboration assistant. Context: ${ctx}\n\nUser: ${aiPrompt}\n\nProvide helpful, specific music advice.`,
+      });
+      setAiResponse(res);
+      haptics.success();
+    } catch (e) {
+      toast.error('AI unavailable');
+    } finally {
+      setIsAiLoading(false);
+    }
   };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  if (!track) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 text-violet-400 animate-spin" />
-      </div>
-    );
-  }
-
-  const canEdit = track.created_by === user?.email || 
-                  shares.some(s => s.shared_with_email === user?.email && s.permission === 'edit');
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col">
+    <div className="min-h-screen bg-black pb-32 flex flex-col">
       {/* Header */}
-      <div className="bg-slate-800/50 border-b border-slate-700 px-6 py-4">
-        <div className="flex items-center justify-between">
+      <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-xl border-b border-white/5 px-4 pt-2 pb-3">
+        <div className="flex items-center justify-between mb-3">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-violet-400" />
-              {track.title}
-            </h1>
-            <p className="text-slate-400 text-sm mt-1">{track.style}</p>
+            <h1 className="text-xl font-bold text-white">Studio</h1>
+            {selectedTrack && (
+              <p className="text-xs text-violet-400 mt-0.5 truncate max-w-[200px]">{selectedTrack.title}</p>
+            )}
           </div>
-          
-          <div className="flex items-center gap-4">
-            {/* Active Collaborators */}
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-slate-400" />
-              <div className="flex -space-x-2">
-                <Avatar className="h-8 w-8 border-2 border-slate-900">
-                  <div className="w-full h-full bg-violet-500 flex items-center justify-center text-white text-xs">
-                    {track.created_by?.charAt(0).toUpperCase()}
-                  </div>
-                </Avatar>
-                {shares.slice(0, 3).map((share, idx) => (
-                  <Avatar key={idx} className="h-8 w-8 border-2 border-slate-900">
-                    <div className="w-full h-full bg-blue-500 flex items-center justify-center text-white text-xs">
-                      {share.shared_with_email?.charAt(0).toUpperCase()}
-                    </div>
-                  </Avatar>
-                ))}
-              </div>
-              <span className="text-sm text-slate-400">{shares.length + 1} online</span>
-            </div>
+          <div className="flex items-center gap-2">
+            {selectedTrack && (
+              <button
+                onClick={() => saveSnapshot.mutate()}
+                disabled={saveSnapshot.isPending}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/20 text-violet-400 text-xs font-medium"
+              >
+                {saveSnapshot.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                Snapshot
+              </button>
+            )}
+          </div>
+        </div>
 
-            <Button
-              onClick={() => createSnapshotMutation.mutate('Manual snapshot')}
-              disabled={!canEdit}
-              variant="outline"
-              className="bg-slate-700 border-slate-600 hover:bg-slate-600"
+        {/* Tab bar */}
+        <div className="flex gap-1 bg-white/5 rounded-xl p-1">
+          {STUDIO_TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => { setStudioTab(id); haptics.selection(); }}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all',
+                studioTab === id ? 'bg-white/10 text-white' : 'text-white/40'
+              )}
             >
-              <Save className="h-4 w-4 mr-2" />
-              Save Snapshot
-            </Button>
-          </div>
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Versions */}
-        <div className="w-64 bg-slate-800/30 border-r border-slate-700 p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <History className="h-4 w-4" />
-              Versions ({versions.length})
-            </h3>
-          </div>
-          
-          <ScrollArea className="h-[calc(100vh-200px)]">
-            <div className="space-y-2">
-              <div className="bg-violet-500/10 border border-violet-500/30 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="outline" className="bg-violet-500/20 text-violet-400 border-violet-500/30">
-                    Current
-                  </Badge>
-                </div>
-                <p className="text-xs text-slate-400">{track.title}</p>
+      <div className="flex-1 px-4 pt-4">
+        {/* TRACKS TAB */}
+        {studioTab === 'tracks' && (
+          <div className="space-y-2">
+            {tracksLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 text-violet-400 animate-spin" />
               </div>
-              
-              {versions.map((version, idx) => (
-                <div key={version.id} className="bg-slate-800/50 rounded-lg p-3 hover:bg-slate-700/50 transition-colors cursor-pointer">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-medium text-white">v{version.version_number || versions.length - idx}</span>
-                    <Badge variant="outline" className="text-xs bg-slate-700 text-slate-300 border-slate-600">
-                      {version.edit_type}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-slate-400 line-clamp-2 mb-1">{version.changes_description}</p>
-                  <p className="text-xs text-slate-500">{formatDate(version.created_date)}</p>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </div>
-
-        {/* Center - Audio Player & Waveform */}
-        <div className="flex-1 flex flex-col p-6">
-          <div className="flex-1 flex items-center justify-center">
-            <div className="w-full max-w-3xl">
-              {track.status === 'ready' ? (
-                <div className="w-full space-y-6">
-                  {/* Album Art */}
-                  <div className="w-full aspect-square max-w-md mx-auto rounded-2xl overflow-hidden shadow-2xl">
-                    <img 
-                      src={track.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop'} 
-                      alt={track.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-
-                  {/* Audio Player */}
-                  <AudioPlayer
-                    src={track.audio_url || track.stream_audio_url}
-                    title={track.title}
-                    artist={track.style}
-                    coverImage={track.cover_image_url}
-                  />
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Loader2 className="h-12 w-12 text-violet-400 animate-spin mx-auto mb-4" />
-                  <p className="text-white">Track is {track.status}...</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* AI Tools & Comments */}
-          <div className="mt-6 space-y-4">
-            <AICollaborationPanel track={track} />
-            <CommentsPanel track={track} currentTime={currentTime} user={user} />
-          </div>
-        </div>
-
-        {/* Right Sidebar - Chat */}
-        <div className="w-80 bg-slate-800/30 border-l border-slate-700 flex flex-col">
-          <div className="p-4 border-b border-slate-700">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Studio Chat
-            </h3>
-          </div>
-
-          <ScrollArea className="flex-1 p-4">
-            <div className="space-y-3">
-              {chatMessages.map((msg) => (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-slate-800/50 rounded-lg p-3"
+            ) : tracks.length === 0 ? (
+              <div className="text-center py-16">
+                <Music className="h-12 w-12 text-white/10 mx-auto mb-3" />
+                <p className="text-white/40 text-sm mb-4">No ready tracks yet</p>
+                <Link to={createPageUrl('Create')}>
+                  <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-pink-600 text-white text-sm font-semibold">
+                    Create First Track
+                  </button>
+                </Link>
+              </div>
+            ) : (
+              tracks.map((track, i) => (
+                <motion.button
+                  key={track.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  onClick={() => { setSelectedTrack(track); haptics.light(); }}
+                  className={cn(
+                    'w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left',
+                    selectedTrack?.id === track.id
+                      ? 'bg-violet-500/15 border-violet-500/40'
+                      : 'bg-white/5 border-white/8'
+                  )}
                 >
-                  <div className="flex items-start justify-between mb-1">
-                    <span className="text-sm font-medium text-white">{msg.user_name}</span>
-                    <span className="text-xs text-slate-500">{formatDate(msg.created_date)}</span>
+                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
+                    {track.cover_image_url ? (
+                      <img src={track.cover_image_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Music className="h-5 w-5 text-white/20" />
+                      </div>
+                    )}
                   </div>
-                  <p className="text-sm text-slate-300">{msg.comment_text}</p>
-                </motion.div>
+                  <div className="flex-1 min-w-0">
+                    <p className={cn('text-sm font-medium truncate', selectedTrack?.id === track.id ? 'text-violet-300' : 'text-white')}>
+                      {track.title}
+                    </p>
+                    <p className="text-xs text-white/40 truncate">{track.style}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {versions.filter(v => v.parent_track_id === track.id).length > 0 && (
+                      <span className="text-[10px] bg-white/10 text-white/40 px-1.5 py-0.5 rounded">
+                        {versions.filter(v => v.parent_track_id === track.id).length}v
+                      </span>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        haptics.medium();
+                        playTrack(track, tracks);
+                      }}
+                      className={cn(
+                        'w-8 h-8 rounded-full flex items-center justify-center',
+                        currentTrack?.id === track.id && isPlaying ? 'bg-violet-500 text-white' : 'bg-white/10 text-white/60'
+                      )}
+                    >
+                      {currentTrack?.id === track.id && isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
+                    </button>
+                  </div>
+                </motion.button>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* CHAT TAB */}
+        {studioTab === 'chat' && (
+          <div className="flex flex-col" style={{ height: 'calc(100vh - 220px)' }}>
+            {!selectedTrack ? (
+              <div className="text-center py-12">
+                <MessageSquare className="h-10 w-10 text-white/10 mx-auto mb-3" />
+                <p className="text-white/40 text-sm">Select a track first</p>
+                <button onClick={() => setStudioTab('tracks')} className="mt-3 text-violet-400 text-sm underline underline-offset-2">
+                  Go to Tracks
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex-1 overflow-y-auto space-y-2 pb-4">
+                  {[...chatMessages].reverse().map((msg) => (
+                    <div key={msg.id} className={cn(
+                      'max-w-[80%] p-3 rounded-xl text-sm',
+                      msg.user_email === user?.email
+                        ? 'ml-auto bg-violet-600/40 border border-violet-500/30 text-violet-100'
+                        : 'bg-white/5 border border-white/8 text-white'
+                    )}>
+                      {msg.user_email !== user?.email && (
+                        <p className="text-[10px] text-white/40 mb-1">{msg.user_name}</p>
+                      )}
+                      <p>{msg.comment_text}</p>
+                    </div>
+                  ))}
+                  {chatMessages.length === 0 && (
+                    <p className="text-center text-white/25 text-sm py-8">No messages yet. Start the conversation!</p>
+                  )}
+                </div>
+                <div className="flex gap-2 pt-2 border-t border-white/8">
+                  <input
+                    value={chatMsg}
+                    onChange={e => setChatMsg(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && chatMsg.trim() && sendChat.mutate(chatMsg)}
+                    placeholder="Type a message..."
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-white/25 focus:outline-none"
+                  />
+                  <button
+                    onClick={() => chatMsg.trim() && sendChat.mutate(chatMsg)}
+                    disabled={!chatMsg.trim() || sendChat.isPending}
+                    className="w-10 h-10 rounded-xl bg-violet-500 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-40"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* AI TOOLS TAB */}
+        {studioTab === 'ai' && (
+          <div className="space-y-4">
+            {selectedTrack && (
+              <div className="bg-white/5 border border-white/8 rounded-xl p-3 flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
+                  {selectedTrack.cover_image_url ? <img src={selectedTrack.cover_image_url} alt="" className="w-full h-full object-cover" /> : <Music className="h-4 w-4 text-white/20 m-auto" />}
+                </div>
+                <p className="text-sm text-white truncate flex-1">{selectedTrack.title}</p>
+                <button onClick={() => setSelectedTrack(null)} className="text-white/30">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-white/40 uppercase tracking-wider">Ask AI about your music</label>
+              <textarea
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                placeholder="e.g. How can I improve the mixing of this track? What BPM would fit this style?"
+                rows={3}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none resize-none"
+              />
+              <button
+                onClick={handleAI}
+                disabled={!aiPrompt.trim() || isAiLoading}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-pink-600 text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
+              >
+                {isAiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {isAiLoading ? 'Thinking…' : 'Ask AI'}
+              </button>
+            </div>
+
+            {aiResponse && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white/5 border border-white/10 rounded-xl p-4"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+                  <span className="text-xs font-semibold text-violet-400">AI Response</span>
+                </div>
+                <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">{aiResponse}</p>
+              </motion.div>
+            )}
+
+            {/* Quick prompts */}
+            <div className="space-y-2">
+              <p className="text-xs text-white/30 uppercase tracking-wider font-semibold">Quick Prompts</p>
+              {[
+                'Suggest ways to improve my track',
+                'What genres pair well with this style?',
+                'Give me lyric ideas for this mood',
+                'How should I master this type of music?',
+              ].map(q => (
+                <button
+                  key={q}
+                  onClick={() => { setAiPrompt(q); haptics.light(); }}
+                  className="w-full text-left px-4 py-2.5 rounded-xl bg-white/5 border border-white/8 text-sm text-white/60 hover:text-white hover:border-white/20 transition-all"
+                >
+                  {q}
+                </button>
               ))}
             </div>
-          </ScrollArea>
-
-          <div className="p-4 border-t border-slate-700">
-            <div className="flex gap-2">
-              <Input
-                value={chatMessage}
-                onChange={(e) => setChatMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendChat()}
-                placeholder="Type a message..."
-                className="bg-slate-800 border-slate-700 text-white"
-              />
-              <Button
-                onClick={handleSendChat}
-                disabled={!chatMessage.trim() || sendChatMutation.isPending}
-                className="bg-violet-600 hover:bg-violet-700"
-              >
-                <MessageSquare className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

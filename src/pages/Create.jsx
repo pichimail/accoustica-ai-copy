@@ -2,95 +2,100 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import CreateMusicForm from '@/components/create/CreateMusicForm';
-import GeneratingStatus from '@/components/tracks/GeneratingStatus';
-import TrackCard from '@/components/tracks/TrackCard';
-import AudioPlayer from '@/components/audio/AudioPlayer';
-import FullscreenPlayer from '@/components/audio/FullscreenPlayer';
-import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
-import { Button } from "@/components/ui/button";
-import { ArrowRight, Music, Sparkles } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { haptics } from '@/components/utils/haptics';
+import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
+import { 
+  Mic, Music, Sparkles, Wand2, ChevronRight, 
+  Play, Pause, Loader2, X, Check, Info
+} from 'lucide-react';
+import { cn } from "@/lib/utils";
+
+const MODES = [
+  { id: 'simple', label: 'Simple', icon: Sparkles },
+  { id: 'custom', label: 'Custom', icon: Wand2 },
+  { id: 'instrumental', label: 'Instrumental', icon: Music },
+];
+
+const STYLE_CHIPS = [
+  'Pop', 'Rock', 'Hip-Hop', 'Electronic', 'Jazz', 'Classical',
+  'Ambient', 'Lo-Fi', 'R&B', 'Country', 'Metal', 'Indie',
+  'Funk', 'Soul', 'Reggae', 'Blues', 'Folk', 'Cinematic',
+];
+
+const MOOD_CHIPS = [
+  'Energetic', 'Chill', 'Dark', 'Happy', 'Melancholic',
+  'Romantic', 'Epic', 'Dreamy', 'Aggressive', 'Peaceful',
+];
 
 export default function CreatePage() {
-  const [currentTrack, setCurrentTrack] = useState(null);
-  const [playingTrack, setPlayingTrack] = useState(null);
-  const [fullscreenPlayerOpen, setFullscreenPlayerOpen] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const audioRef = React.useRef(null);
+  const [mode, setMode] = useState('simple');
+  const [prompt, setPrompt] = useState('');
+  const [title, setTitle] = useState('');
+  const [selectedStyles, setSelectedStyles] = useState([]);
+  const [selectedMoods, setSelectedMoods] = useState([]);
+  const [isInstrumental, setIsInstrumental] = useState(false);
+  const [lyrics, setLyrics] = useState('');
   const [user, setUser] = useState(null);
   const [userPlan, setUserPlan] = useState(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [generatingTrackId, setGeneratingTrackId] = useState(null);
   const queryClient = useQueryClient();
+  const { playTrack } = useAudioPlayer();
 
-  // Fetch user data and check onboarding
   useEffect(() => {
     const fetchUser = async () => {
       const userData = await base44.auth.me();
       setUser(userData);
-      
-      // Check if user needs onboarding
-      const progress = await base44.entities.OnboardingProgress.filter({ created_by: userData.email });
-      if (progress.length === 0 || (!progress[0].is_completed && !progress[0].skipped)) {
-        setShowOnboarding(true);
-      }
     };
     fetchUser();
   }, []);
 
-  // Fetch user's plan
   const { data: plans = [] } = useQuery({
     queryKey: ['plans'],
     queryFn: () => base44.entities.Plan.list(),
   });
 
   useEffect(() => {
-    if (user?.plan_id && plans.length > 0) {
-      const plan = plans.find(p => p.id === user.plan_id);
-      setUserPlan(plan);
-    } else if (plans.length > 0) {
-      // Default to free plan
-      const freePlan = plans.find(p => p.name.toLowerCase() === 'free');
-      setUserPlan(freePlan || plans[0]);
+    if (plans.length > 0) {
+      const plan = user?.plan_id ? plans.find(p => p.id === user.plan_id) : null;
+      setUserPlan(plan || plans.find(p => p.name?.toLowerCase() === 'free') || plans[0]);
     }
   }, [user, plans]);
 
-  // Fetch recent tracks
-  const { data: recentTracks = [] } = useQuery({
-    queryKey: ['recentTracks'],
+  const { data: recentTracks = [], refetch: refetchTracks } = useQuery({
+    queryKey: ['createRecentTracks', user?.email],
     queryFn: async () => {
-      const tracks = await base44.entities.Track.filter(
-        { created_by: user?.email },
-        '-created_date',
-        5
-      );
-      return tracks;
+      if (!user?.email) return [];
+      return await base44.entities.Track.filter({ created_by: user.email }, '-created_date', 6);
     },
     enabled: !!user?.email,
     refetchInterval: (data) => {
-      // Refetch every 2 seconds if any track is generating for faster updates
       const hasGenerating = Array.isArray(data) && data.some(t => t.status === 'generating' || t.status === 'queued');
       return hasGenerating ? 2000 : false;
     },
   });
 
-  // Create track mutation
-  const createTrackMutation = useMutation({
-    mutationFn: async (data) => {
-      // Check daily limit
+  const dailyUsage = user?.last_usage_reset === new Date().toISOString().split('T')[0] ? (user?.daily_usage || 0) : 0;
+  const dailyLimit = userPlan?.daily_limit || 5;
+  const remaining = Math.max(0, dailyLimit - dailyUsage);
+
+  const toggleStyle = (s) => {
+    haptics.selection();
+    setSelectedStyles(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
+  };
+  const toggleMood = (m) => {
+    haptics.selection();
+    setSelectedMoods(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]);
+  };
+
+  const buildStyle = () => [...selectedStyles, ...selectedMoods].join(', ');
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      if (!prompt.trim()) throw new Error('Please describe your music');
+      if (remaining <= 0) throw new Error('Daily limit reached');
+
       const today = new Date().toISOString().split('T')[0];
-      const dailyUsage = user?.last_usage_reset === today ? (user?.daily_usage || 0) : 0;
-      const dailyLimit = userPlan?.daily_limit || 5;
-
-      if (dailyUsage >= dailyLimit) {
-        throw new Error('Daily generation limit reached');
-      }
-
-      // Update user usage first
       await base44.auth.updateMe({
         daily_usage: dailyUsage + 1,
         last_usage_reset: today,
@@ -99,374 +104,300 @@ export default function CreatePage() {
         last_active: new Date().toISOString(),
       });
 
-      // Call backend function to generate music with Suno API
+      const isInst = mode === 'instrumental' || isInstrumental;
       const response = await base44.functions.invoke('generateMusic', {
-        prompt: data.prompt,
-        style: data.style,
-        title: data.title,
-        instrumental: data.is_instrumental || false,
-        creativity_level: data.creativity_level || 50,
-        complexity_level: data.complexity_level || 50,
-        variation_count: data.variation_count || 1,
-        genre_fusion: data.genre_fusion || '',
+        mode: mode === 'instrumental' ? 'instrumental' : (lyrics ? 'custom' : 'simple'),
+        model: 'V5',
+        prompt: lyrics && mode === 'custom' ? lyrics : prompt,
+        style: buildStyle() || 'Pop',
+        title: title || prompt.slice(0, 40) || 'Untitled',
+        customMode: mode === 'custom',
+        instrumental: isInst,
       });
 
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to start generation');
-      }
+      if (!response.data.success) throw new Error(response.data.error || 'Failed to start generation');
 
-      // Poll for status updates
-      const taskId = response.data.taskId;
-      pollMusicStatus(taskId);
-
+      setGeneratingTrackId(response.data.taskId);
+      pollStatus(response.data.taskId);
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
-      toast.success('Generation started!', {
-        description: 'Your track is being created...',
-      });
+      haptics.success();
+      toast.success('Generating your track!');
+      setPrompt(''); setTitle(''); setSelectedStyles([]); setSelectedMoods([]); setLyrics('');
+      queryClient.invalidateQueries({ queryKey: ['createRecentTracks'] });
     },
-    onError: (error) => {
-      toast.error('Generation failed', {
-        description: error.message,
-      });
-    },
+    onError: (e) => { haptics.error(); toast.error(e.message); },
   });
 
-  // Poll music generation status
-  const pollMusicStatus = async (taskId) => {
-    const maxAttempts = 60; // 5 minutes max (60 * 5 seconds)
+  const pollStatus = async (taskId) => {
     let attempts = 0;
-    let hasShownFirstTrack = false;
-
     const poll = async () => {
+      attempts++;
       try {
-        attempts++;
-
-        const statusResponse = await base44.functions.invoke('checkMusicStatus', {
-          taskId,
-        });
-
-        if (statusResponse.data.success) {
-          const updatedTracks = statusResponse.data.tracks || [];
-
-          // Show progress for first track that's still generating
-          const generatingTrack = updatedTracks.find(t => t.status === 'generating' || t.status === 'queued');
-          if (generatingTrack) {
-            setCurrentTrack(generatingTrack);
-          }
-
-          // Check if all tracks are ready
-          const allReady = updatedTracks.length > 0 && updatedTracks.every(t => t.status === 'ready');
-          const anyFailed = updatedTracks.some(t => t.status === 'failed');
-
+        const res = await base44.functions.invoke('checkMusicStatus', { taskId });
+        if (res.data.success) {
+          const tracks = res.data.tracks || [];
+          const allReady = tracks.length > 0 && tracks.every(t => t.status === 'ready');
+          const anyFailed = tracks.some(t => t.status === 'failed');
           if (allReady) {
-            queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
-            toast.success(`${updatedTracks.length} tracks generated successfully!`);
-            setCurrentTrack(null);
-            return;
-          } else if (anyFailed) {
-            queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
-            const failedCount = updatedTracks.filter(t => t.status === 'failed').length;
-            toast.error(`${failedCount} track(s) failed to generate`);
-            setCurrentTrack(null);
+            setGeneratingTrackId(null);
+            queryClient.invalidateQueries({ queryKey: ['createRecentTracks'] });
+            toast.success('Track ready!');
             return;
           }
-
-          // Show notification when first track completes
-          if (!hasShownFirstTrack && updatedTracks.some(t => t.status === 'ready')) {
-            hasShownFirstTrack = true;
-            toast.success('First track ready! Generating second track...');
-            queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
+          if (anyFailed) {
+            setGeneratingTrackId(null);
+            toast.error('Generation failed');
+            queryClient.invalidateQueries({ queryKey: ['createRecentTracks'] });
+            return;
           }
         }
-
-        // Continue polling if not finished and under max attempts
-        if (attempts < maxAttempts) {
-          setTimeout(poll, 2000); // Poll every 2 seconds for faster updates
-        } else {
-          toast.error('Generation timeout - check your library later');
-          setCurrentTrack(null);
-        }
-      } catch (error) {
-        console.error('Error polling status:', error);
-        toast.error('Failed to check generation status');
-        setCurrentTrack(null);
-      }
+        if (attempts < 60) setTimeout(poll, 2000);
+        else { setGeneratingTrackId(null); toast.error('Timed out'); }
+      } catch { setGeneratingTrackId(null); }
     };
-
-    // Start polling
     poll();
   };
 
-  const handlePlay = (track) => {
-    // Now handled by global player
-  };
-
-  const togglePlayPause = () => {
-    if (!audioRef.current) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
-    }
-    setIsPlaying(!isPlaying);
-  };
-
-  const handleSeek = (value) => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = value[0];
-    setCurrentTime(value[0]);
-  };
-
-  React.useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    const updateDuration = () => setDuration(audio.duration);
-    const handleEnded = () => setIsPlaying(false);
-
-    audio.addEventListener('timeupdate', updateTime);
-    audio.addEventListener('loadedmetadata', updateDuration);
-    audio.addEventListener('ended', handleEnded);
-
-    return () => {
-      audio.removeEventListener('timeupdate', updateTime);
-      audio.removeEventListener('loadedmetadata', updateDuration);
-      audio.removeEventListener('ended', handleEnded);
-    };
-  }, [playingTrack]);
-
-  const handleToggleVisibility = async (track) => {
-    await base44.entities.Track.update(track.id, {
-      is_public: !track.is_public,
-    });
-    queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
-    toast.success(track.is_public ? 'Track is now private' : 'Track is now public');
-  };
-
-  const handleDelete = async (track) => {
-    await base44.entities.Track.delete(track.id);
-    queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
-    if (playingTrack?.id === track.id) {
-      setPlayingTrack(null);
-    }
-    toast.success('Track deleted');
-  };
-
-  const handleToggleFavorite = async (track) => {
-    await base44.entities.Track.update(track.id, {
-      is_favorite: !track.is_favorite,
-    });
-    queryClient.invalidateQueries({ queryKey: ['recentTracks'] });
-    toast.success(track.is_favorite ? 'Removed from favorites' : 'Added to favorites');
-  };
-
-  const dailyUsage = user?.last_usage_reset === new Date().toISOString().split('T')[0] 
-    ? (user?.daily_usage || 0) 
-    : 0;
-  const dailyLimit = userPlan?.daily_limit || 5;
-  const remainingGenerations = Math.max(0, dailyLimit - dailyUsage);
-  const limitReached = remainingGenerations <= 0;
+  const isGenerating = !!generatingTrackId || createMutation.isPending;
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute top-0 -left-4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
-          <div className="absolute top-0 -right-4 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
-          <div className="absolute -bottom-8 left-20 w-96 h-96 bg-violet-500 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-black pb-32">
+      {/* Header */}
+      <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-xl border-b border-white/5 px-4 pt-2 pb-3">
+        <h1 className="text-xl font-bold text-white mb-3">Create</h1>
 
-      {/* Main Content */}
-      <div className="relative z-10">
-        <div className="max-w-[1600px] mx-auto px-6 py-12">
-          {/* Hero Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-16"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 mb-6"
-            >
-              <Sparkles className="h-4 w-4 text-violet-400" />
-              <span className="text-sm text-slate-300">AI-Powered Music Generation</span>
-            </motion.div>
-            
-            <h1 className="text-6xl md:text-7xl font-bold mb-6">
-              <span className="text-white">Create</span>
-              <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400 animate-gradient">
-                Your Sound
-              </span>
-            </h1>
-            
-            <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              Transform your imagination into professional music. 
-              No instruments needed, just your creativity.
-            </p>
-
-            {/* Stats Bar */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="flex items-center justify-center gap-8 mt-8"
-            >
-              <div className="text-center">
-                <div className="text-3xl font-bold text-white">{remainingGenerations}</div>
-                <div className="text-sm text-slate-400">Generations Left</div>
-              </div>
-              <div className="w-px h-12 bg-slate-700"></div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-white">{recentTracks.length}</div>
-                <div className="text-sm text-slate-400">Tracks Created</div>
-              </div>
-            </motion.div>
-          </motion.div>
-
-          {/* Centered Creation Form */}
-          <div className="max-w-3xl mx-auto mb-12">
-            <AnimatePresence mode="wait">
-              {currentTrack && currentTrack.status !== 'ready' ? (
-                <motion.div
-                  key="generating"
-                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                  className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-500/10 to-pink-500/10 backdrop-blur-xl border border-white/10 p-8"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-pink-500/20 animate-pulse"></div>
-                  <div className="relative z-10">
-                    <GeneratingStatus status={currentTrack.status} />
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="form"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <CreateMusicForm
-                    onSubmit={(data) => createTrackMutation.mutate(data)}
-                    isLoading={createTrackMutation.isPending}
-                    disabled={currentTrack?.status === 'generating'}
-                    limitReached={limitReached}
-                    remainingGenerations={remainingGenerations}
-                  />
-                </motion.div>
+        {/* Mode Switch */}
+        <div className="flex gap-1 bg-white/5 rounded-xl p-1">
+          {MODES.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => { setMode(id); haptics.light(); }}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all',
+                mode === id
+                  ? 'bg-gradient-to-r from-violet-600 to-pink-600 text-white shadow-lg shadow-violet-500/30'
+                  : 'text-white/50 hover:text-white/80'
               )}
-            </AnimatePresence>
-          </div>
-
-          {/* Generated Tracks Grid */}
-          {recentTracks.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="max-w-6xl mx-auto"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
-                    <Music className="h-5 w-5 text-white" />
-                  </div>
-                  Your Tracks
-                </h2>
-                <Link to={createPageUrl('Library')}>
-                  <Button 
-                    variant="ghost" 
-                    className="text-slate-400 hover:text-white hover:bg-white/5 rounded-xl"
-                  >
-                    View All 
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </Link>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <AnimatePresence mode="popLayout">
-                  {recentTracks.map((track, index) => (
-                    <motion.div
-                      key={track.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <TrackCard
-                        track={track}
-                        onPlay={handlePlay}
-                        onDelete={handleDelete}
-                        onToggleVisibility={handleToggleVisibility}
-                        onToggleFavorite={handleToggleFavorite}
-                        showActions={true}
-                        />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          )}
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
+      <div className="px-4 pt-4 space-y-4 max-w-2xl mx-auto">
+        {/* Usage bar */}
+        <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
+          <div className="flex-1">
+            <div className="flex justify-between text-xs text-white/40 mb-1.5">
+              <span>Daily generations</span>
+              <span>{dailyUsage}/{dailyLimit}</span>
+            </div>
+            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-violet-500 to-pink-500 rounded-full transition-all"
+                style={{ width: `${(dailyUsage / dailyLimit) * 100}%` }}
+              />
+            </div>
+          </div>
+          <span className={cn('text-sm font-semibold', remaining > 0 ? 'text-violet-400' : 'text-red-400')}>
+            {remaining} left
+          </span>
+        </div>
 
+        {/* Prompt */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Describe your music</label>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder={
+              mode === 'instrumental'
+                ? 'e.g. Cinematic orchestral piece with epic horns and strings...'
+                : mode === 'custom'
+                ? 'e.g. Upbeat pop song about summer adventures...'
+                : 'e.g. A chill lo-fi beat with jazzy chords for studying...'
+            }
+            rows={3}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-violet-500/50 resize-none"
+          />
+        </div>
 
-      {/* Onboarding Flow */}
-      <OnboardingFlow 
-        open={showOnboarding} 
-        onComplete={() => setShowOnboarding(false)} 
-      />
+        {/* Title (optional) */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Title (optional)</label>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Give your track a name..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-violet-500/50"
+          />
+        </div>
 
-      <style jsx>{`
-        @keyframes blob {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-        }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-        @keyframes gradient {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        .animate-gradient {
-          background-size: 200% 200%;
-          animation: gradient 3s ease infinite;
-        }
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(139, 92, 246, 0.5);
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(139, 92, 246, 0.7);
-        }
-      `}</style>
+        {/* Style Chips */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Genre</label>
+          <div className="flex flex-wrap gap-2">
+            {STYLE_CHIPS.map(s => (
+              <button
+                key={s}
+                onClick={() => toggleStyle(s)}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                  selectedStyles.includes(s)
+                    ? 'bg-violet-500/30 border border-violet-500/60 text-violet-300'
+                    : 'bg-white/5 border border-white/10 text-white/50 hover:text-white/80'
+                )}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Mood Chips */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Mood</label>
+          <div className="flex flex-wrap gap-2">
+            {MOOD_CHIPS.map(m => (
+              <button
+                key={m}
+                onClick={() => toggleMood(m)}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                  selectedMoods.includes(m)
+                    ? 'bg-pink-500/30 border border-pink-500/60 text-pink-300'
+                    : 'bg-white/5 border border-white/10 text-white/50 hover:text-white/80'
+                )}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom Lyrics */}
+        {mode === 'custom' && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="space-y-2"
+          >
+            <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Custom Lyrics</label>
+            <textarea
+              value={lyrics}
+              onChange={(e) => setLyrics(e.target.value)}
+              placeholder="Write your lyrics here... or leave empty for AI-generated lyrics"
+              rows={5}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-violet-500/50 resize-none font-mono"
+            />
+          </motion.div>
+        )}
+
+        {/* Instrumental Toggle */}
+        {mode !== 'instrumental' && (
+          <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-white">Instrumental only</p>
+              <p className="text-xs text-white/40">No vocals, pure music</p>
+            </div>
+            <button
+              onClick={() => { setIsInstrumental(!isInstrumental); haptics.light(); }}
+              className={cn(
+                'w-12 h-6 rounded-full transition-all relative',
+                isInstrumental ? 'bg-violet-500' : 'bg-white/15'
+              )}
+            >
+              <span className={cn(
+                'absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all',
+                isInstrumental ? 'left-6' : 'left-0.5'
+              )} />
+            </button>
+          </div>
+        )}
+
+        {/* Generate Button */}
+        <button
+          onClick={() => createMutation.mutate()}
+          disabled={isGenerating || !prompt.trim() || remaining <= 0}
+          className={cn(
+            'w-full py-4 rounded-xl font-bold text-white text-base transition-all',
+            isGenerating || !prompt.trim() || remaining <= 0
+              ? 'bg-white/10 text-white/40 cursor-not-allowed'
+              : 'bg-gradient-to-r from-violet-600 to-pink-600 shadow-xl shadow-violet-500/30 active:scale-[0.98]'
+          )}
+        >
+          {isGenerating ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Generating…
+            </span>
+          ) : remaining <= 0 ? 'Daily Limit Reached' : (
+            <span className="flex items-center justify-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              Generate Track
+            </span>
+          )}
+        </button>
+
+        {/* Recent Tracks */}
+        {recentTracks.length > 0 && (
+          <div className="space-y-3 pt-2">
+            <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider">Recent</h2>
+            <div className="space-y-2">
+              <AnimatePresence>
+                {recentTracks.map((track) => (
+                  <RecentTrackRow key={track.id} track={track} onPlay={() => {
+                    if (track.status === 'ready') playTrack(track, recentTracks.filter(t => t.status === 'ready'));
+                  }} />
+                ))}
+              </AnimatePresence>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
+  );
+}
+
+function RecentTrackRow({ track, onPlay }) {
+  const statusColor = { ready: 'text-emerald-400', generating: 'text-violet-400', queued: 'text-yellow-400', failed: 'text-red-400' };
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-center gap-3 bg-white/5 border border-white/8 rounded-xl p-3"
+    >
+      <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
+        {track.cover_image_url ? (
+          <img src={track.cover_image_url} alt={track.title} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Music className="h-4 w-4 text-white/30" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-white truncate">{track.title}</p>
+        <p className={cn('text-xs', statusColor[track.status] || 'text-white/40')}>
+          {track.status === 'generating' ? 'Generating…' : track.status === 'queued' ? 'In queue…' : track.status}
+        </p>
+      </div>
+      {track.status === 'ready' && (
+        <button
+          onClick={onPlay}
+          className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400"
+        >
+          <Play className="h-4 w-4 ml-0.5" />
+        </button>
+      )}
+      {(track.status === 'generating' || track.status === 'queued') && (
+        <Loader2 className="h-4 w-4 text-violet-400 animate-spin flex-shrink-0" />
+      )}
+    </motion.div>
   );
 }

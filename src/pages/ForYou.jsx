@@ -1,210 +1,155 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import TrackCard from '@/components/tracks/TrackCard';
-import ViewToggle from '@/components/ui/ViewToggle';
-import { Sparkles, TrendingUp, Heart, Clock, Zap, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { haptics } from '@/components/utils/haptics';
+import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
+import { Sparkles, TrendingUp, Clock, Zap, Loader2, Play, Pause, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from "@/lib/utils";
 
 export default function ForYouPage() {
   const [user, setUser] = useState(null);
-  const [viewMode, setViewMode] = useState('list');
   const [recommendations, setRecommendations] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { playTrack, currentTrack, isPlaying } = useAudioPlayer();
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const userData = await base44.auth.me();
-      setUser(userData);
-    };
-    fetchUser();
+    base44.auth.me().then(setUser);
   }, []);
 
-  // Fetch user's listening history
   const { data: userTracks = [] } = useQuery({
     queryKey: ['userTracks', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return [];
-      return await base44.entities.Track.filter(
-        { created_by: user.email },
-        '-created_date',
-        50
-      );
-    },
+    queryFn: () => base44.entities.Track.filter({ created_by: user.email }, '-created_date', 50),
     enabled: !!user?.email,
   });
 
-  // Fetch liked tracks
-  const { data: likedTracks = [] } = useQuery({
-    queryKey: ['likedTracks', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return [];
-      const likes = await base44.entities.TrackLike.filter({
-        user_email: user.email,
-        type: 'like'
-      });
-      return likes;
-    },
-    enabled: !!user?.email,
-  });
-
-  // Fetch public tracks for recommendations
   const { data: allTracks = [], isLoading } = useQuery({
     queryKey: ['allPublicTracks'],
-    queryFn: async () => {
-      return await base44.entities.Track.filter(
-        { is_public: true, status: 'ready' },
-        '-plays',
-        100
-      );
-    },
+    queryFn: () => base44.entities.Track.filter({ is_public: true, status: 'ready' }, '-plays', 100),
   });
 
-  // Generate AI recommendations
   const generateRecommendations = async () => {
     setIsAnalyzing(true);
+    haptics.light();
     try {
       const userStyles = [...new Set(userTracks.map(t => t.style).filter(Boolean))];
-      const likedStyles = [...new Set(likedTracks.map(l => l.track_id))];
-      
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `Analyze this user's music preferences and recommend tracks from the available list.
-        
-User's created styles: ${userStyles.join(', ') || 'None yet'}
-User has ${userTracks.length} tracks and ${likedTracks.length} liked tracks
-Available tracks styles: ${[...new Set(allTracks.slice(0, 20).map(t => t.style))].join(', ')}
-
-Recommend track IDs that match the user's taste. Consider:
-- Similar styles/genres
-- Trending tracks (high play counts)
-- Popular tracks they haven't heard
-- Diverse recommendations to expand their taste
-
-Return a list of 10-15 track IDs from the available tracks.`,
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `User creates music in styles: ${userStyles.join(', ') || 'various'}. From these track IDs, pick 10 that best match their taste: ${allTracks.slice(0, 30).map(t => t.id).join(',')}`,
         response_json_schema: {
-          type: "object",
-          properties: {
-            recommended_ids: {
-              type: "array",
-              items: { type: "string" }
-            },
-            reasoning: { type: "string" }
-          }
+          type: 'object',
+          properties: { recommended_ids: { type: 'array', items: { type: 'string' } } }
         }
       });
-
-      const recommended = allTracks.filter(t => 
-        response.recommended_ids.includes(t.id)
-      );
-      
-      setRecommendations(recommended);
-      toast.success('Personalized feed updated!');
-    } catch (error) {
-      // Fallback: trending + random
-      const trending = allTracks
-        .filter(t => t.plays > 0)
-        .sort((a, b) => (b.plays || 0) - (a.plays || 0))
-        .slice(0, 15);
-      setRecommendations(trending);
+      const rec = allTracks.filter(t => res.recommended_ids?.includes(t.id));
+      setRecommendations(rec.length ? rec : allTracks.slice(0, 10));
+      toast.success('Feed refreshed!');
+    } catch {
+      setRecommendations(allTracks.slice(0, 10));
     } finally {
       setIsAnalyzing(false);
     }
   };
 
   useEffect(() => {
-    if (allTracks.length > 0 && user) {
-      generateRecommendations();
-    }
+    if (allTracks.length > 0 && user && recommendations.length === 0) generateRecommendations();
   }, [allTracks.length, user?.email]);
 
+  const trending = [...allTracks].sort((a, b) => (b.plays || 0) - (a.plays || 0)).slice(0, 8);
+  const recent = allTracks.slice(0, 8);
+
+  const sections = [
+    { id: 'ai', title: 'AI Picks For You', icon: Zap, color: 'text-violet-400', tracks: recommendations },
+    { id: 'trending', title: 'Trending Now', icon: TrendingUp, color: 'text-pink-400', tracks: trending },
+    { id: 'recent', title: 'Recently Added', icon: Clock, color: 'text-blue-400', tracks: recent },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-violet-950 pb-32">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-bold text-white flex items-center gap-3">
-                <Sparkles className="h-8 w-8 text-violet-400" />
-                For You
-              </h1>
-              <p className="text-slate-400 mt-2">
-                Personalized recommendations based on your taste
-              </p>
-            </div>
-            <ViewToggle view={viewMode} onViewChange={setViewMode} />
+    <div className="min-h-screen bg-black pb-32">
+      {/* Header */}
+      <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-xl border-b border-white/5 px-4 pt-2 pb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-white">For You</h1>
+            <p className="text-xs text-white/30 mt-0.5">Personalized for your taste</p>
           </div>
-        </motion.div>
-
-        {/* Recommendation Categories */}
-        <div className="space-y-8">
-          {/* AI Curated */}
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                <Zap className="h-5 w-5 text-violet-400" />
-                AI Curated For You
-              </h2>
-              {isAnalyzing && <Loader2 className="h-4 w-4 text-violet-400 animate-spin" />}
-            </div>
-            <div className={viewMode === 'list' ? 'space-y-3' : 'grid md:grid-cols-2 lg:grid-cols-3 gap-4'}>
-              {recommendations.slice(0, 6).map((track) => (
-                <TrackCard
-                  key={track.id}
-                  track={track}
-                  showActions={false}
-                  viewMode={viewMode}
-                />
-              ))}
-            </div>
-          </section>
-
-          {/* Trending Now */}
-          <section>
-            <h2 className="text-xl font-semibold text-white flex items-center gap-2 mb-4">
-              <TrendingUp className="h-5 w-5 text-pink-400" />
-              Trending Now
-            </h2>
-            <div className={viewMode === 'list' ? 'space-y-3' : 'grid md:grid-cols-2 lg:grid-cols-3 gap-4'}>
-              {allTracks
-                .filter(t => t.plays > 0)
-                .sort((a, b) => (b.plays || 0) - (a.plays || 0))
-                .slice(0, 6)
-                .map((track) => (
-                  <TrackCard
-                    key={track.id}
-                    track={track}
-                    showActions={false}
-                    viewMode={viewMode}
-                  />
-                ))}
-            </div>
-          </section>
-
-          {/* Recently Added */}
-          <section>
-            <h2 className="text-xl font-semibold text-white flex items-center gap-2 mb-4">
-              <Clock className="h-5 w-5 text-blue-400" />
-              Recently Added
-            </h2>
-            <div className={viewMode === 'list' ? 'space-y-3' : 'grid md:grid-cols-2 lg:grid-cols-3 gap-4'}>
-              {allTracks.slice(0, 6).map((track) => (
-                <TrackCard
-                  key={track.id}
-                  track={track}
-                  showActions={false}
-                  viewMode={viewMode}
-                />
-              ))}
-            </div>
-          </section>
+          <button
+            onClick={generateRecommendations}
+            disabled={isAnalyzing}
+            className="w-9 h-9 rounded-xl bg-violet-500/20 flex items-center justify-center text-violet-400"
+          >
+            {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          </button>
         </div>
       </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-8 w-8 text-violet-400 animate-spin" />
+        </div>
+      ) : (
+        <div className="pb-6">
+          {sections.map(({ id, title, icon: Icon, color, tracks }) => (
+            <div key={id} className="mt-6">
+              <div className="flex items-center gap-2 px-4 mb-3">
+                <Icon className={cn('h-4 w-4', color)} />
+                <h2 className="text-sm font-semibold text-white">{title}</h2>
+                {id === 'ai' && isAnalyzing && <Loader2 className="h-3 w-3 text-violet-400 animate-spin" />}
+              </div>
+
+              {/* Horizontal scroll cards */}
+              <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-none">
+                {tracks.slice(0, 8).map((track, i) => (
+                  <HorizontalTrackCard
+                    key={track.id}
+                    track={track}
+                    index={i}
+                    isCurrentlyPlaying={currentTrack?.id === track.id && isPlaying}
+                    onPlay={() => {
+                      haptics.medium();
+                      base44.entities.Track.update(track.id, { plays: (track.plays || 0) + 1 });
+                      playTrack(track, tracks);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+function HorizontalTrackCard({ track, index, isCurrentlyPlaying, onPlay }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: index * 0.04 }}
+      className="flex-shrink-0 w-36"
+    >
+      <button onClick={onPlay} className="relative w-full">
+        <div className="w-full aspect-square rounded-xl overflow-hidden bg-white/10 mb-2">
+          {track.cover_image_url ? (
+            <img src={track.cover_image_url} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-violet-500/20 to-pink-500/20 flex items-center justify-center">
+              <Sparkles className="h-8 w-8 text-white/20" />
+            </div>
+          )}
+          <div className="absolute inset-0 rounded-xl flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 active:opacity-100 transition-opacity">
+            {isCurrentlyPlaying ? <Pause className="h-8 w-8 text-white" /> : <Play className="h-8 w-8 text-white" />}
+          </div>
+          {isCurrentlyPlaying && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 to-pink-500 rounded-b-xl" />
+          )}
+        </div>
+      </button>
+      <p className={cn('text-xs font-medium truncate', isCurrentlyPlaying ? 'text-violet-400' : 'text-white')}>
+        {track.title}
+      </p>
+      <p className="text-[10px] text-white/35 truncate mt-0.5">{track.style || 'Unknown'}</p>
+    </motion.div>
   );
 }
