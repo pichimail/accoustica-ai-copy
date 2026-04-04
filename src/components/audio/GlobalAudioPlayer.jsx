@@ -1,9 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAudioPlayer } from './AudioPlayerContext';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Volume1, Maximize2 } from 'lucide-react';
-import { Slider } from "@/components/ui/slider";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import {
+  Play, Pause, SkipBack, SkipForward,
+  Volume2, VolumeX, Volume1, Maximize2,
+  Repeat, Repeat1, Shuffle, Heart
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import FullscreenPlayer from './FullscreenPlayer';
 import { resumeAudioContext } from '@/lib/audioContext';
@@ -11,15 +13,20 @@ import { resumeAudioContext } from '@/lib/audioContext';
 export default function GlobalAudioPlayer() {
   const {
     currentTrack, isPlaying, currentTime, duration, volume,
-    repeatMode, audioRef, togglePlayPause, playNext, playPrevious,
-    seek, changeVolume, setIsFullscreen, setCurrentTime, setDuration,
+    repeatMode, isShuffle, audioRef, togglePlayPause, playNext, playPrevious,
+    seek, changeVolume, toggleRepeat, toggleShuffle, setIsFullscreen,
+    setCurrentTime, setDuration,
   } = useAudioPlayer();
+
+  const progressRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragTime, setDragTime] = useState(0);
+  const [liked, setLiked] = useState(false);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-
-    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateTime = () => { if (!isDragging) setCurrentTime(audio.currentTime); };
     const updateDuration = () => {
       if (!isNaN(audio.duration) && isFinite(audio.duration)) setDuration(audio.duration);
     };
@@ -27,14 +34,12 @@ export default function GlobalAudioPlayer() {
       if (repeatMode === 'one') { audio.currentTime = 0; audio.play(); }
       else playNext();
     };
-
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateDuration);
     audio.addEventListener('canplay', updateDuration);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', resumeAudioContext);
     audio.volume = volume / 100;
-
     return () => {
       audio.removeEventListener('timeupdate', updateTime);
       audio.removeEventListener('loadedmetadata', updateDuration);
@@ -42,19 +47,51 @@ export default function GlobalAudioPlayer() {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('play', resumeAudioContext);
     };
-  }, [repeatMode, volume]);
+  }, [repeatMode, volume, isDragging]);
 
   const fmt = (s) => {
     if (!s || isNaN(s)) return '0:00';
     return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   };
 
-  // Determine progress pct for gradient bar tint
-  const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const pct = duration > 0 ? ((isDragging ? dragTime : currentTime) / duration) * 100 : 0;
+
+  const handleProgressClick = (e) => {
+    if (!progressRef.current || !duration) return;
+    const rect = progressRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+    const ratio = x / rect.width;
+    seek(ratio * duration);
+  };
+
+  const handleProgressMouseDown = (e) => {
+    setIsDragging(true);
+    const rect = progressRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+    setDragTime((x / rect.width) * duration);
+
+    const onMove = (me) => {
+      const r = progressRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const nx = Math.max(0, Math.min(me.clientX - r.left, r.width));
+      setDragTime((nx / r.width) * duration);
+    };
+    const onUp = (me) => {
+      const r = progressRef.current?.getBoundingClientRect();
+      if (r) {
+        const nx = Math.max(0, Math.min(me.clientX - r.left, r.width));
+        seek((nx / r.width) * duration);
+      }
+      setIsDragging(false);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
 
   return (
     <>
-      {/* Hidden audio element always mounted */}
       {currentTrack && (
         <audio
           ref={audioRef}
@@ -67,133 +104,225 @@ export default function GlobalAudioPlayer() {
       <AnimatePresence>
         {currentTrack && (
           <motion.div
-            initial={{ y: 100, opacity: 0 }}
+            initial={{ y: 120, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            transition={{ type: 'spring', damping: 30, stiffness: 280 }}
-            className="fixed bottom-0 left-0 right-0 z-50 pb-[68px] lg:pb-0"
+            exit={{ y: 120, opacity: 0 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+            className="fixed bottom-0 left-0 right-0 z-50 pb-[60px] lg:pb-0"
           >
-            {/* Seek progress accent line */}
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-white/10">
+            {/* Gradient seek bar — full width, interactive */}
+            <div
+              ref={progressRef}
+              className="absolute top-0 left-0 right-0 h-[3px] cursor-pointer group"
+              onClick={handleProgressClick}
+              onMouseDown={handleProgressMouseDown}
+            >
+              {/* track */}
+              <div className="absolute inset-0 bg-white/10" />
+              {/* fill */}
               <div
-                className="h-full bg-gradient-to-r from-violet-500 via-pink-500 to-violet-400 transition-none"
-                style={{ width: `${pct}%` }}
+                className="absolute top-0 left-0 h-full transition-none"
+                style={{
+                  width: `${pct}%`,
+                  background: 'linear-gradient(90deg, #7c3aed, #a855f7, #ec4899, #f43f5e)',
+                  boxShadow: '0 0 8px rgba(168,85,247,0.8)',
+                }}
+              />
+              {/* thumb */}
+              <div
+                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                style={{ left: `calc(${pct}% - 6px)` }}
               />
             </div>
 
-            <div className="bg-black/50 backdrop-blur-xl border-t border-white/8">
-              <div className="max-w-[1800px] mx-auto">
-                {/* Mobile: tap to fullscreen row */}
+            {/* Player body */}
+            <div className="bg-black/70 backdrop-blur-2xl border-t border-white/[0.06]">
+              {/* Mobile */}
+              <div className="lg:hidden flex items-center gap-3 px-3 py-2.5">
                 <div
-                  className="lg:hidden flex items-center gap-3 px-3 py-2 cursor-pointer active:bg-white/5"
+                  className="relative w-11 h-11 rounded-xl overflow-hidden flex-shrink-0 shadow-lg cursor-pointer"
                   onClick={() => setIsFullscreen(true)}
                 >
-                  <div className="relative w-11 h-11 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
+                  <img
+                    src={currentTrack.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop'}
+                    alt={currentTrack.title}
+                    className="w-full h-full object-cover"
+                  />
+                  {isPlaying && (
+                    <div className="absolute inset-0 flex items-end justify-center gap-[2px] bg-black/20 pb-1.5">
+                      {[0.2, 0.5, 0.3, 0.7, 0.4].map((d, i) => (
+                        <span key={i}
+                          className="w-[2px] rounded-full"
+                          style={{
+                            background: 'linear-gradient(to top, #7c3aed, #ec4899)',
+                            animationName: 'mobileViz',
+                            animationDuration: `${0.5 + d}s`,
+                            animationDelay: `${d * 0.2}s`,
+                            animationTimingFunction: 'ease-in-out',
+                            animationIterationCount: 'infinite',
+                            animationDirection: 'alternate',
+                            height: '40%',
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setIsFullscreen(true)}>
+                  <p className="text-white font-semibold text-sm truncate">{currentTrack.title}</p>
+                  <p className="text-white/40 text-xs truncate">{currentTrack.style || 'AI Generated'}</p>
+                </div>
+
+                <div className="flex items-center gap-0.5">
+                  <button
+                    className="w-9 h-9 flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                    onClick={() => playPrevious()}
+                  >
+                    <SkipBack className="h-4 w-4" />
+                  </button>
+                  <button
+                    className="w-11 h-11 rounded-full flex items-center justify-center text-white shadow-lg shadow-violet-500/30"
+                    style={{ background: 'linear-gradient(135deg, #7c3aed, #ec4899)' }}
+                    onClick={() => togglePlayPause()}
+                  >
+                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
+                  </button>
+                  <button
+                    className="w-9 h-9 flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                    onClick={() => playNext()}
+                  >
+                    <SkipForward className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Desktop */}
+              <div className="hidden lg:flex items-center gap-5 px-6 py-3 max-w-[1800px] mx-auto">
+                {/* Left: art + info */}
+                <div className="flex items-center gap-3 w-72 flex-shrink-0">
+                  <div
+                    className="relative w-12 h-12 rounded-xl overflow-hidden shadow-lg flex-shrink-0 cursor-pointer group"
+                    onClick={() => setIsFullscreen(true)}
+                  >
                     <img
                       src={currentTrack.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop'}
                       alt={currentTrack.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                     />
-                    {isPlaying && (
-                      <div className="absolute inset-0 flex items-center justify-center gap-0.5 bg-black/20">
-                        {[0.3,0.7,0.5].map((d,i) => (
-                          <span key={i} className="w-0.5 rounded-full bg-white animate-bounce"
-                            style={{ height: '60%', animationDelay: `${d}s`, animationDuration: '0.7s' }} />
-                        ))}
-                      </div>
-                    )}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Maximize2 className="h-4 w-4 text-white" />
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-white font-semibold text-sm truncate">{currentTrack.title}</p>
-                    <p className="text-white/40 text-xs truncate">{currentTrack.style || 'Unknown Style'}</p>
+                    <p className="text-white/40 text-xs truncate">{currentTrack.style || 'AI Generated'}</p>
                   </div>
-                  {/* Mobile controls */}
-                  <div className="flex items-center gap-1">
-                    <Button size="icon" variant="ghost"
-                      className="h-9 w-9 rounded-full text-white/70 hover:text-white hover:bg-white/10"
-                      onClick={(e) => { e.stopPropagation(); playPrevious(); }}>
+                  <button
+                    onClick={() => setLiked(!liked)}
+                    className={cn('flex-shrink-0 transition-all', liked ? 'text-pink-400 scale-110' : 'text-white/30 hover:text-white/60')}
+                  >
+                    <Heart className="h-4 w-4" fill={liked ? 'currentColor' : 'none'} />
+                  </button>
+                </div>
+
+                {/* Center: controls + seek */}
+                <div className="flex-1 flex flex-col items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={toggleShuffle}
+                      className={cn('w-8 h-8 flex items-center justify-center rounded-full transition-all hover:bg-white/10', isShuffle ? 'text-violet-400' : 'text-white/40')}
+                    >
+                      <Shuffle className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={playPrevious}
+                      className="w-9 h-9 flex items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 transition-all"
+                    >
                       <SkipBack className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon"
-                      className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 text-white shadow-lg shadow-violet-500/40"
-                      onClick={(e) => { e.stopPropagation(); togglePlayPause(); }}>
-                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
-                    </Button>
-                    <Button size="icon" variant="ghost"
-                      className="h-9 w-9 rounded-full text-white/70 hover:text-white hover:bg-white/10"
-                      onClick={(e) => { e.stopPropagation(); playNext(); }}>
+                    </button>
+                    <button
+                      onClick={togglePlayPause}
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-white shadow-xl shadow-violet-500/30 transition-transform hover:scale-105 active:scale-95"
+                      style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7, #ec4899)' }}
+                    >
+                      {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
+                    </button>
+                    <button
+                      onClick={playNext}
+                      className="w-9 h-9 flex items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 transition-all"
+                    >
                       <SkipForward className="h-4 w-4" />
-                    </Button>
+                    </button>
+                    <button
+                      onClick={toggleRepeat}
+                      className={cn('w-8 h-8 flex items-center justify-center rounded-full transition-all hover:bg-white/10', repeatMode !== 'off' ? 'text-violet-400' : 'text-white/40')}
+                    >
+                      {repeatMode === 'one' ? <Repeat1 className="h-3.5 w-3.5" /> : <Repeat className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+
+                  {/* Seek bar */}
+                  <div className="w-full flex items-center gap-2">
+                    <span className="text-[11px] text-white/35 tabular-nums w-8 text-right">{fmt(currentTime)}</span>
+                    <div
+                      ref={progressRef}
+                      className="flex-1 h-[3px] relative rounded-full overflow-hidden cursor-pointer group/seek"
+                      onClick={handleProgressClick}
+                      onMouseDown={handleProgressMouseDown}
+                    >
+                      <div className="absolute inset-0 bg-white/10 rounded-full" />
+                      <div
+                        className="absolute top-0 left-0 h-full rounded-full transition-none"
+                        style={{
+                          width: `${pct}%`,
+                          background: 'linear-gradient(90deg, #6d28d9, #a855f7, #ec4899)',
+                          boxShadow: '0 0 6px rgba(168,85,247,0.6)',
+                        }}
+                      />
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md opacity-0 group-hover/seek:opacity-100 transition-opacity"
+                        style={{ left: `calc(${pct}% - 6px)` }}
+                      />
+                    </div>
+                    <span className="text-[11px] text-white/35 tabular-nums w-8">{fmt(duration)}</span>
                   </div>
                 </div>
 
-                {/* Desktop row */}
-                <div className="hidden lg:flex items-center gap-4 px-5 py-2.5">
-                  {/* Album + track info */}
-                  <div className="flex items-center gap-3 min-w-0 w-64 flex-shrink-0 cursor-pointer"
-                    onClick={() => setIsFullscreen(true)}>
-                    <div className="relative w-11 h-11 rounded-xl overflow-hidden group shadow-lg flex-shrink-0">
-                      <img
-                        src={currentTrack.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop'}
-                        alt={currentTrack.title}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                        <Maximize2 className="h-4 w-4 text-white" />
-                      </div>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-white font-semibold text-sm truncate">{currentTrack.title}</p>
-                      <p className="text-white/40 text-xs truncate">{currentTrack.style || 'Unknown Style'}</p>
-                    </div>
-                  </div>
-
-                  {/* Center controls + seek */}
-                  <div className="flex-1 flex flex-col gap-1.5">
-                    <div className="flex items-center justify-center gap-2">
-                      <Button size="icon" variant="ghost" onClick={playPrevious}
-                        className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10 rounded-full">
-                        <SkipBack className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" onClick={togglePlayPause}
-                        className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white shadow-lg shadow-violet-500/30">
-                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={playNext}
-                        className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10 rounded-full">
-                        <SkipForward className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-white/40 tabular-nums w-9 text-right">{fmt(currentTime)}</span>
-                      <Slider
-                        value={[currentTime]}
-                        max={duration || 100}
-                        step={0.1}
-                        onValueChange={(v) => seek(v[0])}
-                        className="flex-1 cursor-pointer [&>span:first-child]:h-1 [&>span:first-child]:bg-white/15 [&_[data-disabled]_[role=slider]]:hidden [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[role=slider]]:bg-gradient-to-br [&_[role=slider]]:from-violet-400 [&_[role=slider]]:to-pink-400 [&_[role=slider]]:border-0 [&_[role=slider]]:shadow-md"
-                      />
-                      <span className="text-xs text-white/40 tabular-nums w-9">{fmt(duration)}</span>
-                    </div>
-                  </div>
-
-                  {/* Volume + expand */}
-                  <div className="flex items-center gap-2 w-44 flex-shrink-0 justify-end">
-                    <button onClick={() => changeVolume(volume === 0 ? 70 : 0)} className="text-white/40 hover:text-white transition-colors">
-                      {volume === 0 ? <VolumeX className="h-4 w-4" /> : volume < 50 ? <Volume1 className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                    </button>
-                    <Slider
-                      value={[volume]}
-                      max={100}
-                      step={1}
-                      onValueChange={(v) => changeVolume(v[0])}
-                      className="w-24 cursor-pointer [&>span:first-child]:h-1 [&>span:first-child]:bg-white/15 [&_[role=slider]]:h-2.5 [&_[role=slider]]:w-2.5 [&_[role=slider]]:bg-white [&_[role=slider]]:border-0"
+                {/* Right: volume + expand */}
+                <div className="flex items-center gap-3 w-52 flex-shrink-0 justify-end">
+                  <button
+                    onClick={() => changeVolume(volume === 0 ? 70 : 0)}
+                    className="text-white/40 hover:text-white transition-colors flex-shrink-0"
+                  >
+                    {volume === 0 ? <VolumeX className="h-4 w-4" /> : volume < 50 ? <Volume1 className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                  </button>
+                  <div className="flex-1 relative h-[3px] rounded-full overflow-hidden group/vol cursor-pointer"
+                    onClick={(e) => {
+                      const r = e.currentTarget.getBoundingClientRect();
+                      changeVolume(Math.round(((e.clientX - r.left) / r.width) * 100));
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-white/10 rounded-full" />
+                    <div
+                      className="absolute top-0 left-0 h-full rounded-full"
+                      style={{
+                        width: `${volume}%`,
+                        background: 'linear-gradient(90deg, #6d28d9, #ec4899)',
+                      }}
                     />
-                    <Button size="icon" variant="ghost" onClick={() => setIsFullscreen(true)}
-                      className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/10 rounded-full">
-                      <Maximize2 className="h-4 w-4" />
-                    </Button>
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white shadow opacity-0 group-hover/vol:opacity-100 transition-opacity"
+                      style={{ left: `calc(${volume}% - 5px)` }}
+                    />
                   </div>
+                  <Volume2 className="h-4 w-4 text-white/30 flex-shrink-0" />
+                  <button
+                    onClick={() => setIsFullscreen(true)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-all flex-shrink-0"
+                  >
+                    <Maximize2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -201,8 +330,14 @@ export default function GlobalAudioPlayer() {
         )}
       </AnimatePresence>
 
-      {/* Fullscreen Player */}
       <FullscreenPlayer />
+
+      <style>{`
+        @keyframes mobileViz {
+          from { transform: scaleY(0.3); }
+          to { transform: scaleY(1); }
+        }
+      `}</style>
     </>
   );
 }

@@ -1,315 +1,565 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronDown, Play, Pause, SkipBack, SkipForward,
   Repeat, Repeat1, Shuffle, Volume2, VolumeX, Volume1,
-  Zap, Radio, Activity, Circle, Heart, Share2,
-  ListMusic, Palette
+  Heart, Maximize, Minimize, MicVocal, ImageIcon, Activity,
+  ListMusic
 } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 import { useAudioPlayer } from './AudioPlayerContext';
-import AdvancedVisualizer, { VIZ_COLORS } from './AdvancedVisualizer';
 
-const VIZ_MODES = [
-  { key: 'bars',     label: 'Bars',     Icon: Activity },
-  { key: 'waveform', label: 'Wave',     Icon: Radio },
-  { key: 'mirror',   label: 'Mirror',   Icon: Zap },
-  { key: 'circular', label: 'Orbit',    Icon: Circle },
+const TABS = [
+  { id: 'visualizer', icon: Activity, label: 'Visualizer' },
+  { id: 'lyrics', icon: MicVocal, label: 'Lyrics' },
+  { id: 'art', icon: ImageIcon, label: 'Art' },
+  { id: 'queue', icon: ListMusic, label: 'Queue' },
 ];
 
-const COLOR_KEYS = Object.keys(VIZ_COLORS);
+function MiniVisualizer({ audioRef, isPlaying, colors }) {
+  const canvasRef = useRef(null);
+  const animRef = useRef(null);
+  const analyserRef = useRef(null);
+  const srcRef = useRef(null);
 
-function extractDominantColors(imageUrl, cb) {
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.onload = () => {
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
     try {
-      const c = document.createElement('canvas');
-      c.width = 50; c.height = 50;
-      const ctx = c.getContext('2d');
-      ctx.drawImage(img, 0, 0, 50, 50);
-      const d = ctx.getImageData(0, 0, 50, 50).data;
-      let r = 0, g = 0, b = 0, count = 0;
-      for (let i = 0; i < d.length; i += 16) {
-        r += d[i]; g += d[i + 1]; b += d[i + 2]; count++;
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.85;
+      if (!srcRef.current) {
+        srcRef.current = ctx.createMediaElementSource(audio);
       }
-      r = Math.round(r / count); g = Math.round(g / count); b = Math.round(b / count);
-      cb([`rgba(${r},${g},${b},`, `rgba(${Math.min(255,r+40)},${g},${Math.min(255,b+40)},`, `rgba(${r},${Math.min(255,g+30)},${b},`]);
-    } catch { cb(null); }
-  };
-  img.onerror = () => cb(null);
-  img.src = imageUrl;
+      srcRef.current.connect(analyser);
+      analyser.connect(ctx.destination);
+      analyserRef.current = analyser;
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const analyser = analyserRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const draw = () => {
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      let bars = 48;
+      let data = new Uint8Array(bars);
+      if (analyser && isPlaying) {
+        const buf = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(buf);
+        for (let i = 0; i < bars; i++) {
+          data[i] = buf[Math.floor((i / bars) * buf.length)];
+        }
+      } else {
+        for (let i = 0; i < bars; i++) {
+          data[i] = Math.random() * 20 + 5;
+        }
+      }
+
+      const barW = W / bars;
+      for (let i = 0; i < bars; i++) {
+        const v = isPlaying ? (data[i] / 255) : (Math.sin(Date.now() / 1000 + i * 0.4) * 0.08 + 0.05);
+        const h = Math.max(2, v * H * 0.85);
+        const x = i * barW + barW * 0.2;
+        const w = barW * 0.6;
+
+        const grad = ctx.createLinearGradient(x, H - h, x, H);
+        grad.addColorStop(0, colors[0] || 'rgba(124,58,237,');
+        grad.addColorStop(1, colors[1] || 'rgba(236,72,153,');
+
+        // thin smoky lines
+        ctx.globalAlpha = 0.15;
+        ctx.fillStyle = typeof grad.addColorStop === 'function' ? `rgba(168,85,247,0.12)` : 'rgba(168,85,247,0.1)';
+        ctx.fillRect(x, H - h * 1.4, w, h * 1.4);
+
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle = `rgba(168,85,247,${v * 0.8})`;
+        ctx.fillRect(x, H - h, w, h);
+
+        ctx.globalAlpha = 1;
+        const g2 = ctx.createLinearGradient(x, H - h, x, H);
+        g2.addColorStop(0, `rgba(139,92,246,${v})`);
+        g2.addColorStop(0.5, `rgba(168,85,247,${v * 0.7})`);
+        g2.addColorStop(1, `rgba(236,72,153,${v * 0.4})`);
+        ctx.fillStyle = g2;
+        ctx.fillRect(x, H - h, w * 0.3, h);
+      }
+
+      animRef.current = requestAnimationFrame(draw);
+    };
+
+    draw();
+    return () => cancelAnimationFrame(animRef.current);
+  }, [isPlaying, colors]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={600}
+      height={120}
+      className="w-full h-full"
+      style={{ imageRendering: 'pixelated' }}
+    />
+  );
 }
 
 export default function FullscreenPlayer() {
   const {
-    currentTrack, isPlaying, currentTime, duration, volume, repeatMode, isShuffle,
+    currentTrack, isPlaying, currentTime, duration, volume, repeatMode, isShuffle, queue,
     audioRef, togglePlayPause, playNext, playPrevious, seek, changeVolume,
-    toggleRepeat, toggleShuffle, isFullscreen, setIsFullscreen,
+    toggleRepeat, toggleShuffle, isFullscreen, setIsFullscreen, playTrack,
   } = useAudioPlayer();
 
-  const [vizMode, setVizMode] = useState('bars');
-  const [colorKey, setColorKey] = useState('violet');
-  const [syncAlbumArt, setSyncAlbumArt] = useState(false);
-  const [albumColors, setAlbumColors] = useState(null);
-  const [showColorPanel, setShowColorPanel] = useState(false);
-  const [currentLyricIndex, setCurrentLyricIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState('visualizer');
+  const [liked, setLiked] = useState(false);
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
+  const [currentLyricIdx, setCurrentLyricIdx] = useState(0);
+  const containerRef = useRef(null);
+  const progressRef = useRef(null);
 
-  // Extract album art colors when toggled / track changes
+  // Keyboard controls
   useEffect(() => {
-    if (syncAlbumArt && currentTrack?.cover_image_url) {
-      extractDominantColors(currentTrack.cover_image_url, (colors) => {
-        setAlbumColors(colors);
-      });
+    if (!isFullscreen) return;
+    const handler = (e) => {
+      switch (e.key) {
+        case ' ': case 'k': e.preventDefault(); togglePlayPause(); break;
+        case 'ArrowRight': seek(Math.min(duration, currentTime + 10)); break;
+        case 'ArrowLeft': seek(Math.max(0, currentTime - 10)); break;
+        case 'ArrowUp': e.preventDefault(); changeVolume(Math.min(100, volume + 5)); break;
+        case 'ArrowDown': e.preventDefault(); changeVolume(Math.max(0, volume - 5)); break;
+        case 'n': playNext(); break;
+        case 'p': playPrevious(); break;
+        case 'r': toggleRepeat(); break;
+        case 's': toggleShuffle(); break;
+        case 'f': toggleNativeFullscreen(); break;
+        case 'Escape': setIsFullscreen(false); break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isFullscreen, isPlaying, currentTime, duration, volume]);
+
+  // Native fullscreen
+  const toggleNativeFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+      setIsNativeFullscreen(true);
     } else {
-      setAlbumColors(null);
+      document.exitFullscreen();
+      setIsNativeFullscreen(false);
     }
-  }, [syncAlbumArt, currentTrack?.cover_image_url]);
+  };
+
+  useEffect(() => {
+    const handler = () => setIsNativeFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
 
   // Lyric sync
-  const parseLyrics = (lyrics) => {
-    if (!lyrics) return [];
+  const parseLyrics = (lyrics, dur) => {
+    if (!lyrics || !dur) return [];
     const lines = lyrics.split('\n').filter(l => l.trim());
-    return lines.map((text, i) => ({ time: (duration / lines.length) * i, text: text.trim() }));
+    return lines.map((text, i) => ({ time: (dur / lines.length) * i, text: text.trim() }));
   };
-  const lyricLines = parseLyrics(currentTrack?.lyrics);
+  const lyricLines = parseLyrics(currentTrack?.lyrics, duration);
+  const lyricsRef = useRef(null);
+
   useEffect(() => {
     if (!lyricLines.length) return;
     const idx = lyricLines.findIndex((l, i) => {
       const next = lyricLines[i + 1];
       return currentTime >= l.time && (!next || currentTime < next.time);
     });
-    if (idx !== -1) setCurrentLyricIndex(idx);
+    if (idx !== -1) setCurrentLyricIdx(idx);
   }, [currentTime]);
+
+  useEffect(() => {
+    if (activeTab === 'lyrics' && lyricsRef.current) {
+      const active = lyricsRef.current.querySelector('[data-active="true"]');
+      active?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [currentLyricIdx, activeTab]);
 
   const fmt = (s) => {
     if (!s || isNaN(s)) return '0:00';
     return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   };
 
-  const activeColors = syncAlbumArt && albumColors ? albumColors : (VIZ_COLORS[colorKey] || VIZ_COLORS.violet);
-  const gradientCss = `linear-gradient(135deg, ${activeColors[0]}0.6) 0%, ${activeColors[1]}0.4) 50%, ${activeColors[2]}0.3) 100%)`;
+  const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  const handleSeek = (e) => {
+    if (!progressRef.current || !duration) return;
+    const rect = progressRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+    seek((x / rect.width) * duration);
+  };
 
   if (!currentTrack) return null;
+
+  const vizColors = ['rgba(124,58,237,', 'rgba(236,72,153,'];
 
   return (
     <AnimatePresence>
       {isFullscreen && (
         <motion.div
-          initial={{ y: '100%' }}
-          animate={{ y: 0 }}
-          exit={{ y: '100%' }}
-          transition={{ type: 'spring', damping: 32, stiffness: 280 }}
-          className="fixed inset-0 z-[200] overflow-hidden"
-          style={{ background: 'rgb(2,3,15)' }}
+          ref={containerRef}
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.96 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className="fixed inset-0 z-[200] overflow-hidden flex flex-col"
+          style={{ background: '#06040f' }}
         >
-          {/* Blurred album art BG */}
-          <div className="absolute inset-0 overflow-hidden">
-            <img
-              src={currentTrack.cover_image_url}
-              className="absolute inset-0 w-full h-full object-cover scale-110 blur-3xl opacity-20"
-              alt=""
+          {/* Ambient art BG */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {currentTrack.cover_image_url && (
+              <img
+                src={currentTrack.cover_image_url}
+                className="absolute inset-0 w-full h-full object-cover scale-125 blur-[80px] opacity-[0.12]"
+                alt=""
+              />
+            )}
+            <div className="absolute inset-0"
+              style={{
+                background: 'radial-gradient(ellipse 120% 60% at 50% 0%, rgba(124,58,237,0.12) 0%, transparent 70%), radial-gradient(ellipse 80% 40% at 80% 100%, rgba(236,72,153,0.08) 0%, transparent 60%)',
+              }}
             />
-            <div className="absolute inset-0" style={{ background: gradientCss }} />
             <div className="absolute inset-0 bg-black/60" />
           </div>
 
-          <div className="relative z-10 h-full flex flex-col pt-safe-top pb-safe-bottom overflow-y-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 pt-12 pb-4 flex-shrink-0">
-              <Button size="icon" variant="ghost" onClick={() => setIsFullscreen(false)}
-                className="text-white/80 hover:text-white hover:bg-white/10 rounded-full h-10 w-10">
-                <ChevronDown className="h-6 w-6" />
-              </Button>
-              <div className="text-center">
-                <p className="text-xs font-semibold text-white/50 uppercase tracking-widest">Now Playing</p>
-              </div>
-              <Button size="icon" variant="ghost" onClick={() => setShowColorPanel(!showColorPanel)}
-                className="text-white/80 hover:text-white hover:bg-white/10 rounded-full h-10 w-10">
-                <Palette className="h-5 w-5" />
-              </Button>
+          {/* Header */}
+          <div className="relative z-10 flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
+            <button
+              onClick={() => setIsFullscreen(false)}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all"
+            >
+              <ChevronDown className="h-5 w-5" />
+            </button>
+
+            <div className="text-center">
+              <p className="text-[11px] font-semibold text-white/30 uppercase tracking-[0.2em]">Now Playing</p>
             </div>
 
-            {/* Color / Viz Panel */}
-            <AnimatePresence>
-              {showColorPanel && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden flex-shrink-0"
-                >
-                  <div className="mx-5 mb-3 p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 space-y-3">
-                    {/* Viz mode */}
-                    <div>
-                      <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Visualizer</p>
-                      <div className="flex gap-2">
-                        {VIZ_MODES.map(({ key, label, Icon }) => (
-                          <button key={key} onClick={() => setVizMode(key)}
-                            className={cn('flex-1 flex flex-col items-center gap-1 py-2 rounded-xl text-xs transition-all',
-                              vizMode === key ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white/70')}>
-                            <Icon className="h-4 w-4" />
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {/* Colors */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs text-white/40 uppercase tracking-wider">Color</p>
-                        <button onClick={() => setSyncAlbumArt(!syncAlbumArt)}
-                          className={cn('text-xs px-3 py-1 rounded-full border transition-all',
-                            syncAlbumArt ? 'bg-violet-500/30 border-violet-500/50 text-violet-300' : 'border-white/20 text-white/40')}>
-                          🎨 Sync Art
-                        </button>
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        {COLOR_KEYS.map(k => (
-                          <button key={k} onClick={() => { setColorKey(k); setSyncAlbumArt(false); }}
-                            className={cn('w-8 h-8 rounded-full border-2 transition-all',
-                              colorKey === k && !syncAlbumArt ? 'border-white scale-110' : 'border-transparent')}
-                            style={{ background: `${VIZ_COLORS[k][0]}1) 0%` }}>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <button
+              onClick={toggleNativeFullscreen}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all"
+            >
+              {isNativeFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+            </button>
+          </div>
 
-            {/* Album Art */}
-            <div className="flex-shrink-0 flex items-center justify-center px-8 py-2">
+          {/* Main area — two column on desktop, single on mobile */}
+          <div className="relative z-10 flex-1 flex flex-col lg:flex-row gap-0 overflow-hidden px-4 lg:px-8">
+            {/* Left: Album Art (lg only) + always visible art (mobile) */}
+            <div className="lg:w-[340px] xl:w-[380px] flex-shrink-0 flex flex-col items-center justify-center gap-4 py-4">
+              {/* Album Art */}
               <motion.div
-                key={currentTrack.id}
-                initial={{ scale: 0.85, opacity: 0 }}
-                animate={{ scale: isPlaying ? 1 : 0.93, opacity: 1 }}
+                animate={{ scale: isPlaying ? 1 : 0.92 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 25 }}
                 className="relative"
               >
-                <div className="w-72 h-72 md:w-80 md:h-80 rounded-3xl overflow-hidden shadow-2xl"
-                  style={{ boxShadow: `0 30px 80px ${activeColors[0]}0.5)` }}>
+                <div
+                  className="w-64 h-64 lg:w-72 lg:h-72 xl:w-80 xl:h-80 rounded-3xl overflow-hidden shadow-2xl"
+                  style={{
+                    boxShadow: `0 20px 60px rgba(124,58,237,0.35), 0 0 0 1px rgba(255,255,255,0.06)`,
+                  }}
+                >
                   <img
                     src={currentTrack.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop'}
                     alt={currentTrack.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
-              </motion.div>
-            </div>
-
-            {/* Visualizer */}
-            <div className="flex-shrink-0 mx-5 my-2 rounded-2xl overflow-hidden bg-white/5 border border-white/10">
-              <AdvancedVisualizer
-                audioRef={audioRef}
-                isPlaying={isPlaying}
-                type={vizMode}
-                colorKey={colorKey}
-                customColors={syncAlbumArt ? albumColors : null}
-                sensitivity={1.1}
-                height={vizMode === 'circular' ? 140 : 72}
-              />
-            </div>
-
-            {/* Track Info */}
-            <div className="flex-shrink-0 px-6 pt-2 pb-1 text-center">
-              <h1 className="text-2xl font-bold text-white truncate">{currentTrack.title}</h1>
-              <p className="text-sm text-white/50 mt-0.5">{currentTrack.style || 'Unknown Style'}</p>
-            </div>
-
-            {/* Lyrics */}
-            {lyricLines.length > 0 && (
-              <div className="flex-shrink-0 h-16 overflow-hidden px-6 text-center mb-1">
-                {lyricLines.map((lyric, i) => (
-                  <motion.p key={i}
-                    initial={{ opacity: 0.2 }}
-                    animate={{
-                      opacity: i === currentLyricIndex ? 1 : 0.25,
-                      scale: i === currentLyricIndex ? 1.05 : 1,
-                      y: (currentLyricIndex - i) * -26,
+                {/* Pulse ring when playing */}
+                {isPlaying && (
+                  <div className="absolute inset-0 rounded-3xl pointer-events-none"
+                    style={{
+                      boxShadow: '0 0 0 0 rgba(124,58,237,0.4)',
+                      animation: 'pulse-ring 2s ease-out infinite',
                     }}
-                    transition={{ duration: 0.3 }}
-                    className={cn('text-sm font-medium',
-                      i === currentLyricIndex ? 'text-white' : 'text-white/30')}>
-                    {lyric.text}
-                  </motion.p>
+                  />
+                )}
+              </motion.div>
+
+              {/* Track info */}
+              <div className="text-center px-4">
+                <h1 className="text-xl font-bold text-white truncate max-w-xs">{currentTrack.title}</h1>
+                <p className="text-sm text-white/40 mt-0.5">{currentTrack.style || 'AI Generated'}</p>
+              </div>
+
+              {/* Like btn */}
+              <button
+                onClick={() => setLiked(!liked)}
+                className={cn('transition-all', liked ? 'text-pink-400 scale-110' : 'text-white/30 hover:text-white/60')}
+              >
+                <Heart className="h-5 w-5" fill={liked ? 'currentColor' : 'none'} />
+              </button>
+            </div>
+
+            {/* Right: Tab content */}
+            <div className="flex-1 flex flex-col min-h-0 lg:pl-8 lg:border-l border-white/[0.04]">
+              {/* Tab bar */}
+              <div className="flex items-center gap-1 bg-white/[0.04] rounded-xl p-1 mb-4 flex-shrink-0">
+                {TABS.map(({ id, icon: TabIcon, label }) => (
+                  <button
+                    key={id}
+                    onClick={() => setActiveTab(id)}
+                    className={cn(
+                      'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all',
+                      activeTab === id
+                        ? 'text-white'
+                        : 'text-white/30 hover:text-white/60'
+                    )}
+                    style={activeTab === id ? {
+                      background: 'linear-gradient(135deg, rgba(124,58,237,0.4), rgba(236,72,153,0.3))',
+                    } : {}}
+                  >
+                    <TabIcon className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{label}</span>
+                  </button>
                 ))}
               </div>
-            )}
 
-            {/* Progress */}
-            <div className="flex-shrink-0 px-6 mt-1">
-              <Slider
-                value={[currentTime]}
-                max={duration || 100}
-                step={0.1}
-                onValueChange={(v) => seek(v[0])}
-                className={cn(
-                  'cursor-pointer',
-                  '[&>span:first-child]:h-1.5 [&>span:first-child]:bg-white/15',
-                  '[&_[role=slider]]:h-4 [&_[role=slider]]:w-4 [&_[role=slider]]:border-0 [&_[role=slider]]:shadow-lg'
-                )}
-                style={{ '--slider-thumb-bg': activeColors[0] + '1)' }}
-              />
-              <div className="flex justify-between text-xs text-white/40 mt-1.5 tabular-nums">
-                <span>{fmt(currentTime)}</span>
-                <span>{fmt(duration)}</span>
-              </div>
-            </div>
+              {/* Tab content */}
+              <div className="flex-1 overflow-hidden rounded-2xl">
+                <AnimatePresence mode="wait">
+                  {activeTab === 'visualizer' && (
+                    <motion.div
+                      key="viz"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="h-full flex items-center justify-center p-4"
+                    >
+                      <div className="w-full h-32 lg:h-48 rounded-2xl overflow-hidden bg-white/[0.02] border border-white/[0.04]">
+                        <MiniVisualizer audioRef={audioRef} isPlaying={isPlaying} colors={vizColors} />
+                      </div>
+                    </motion.div>
+                  )}
 
-            {/* Controls */}
-            <div className="flex-shrink-0 px-6 pt-2 pb-4">
-              <div className="flex items-center justify-between mb-5">
-                <Button size="icon" variant="ghost" onClick={toggleShuffle}
-                  className={cn('h-10 w-10 rounded-full hover:bg-white/10',
-                    isShuffle ? 'text-violet-400' : 'text-white/40')}>
-                  <Shuffle className="h-5 w-5" />
-                </Button>
+                  {activeTab === 'lyrics' && (
+                    <motion.div
+                      key="lyrics"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="h-full overflow-y-auto px-2 py-4 space-y-3"
+                      ref={lyricsRef}
+                    >
+                      {lyricLines.length > 0 ? lyricLines.map((line, i) => (
+                        <p
+                          key={i}
+                          data-active={i === currentLyricIdx ? 'true' : 'false'}
+                          className={cn(
+                            'text-center transition-all duration-300 leading-relaxed',
+                            i === currentLyricIdx
+                              ? 'text-white text-lg font-semibold'
+                              : i === currentLyricIdx - 1 || i === currentLyricIdx + 1
+                              ? 'text-white/40 text-base'
+                              : 'text-white/15 text-sm'
+                          )}
+                        >
+                          {line.text}
+                        </p>
+                      )) : (
+                        <div className="flex flex-col items-center justify-center h-full text-white/20">
+                          <MicVocal className="h-10 w-10 mb-3" />
+                          <p className="text-sm">No lyrics available</p>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
 
-                <Button size="icon" variant="ghost" onClick={playPrevious}
-                  className="h-14 w-14 rounded-full text-white hover:bg-white/10">
-                  <SkipBack className="h-7 w-7" />
-                </Button>
+                  {activeTab === 'art' && (
+                    <motion.div
+                      key="art"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="h-full flex items-center justify-center p-4"
+                    >
+                      <div className="max-w-xs w-full aspect-square rounded-3xl overflow-hidden shadow-2xl"
+                        style={{ boxShadow: '0 20px 60px rgba(124,58,237,0.3)' }}>
+                        <img
+                          src={currentTrack.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop'}
+                          alt={currentTrack.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
 
-                <Button size="icon" onClick={togglePlayPause}
-                  className="h-20 w-20 rounded-full text-white shadow-2xl transition-transform active:scale-95"
-                  style={{ background: `${activeColors[0]}0.9) 0%, ${activeColors[1]}0.9) 100%` }}>
-                  {isPlaying ? <Pause className="h-9 w-9" /> : <Play className="h-9 w-9 ml-1" />}
-                </Button>
-
-                <Button size="icon" variant="ghost" onClick={playNext}
-                  className="h-14 w-14 rounded-full text-white hover:bg-white/10">
-                  <SkipForward className="h-7 w-7" />
-                </Button>
-
-                <Button size="icon" variant="ghost" onClick={toggleRepeat}
-                  className={cn('h-10 w-10 rounded-full hover:bg-white/10',
-                    repeatMode !== 'off' ? 'text-violet-400' : 'text-white/40')}>
-                  {repeatMode === 'one' ? <Repeat1 className="h-5 w-5" /> : <Repeat className="h-5 w-5" />}
-                </Button>
-              </div>
-
-              {/* Volume */}
-              <div className="flex items-center gap-3">
-                <button onClick={() => changeVolume(volume === 0 ? 70 : 0)} className="text-white/40 hover:text-white">
-                  {volume === 0 ? <VolumeX className="h-4 w-4" /> : volume < 50 ? <Volume1 className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                </button>
-                <Slider
-                  value={[volume]}
-                  max={100}
-                  step={1}
-                  onValueChange={(v) => changeVolume(v[0])}
-                  className="flex-1 cursor-pointer [&>span:first-child]:h-1 [&>span:first-child]:bg-white/15 [&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5 [&_[role=slider]]:bg-white [&_[role=slider]]:border-0"
-                />
-                <Volume2 className="h-4 w-4 text-white/40" />
+                  {activeTab === 'queue' && (
+                    <motion.div
+                      key="queue"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="h-full overflow-y-auto space-y-1 py-2"
+                    >
+                      {queue.length > 0 ? queue.filter(t => t.status === 'ready').map((track, i) => (
+                        <button
+                          key={track.id}
+                          onClick={() => playTrack(track, queue)}
+                          className={cn(
+                            'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all',
+                            track.id === currentTrack.id ? 'bg-white/10' : 'hover:bg-white/[0.04]'
+                          )}
+                        >
+                          <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-white/10">
+                            {track.cover_image_url
+                              ? <img src={track.cover_image_url} alt={track.title} className="w-full h-full object-cover" />
+                              : <div className="w-full h-full flex items-center justify-center"><Activity className="h-4 w-4 text-white/30" /></div>
+                            }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn('text-sm font-medium truncate', track.id === currentTrack.id ? 'text-violet-300' : 'text-white')}>{track.title}</p>
+                            <p className="text-xs text-white/30 truncate">{track.style || 'AI Generated'}</p>
+                          </div>
+                          {track.id === currentTrack.id && isPlaying && (
+                            <div className="flex items-end gap-[2px] h-4">
+                              {[1, 0.6, 0.8].map((h, j) => (
+                                <span key={j} className="w-[2px] rounded-full bg-violet-400"
+                                  style={{ height: `${h * 100}%`, animation: `mobileViz ${0.5 + j * 0.2}s ease-in-out infinite alternate` }} />
+                              ))}
+                            </div>
+                          )}
+                        </button>
+                      )) : (
+                        <div className="flex flex-col items-center justify-center h-full text-white/20 pt-10">
+                          <ListMusic className="h-10 w-10 mb-3" />
+                          <p className="text-sm">Queue is empty</p>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
+
+          {/* Bottom controls */}
+          <div className="relative z-10 flex-shrink-0 px-5 pb-6 pt-3 space-y-4">
+            {/* Seek bar */}
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-white/30 tabular-nums w-10 text-right">{fmt(currentTime)}</span>
+              <div
+                ref={progressRef}
+                className="flex-1 h-1 relative rounded-full cursor-pointer group/bar"
+                onClick={handleSeek}
+              >
+                <div className="absolute inset-0 bg-white/10 rounded-full" />
+                <div
+                  className="absolute top-0 left-0 h-full rounded-full transition-none"
+                  style={{
+                    width: `${pct}%`,
+                    background: 'linear-gradient(90deg, #6d28d9, #a855f7, #ec4899)',
+                    boxShadow: '0 0 8px rgba(168,85,247,0.7)',
+                  }}
+                />
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white shadow-xl opacity-0 group-hover/bar:opacity-100 transition-opacity"
+                  style={{ left: `calc(${pct}% - 8px)` }}
+                />
+              </div>
+              <span className="text-[11px] text-white/30 tabular-nums w-10">{fmt(duration)}</span>
+            </div>
+
+            {/* Playback controls */}
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={toggleShuffle}
+                className={cn('w-10 h-10 flex items-center justify-center rounded-full transition-all hover:bg-white/10', isShuffle ? 'text-violet-400' : 'text-white/30')}
+              >
+                <Shuffle className="h-4 w-4" />
+              </button>
+              <button
+                onClick={playPrevious}
+                className="w-12 h-12 flex items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <SkipBack className="h-6 w-6" />
+              </button>
+              <motion.button
+                whileTap={{ scale: 0.93 }}
+                onClick={togglePlayPause}
+                className="w-16 h-16 rounded-full flex items-center justify-center text-white shadow-2xl"
+                style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7, #ec4899)', boxShadow: '0 8px 32px rgba(124,58,237,0.5)' }}
+              >
+                {isPlaying ? <Pause className="h-7 w-7" /> : <Play className="h-7 w-7 ml-1" />}
+              </motion.button>
+              <button
+                onClick={playNext}
+                className="w-12 h-12 flex items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <SkipForward className="h-6 w-6" />
+              </button>
+              <button
+                onClick={toggleRepeat}
+                className={cn('w-10 h-10 flex items-center justify-center rounded-full transition-all hover:bg-white/10', repeatMode !== 'off' ? 'text-violet-400' : 'text-white/30')}
+              >
+                {repeatMode === 'one' ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
+              </button>
+            </div>
+
+            {/* Volume */}
+            <div className="flex items-center gap-3 max-w-xs mx-auto">
+              <button onClick={() => changeVolume(volume === 0 ? 70 : 0)} className="text-white/30 hover:text-white/60 transition-colors">
+                {volume === 0 ? <VolumeX className="h-4 w-4" /> : volume < 50 ? <Volume1 className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              </button>
+              <div
+                className="flex-1 h-1 relative rounded-full cursor-pointer group/vol"
+                onClick={(e) => {
+                  const r = e.currentTarget.getBoundingClientRect();
+                  changeVolume(Math.round(((e.clientX - r.left) / r.width) * 100));
+                }}
+              >
+                <div className="absolute inset-0 bg-white/10 rounded-full" />
+                <div
+                  className="absolute top-0 left-0 h-full rounded-full"
+                  style={{ width: `${volume}%`, background: 'linear-gradient(90deg, #6d28d9, #ec4899)' }}
+                />
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow opacity-0 group-hover/vol:opacity-100 transition-opacity"
+                  style={{ left: `calc(${volume}% - 6px)` }}
+                />
+              </div>
+              <Volume2 className="h-4 w-4 text-white/30" />
+            </div>
+
+            {/* Keyboard hint */}
+                <p className="text-center text-[10px] text-white/15 tracking-widest">
+                  Space · ← → Seek · ↑ ↓ Volume · N Next · P Prev · F Fullscreen · Esc Close
+                </p>
+              </div>
+              </motion.div>
+            )}
+            </AnimatePresence>
+            );
+            }
+
+            // pulse-ring injected once
+            const styleEl = document.createElement('style');
+            styleEl.textContent = `
+            @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(124,58,237,0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(124,58,237,0); }
+            100% { box-shadow: 0 0 0 0 rgba(124,58,237,0); }
+            }
+            @keyframes mobileViz {
+            from { transform: scaleY(0.3); }
+            to { transform: scaleY(1); }
+            }
+            `;
+            if (typeof document !== 'undefined' && !document.getElementById('accoustica-anim')) {
+            styleEl.id = 'accoustica-anim';
+            document.head.appendChild(styleEl);
+            }
