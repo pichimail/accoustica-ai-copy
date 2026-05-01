@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide all scrollbars globally — scrolling still works via touch/mouse */
+* { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+*::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+
+/* Safe areas */
+.safe-top    { padding-top:    env(safe-area-inset-top,    0px); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* Neon green glow utility */
+.neon-green-glow { box-shadow: 0 0 20px rgba(34,197,94,0.45), 0 0 40px rgba(34,197,94,0.15); }
+
+/* Beat bar animation */
+@keyframes beat-bar {
+  0%, 100% { transform: scaleY(0.3); }
+  50%       { transform: scaleY(1); }
+}
+
+/* Prevent tap highlight flash on mobile */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
 
 /* :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;

@@ -4,56 +4,62 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronDown, Play, Pause, SkipBack, SkipForward,
   Repeat, Repeat1, Shuffle, Volume2, VolumeX, Volume1,
-  Heart, Maximize, Minimize, MicVocal, ImageIcon, Activity,
-  ListMusic
+  Heart, MicVocal, ListMusic
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudioPlayer } from './AudioPlayerContext';
 
-const TABS = [
-  { id: 'visualizer', icon: Activity, label: 'Visualizer' },
-  { id: 'lyrics', icon: MicVocal, label: 'Lyrics' },
-  { id: 'art', icon: ImageIcon, label: 'Art' },
-  { id: 'queue', icon: ListMusic, label: 'Queue' },
-];
-
-// Full-screen canvas visualizer that fills the entire background
-function BackgroundVisualizer({ audioRef, isPlaying }) {
+// ── BEAT VISUALIZER CANVAS ─────────────────────────────────────────
+function BeatVisualizer({ audioRef, isPlaying }) {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
   const analyserRef = useRef(null);
   const srcRef = useRef(null);
-  const ctxAudioRef = useRef(null);
+  const audioCtxRef = useRef(null);
 
+  // Set up Web Audio once
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    try {
-      if (!ctxAudioRef.current) {
-        ctxAudioRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      const ctx = ctxAudioRef.current;
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 512;
-      analyser.smoothingTimeConstant = 0.88;
-      if (!srcRef.current) {
-        srcRef.current = ctx.createMediaElementSource(audio);
-      }
-      srcRef.current.connect(analyser);
-      analyser.connect(ctx.destination);
-      analyserRef.current = analyser;
-    } catch { }
-  }, []);
+    const setup = () => {
+      try {
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtxRef.current.state === 'suspended') {
+          audioCtxRef.current.resume();
+        }
+        const ctx = audioCtxRef.current;
+        if (!analyserRef.current) {
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 256;
+          analyser.smoothingTimeConstant = 0.82;
+          if (!srcRef.current) {
+            srcRef.current = ctx.createMediaElementSource(audio);
+          }
+          srcRef.current.connect(analyser);
+          analyser.connect(ctx.destination);
+          analyserRef.current = analyser;
+        }
+      } catch (e) { /* cross-origin or already connected */ }
+    };
+    audio.addEventListener('play', setup, { once: false });
+    setup();
+    return () => audio.removeEventListener('play', setup);
+  }, [audioRef]);
 
+  // Draw loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    let frameId;
 
     const resize = () => {
-      canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-      canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+      ctx.scale(dpr, dpr);
     };
     resize();
     window.addEventListener('resize', resize);
@@ -63,70 +69,61 @@ function BackgroundVisualizer({ audioRef, isPlaying }) {
       const H = canvas.offsetHeight;
       ctx.clearRect(0, 0, W, H);
 
-      const bars = 80;
-      let data = new Uint8Array(bars);
-      if (analyserRef.current && isPlaying) {
+      const bars = 64;
+      const data = new Uint8Array(bars);
+
+      if (analyserRef.current) {
         const buf = new Uint8Array(analyserRef.current.frequencyBinCount);
         analyserRef.current.getByteFrequencyData(buf);
         for (let i = 0; i < bars; i++) {
           data[i] = buf[Math.floor((i / bars) * buf.length)];
         }
       } else {
+        // Idle animation
+        const t = Date.now() / 1000;
         for (let i = 0; i < bars; i++) {
-          data[i] = Math.sin(Date.now() / 1200 + i * 0.35) * 15 + 18;
+          data[i] = (Math.sin(t * 2 + i * 0.4) * 0.5 + 0.5) * 40 + 10;
         }
       }
 
       const barW = W / bars;
       for (let i = 0; i < bars; i++) {
         const v = data[i] / 255;
-        const h = Math.max(4, v * H * 0.55);
+        const bH = Math.max(3, v * H * 0.7);
         const x = i * barW;
-        const w = barW - 1;
+        const w = Math.max(1, barW - 2);
 
-        // Glow layer
-        ctx.globalAlpha = v * 0.18;
-        ctx.fillStyle = `rgba(124,58,237,1)`;
-        ctx.fillRect(x, H - h * 1.6, w, h * 1.6);
+        // Glow
+        ctx.globalAlpha = v * 0.3;
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(x, H - bH * 1.4, w, bH * 1.4);
 
-        // Main bar — bottom half
-        ctx.globalAlpha = 0.55 + v * 0.35;
-        const grad = ctx.createLinearGradient(x, H - h, x, H);
-        grad.addColorStop(0, `rgba(168,85,247,${v * 0.9})`);
-        grad.addColorStop(0.5, `rgba(124,58,237,${v * 0.7})`);
-        grad.addColorStop(1, `rgba(236,72,153,${v * 0.5})`);
+        // Main bar
+        ctx.globalAlpha = 0.5 + v * 0.5;
+        const grad = ctx.createLinearGradient(0, H - bH, 0, H);
+        grad.addColorStop(0, `rgba(34,197,94,${v})`);
+        grad.addColorStop(0.5, `rgba(192,132,252,${v * 0.8})`);
+        grad.addColorStop(1, `rgba(244,114,182,${v * 0.6})`);
         ctx.fillStyle = grad;
-        ctx.fillRect(x, H - h, w, h);
-
-        // Top half mirror (softer)
-        ctx.globalAlpha = 0.18 + v * 0.15;
-        const gradTop = ctx.createLinearGradient(x, H / 2, x, H / 2 - h * 0.7);
-        gradTop.addColorStop(0, `rgba(168,85,247,${v * 0.4})`);
-        gradTop.addColorStop(1, `rgba(168,85,247,0)`);
-        ctx.fillStyle = gradTop;
-        ctx.fillRect(x, H / 2 - h * 0.7, w, h * 0.7);
+        ctx.fillRect(x, H - bH, w, bH);
       }
-
       ctx.globalAlpha = 1;
-      animRef.current = requestAnimationFrame(draw);
+      frameId = requestAnimationFrame(draw);
     };
 
     draw();
     return () => {
-      cancelAnimationFrame(animRef.current);
+      cancelAnimationFrame(frameId);
       window.removeEventListener('resize', resize);
     };
   }, [isPlaying]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="absolute inset-0 w-full h-full"
-      style={{ opacity: 0.7 }}
-    />
+    <canvas ref={canvasRef} className="w-full h-full" style={{ display: 'block' }} />
   );
 }
 
+// ── MAIN FULLSCREEN PLAYER ─────────────────────────────────────────
 export default function FullscreenPlayer() {
   const {
     currentTrack, isPlaying, currentTime, duration, volume, repeatMode, isShuffle, queue,
@@ -134,14 +131,22 @@ export default function FullscreenPlayer() {
     toggleRepeat, toggleShuffle, isFullscreen, setIsFullscreen, playTrack,
   } = useAudioPlayer();
 
-  const [activeTab, setActiveTab] = useState('visualizer');
+  const [activeTab, setActiveTab] = useState('art');
   const [liked, setLiked] = useState(false);
-  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
   const [currentLyricIdx, setCurrentLyricIdx] = useState(0);
-  const containerRef = useRef(null);
   const progressRef = useRef(null);
   const volumeRef = useRef(null);
   const lyricsRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragTime, setDragTime] = useState(0);
+
+  const fmt = (s) => {
+    if (!s || isNaN(s) || !isFinite(s)) return '0:00';
+    return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  };
+
+  const displayTime = isDragging ? dragTime : currentTime;
+  const pct = duration > 0 ? Math.min(100, (displayTime / duration) * 100) : 0;
 
   // Keyboard controls
   useEffect(() => {
@@ -151,40 +156,19 @@ export default function FullscreenPlayer() {
         case ' ': case 'k': e.preventDefault(); togglePlayPause(); break;
         case 'ArrowRight': seek(Math.min(duration, currentTime + 10)); break;
         case 'ArrowLeft': seek(Math.max(0, currentTime - 10)); break;
-        case 'ArrowUp': e.preventDefault(); changeVolume(Math.min(100, volume + 5)); break;
-        case 'ArrowDown': e.preventDefault(); changeVolume(Math.max(0, volume - 5)); break;
-        case 'n': playNext(); break;
-        case 'p': playPrevious(); break;
         case 'Escape': setIsFullscreen(false); break;
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isFullscreen, isPlaying, currentTime, duration, volume]);
+  }, [isFullscreen, currentTime, duration]);
 
-  const toggleNativeFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen();
-      setIsNativeFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsNativeFullscreen(false);
-    }
-  };
-
-  useEffect(() => {
-    const handler = () => setIsNativeFullscreen(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', handler);
-    return () => document.removeEventListener('fullscreenchange', handler);
-  }, []);
-
-  // Lyric sync
-  const parseLyrics = (lyrics, dur) => {
-    if (!lyrics || !dur) return [];
-    const lines = lyrics.split('\n').filter(l => l.trim());
-    return lines.map((text, i) => ({ time: (dur / lines.length) * i, text: text.trim() }));
-  };
-  const lyricLines = parseLyrics(currentTrack?.lyrics, duration);
+  // Lyric parsing & sync
+  const lyricLines = (() => {
+    if (!currentTrack?.lyrics || !duration) return [];
+    const lines = currentTrack.lyrics.split('\n').filter(l => l.trim());
+    return lines.map((text, i) => ({ time: (duration / lines.length) * i, text: text.trim() }));
+  })();
 
   useEffect(() => {
     if (!lyricLines.length) return;
@@ -192,37 +176,37 @@ export default function FullscreenPlayer() {
       const next = lyricLines[i + 1];
       return currentTime >= l.time && (!next || currentTime < next.time);
     });
-    if (idx !== -1) setCurrentLyricIdx(idx);
-  }, [currentTime]);
+    if (idx !== -1 && idx !== currentLyricIdx) setCurrentLyricIdx(idx);
+  }, [currentTime, lyricLines.length]);
 
   useEffect(() => {
     if (activeTab === 'lyrics' && lyricsRef.current) {
-      const active = lyricsRef.current.querySelector('[data-active="true"]');
-      active?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const el = lyricsRef.current.querySelector('[data-active="true"]');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [currentLyricIdx, activeTab]);
 
-  const fmt = (s) => {
-    if (!s || isNaN(s)) return '0:00';
-    return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  // Seek handlers
+  const getSeekPct = (e, el) => {
+    const rect = el.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : (e.changedTouches ? e.changedTouches[0].clientX : e.clientX);
+    return Math.max(0, Math.min((clientX - rect.left) / rect.width, 1));
   };
 
-  const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-  // Seek
-  const getSeekTime = (e) => {
-    if (!progressRef.current || !duration) return 0;
-    const rect = progressRef.current.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-    return (x / rect.width) * duration;
-  };
-
-  const handleSeekStart = (e) => {
+  const startSeek = (e) => {
+    if (!progressRef.current || !duration) return;
     e.preventDefault();
-    seek(getSeekTime(e));
-    const move = (me) => seek(getSeekTime(me));
-    const up = () => {
+    const p = getSeekPct(e, progressRef.current);
+    setIsDragging(true);
+    setDragTime(p * duration);
+
+    const move = (me) => {
+      if (!progressRef.current) return;
+      setDragTime(getSeekPct(me, progressRef.current) * duration);
+    };
+    const up = (me) => {
+      if (progressRef.current) seek(getSeekPct(me, progressRef.current) * duration);
+      setIsDragging(false);
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
       window.removeEventListener('touchmove', move);
@@ -235,17 +219,16 @@ export default function FullscreenPlayer() {
   };
 
   // Volume
-  const handleVolumeStart = (e) => {
+  const startVolume = (e) => {
     e.preventDefault();
-    const getVol = (ev) => {
+    const getV = (ev) => {
       if (!volumeRef.current) return;
       const rect = volumeRef.current.getBoundingClientRect();
-      const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
-      const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-      changeVolume(Math.round((x / rect.width) * 100));
+      const clientX = ev.touches ? ev.touches[0].clientX : (ev.changedTouches ? ev.changedTouches[0].clientX : ev.clientX);
+      changeVolume(Math.round(Math.max(0, Math.min((clientX - rect.left) / rect.width, 1)) * 100));
     };
-    getVol(e);
-    const move = (me) => getVol(me);
+    getV(e);
+    const move = (me) => getV(me);
     const up = () => {
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
@@ -260,226 +243,270 @@ export default function FullscreenPlayer() {
 
   if (!currentTrack) return null;
 
+  const coverImg = currentTrack.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop';
+
+  const TABS = [
+    { id: 'art', label: 'Art' },
+    { id: 'lyrics', label: 'Lyrics' },
+    { id: 'visualizer', label: 'Visualizer' },
+    { id: 'queue', label: 'Queue' },
+  ];
+
   return (
     <AnimatePresence>
       {isFullscreen && (
         <motion.div
-          ref={containerRef}
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 40 }}
-          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed inset-0 z-[200] overflow-hidden flex flex-col"
-          style={{ background: '#06040f' }}
+          initial={{ y: '100%' }}
+          animate={{ y: 0 }}
+          exit={{ y: '100%' }}
+          transition={{ type: 'spring', damping: 30, stiffness: 280 }}
+          className="fixed inset-0 z-[200] flex flex-col overflow-hidden"
+          style={{ background: '#08080f' }}
         >
-          {/* ── FULL-SCREEN VISUALIZER BACKGROUND ── */}
-          <div className="absolute inset-0 pointer-events-none">
-            {/* Blurred album art */}
-            {currentTrack.cover_image_url && (
-              <img
-                src={currentTrack.cover_image_url}
-                className="absolute inset-0 w-full h-full object-cover scale-125 opacity-[0.07]"
-                style={{ filter: 'blur(60px)' }}
-                alt=""
-              />
-            )}
-            {/* Live visualizer canvas */}
-            <BackgroundVisualizer audioRef={audioRef} isPlaying={isPlaying} />
-            {/* OLED frost overlay */}
+          {/* Blurred album background */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <img
+              src={coverImg}
+              className="absolute inset-0 w-full h-full object-cover scale-125"
+              style={{ filter: 'blur(80px)', opacity: 0.12 }}
+              alt=""
+            />
+            {/* Purple/pink gradient overlay */}
             <div className="absolute inset-0" style={{
-              background: 'radial-gradient(ellipse 100% 100% at 50% 50%, rgba(6,4,15,0.5) 0%, rgba(6,4,15,0.85) 100%)',
+              background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(192,132,252,0.2) 0%, transparent 70%), radial-gradient(ellipse 60% 40% at 80% 80%, rgba(244,114,182,0.15) 0%, transparent 70%)'
             }} />
+            <div className="absolute inset-0 bg-[#08080f]/70" />
           </div>
 
           {/* Header */}
-          <div className="relative z-10 flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
-            <button onClick={() => setIsFullscreen(false)}
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 backdrop-blur-md hover:bg-white/10 text-white/70 hover:text-white transition-all border border-white/[0.08]">
+          <div className="relative z-10 flex items-center justify-between px-5 pt-12 pb-4 flex-shrink-0">
+            <button
+              onClick={() => setIsFullscreen(false)}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white/70 hover:text-white"
+            >
               <ChevronDown className="h-5 w-5" />
             </button>
-            <p className="text-[11px] font-semibold text-white/30 uppercase tracking-[0.2em]">Now Playing</p>
-            <button onClick={toggleNativeFullscreen}
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 backdrop-blur-md hover:bg-white/10 text-white/70 hover:text-white transition-all border border-white/[0.08]">
-              {isNativeFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+            <p className="text-white/60 text-xs font-semibold uppercase tracking-widest">Now Playing</p>
+            <button
+              onClick={() => setLiked(!liked)}
+              className={cn('w-10 h-10 flex items-center justify-center rounded-full transition-all',
+                liked ? 'text-pink-400' : 'text-white/40 hover:text-white/70')}
+            >
+              <Heart className="h-5 w-5" fill={liked ? 'currentColor' : 'none'} />
             </button>
           </div>
 
-          {/* Main layout */}
-          <div className="relative z-10 flex-1 flex flex-col lg:flex-row gap-0 overflow-hidden px-4 lg:px-8">
-            {/* Left — Album Art */}
-            <div className="lg:w-[340px] xl:w-[380px] flex-shrink-0 flex flex-col items-center justify-center gap-4 py-4">
-              <motion.div
-                animate={{ scale: isPlaying ? 1 : 0.91 }}
-                transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-                className="relative"
+          {/* Album Art — circular, prominent */}
+          <div className="relative z-10 flex justify-center px-8 flex-shrink-0 mb-5">
+            <motion.div
+              animate={{ scale: isPlaying ? 1 : 0.9 }}
+              transition={{ type: 'spring', stiffness: 180, damping: 22 }}
+              className="relative"
+            >
+              <div
+                className="w-64 h-64 sm:w-72 sm:h-72 rounded-full overflow-hidden"
+                style={{
+                  boxShadow: isPlaying
+                    ? '0 0 60px rgba(192,132,252,0.5), 0 0 120px rgba(244,114,182,0.25), 0 20px 60px rgba(0,0,0,0.5)'
+                    : '0 20px 60px rgba(0,0,0,0.4)',
+                  animation: isPlaying ? 'pulse-ring 2.5s ease-out infinite' : 'none',
+                }}
               >
-                <div className="w-60 h-60 lg:w-72 lg:h-72 xl:w-80 xl:h-80 rounded-3xl overflow-hidden shadow-2xl"
-                  style={{ boxShadow: '0 20px 60px rgba(124,58,237,0.4), 0 0 0 1px rgba(255,255,255,0.06)' }}>
-                  <img
-                    src={currentTrack.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop'}
-                    alt={currentTrack.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                {isPlaying && (
-                  <div className="absolute inset-0 rounded-3xl pointer-events-none"
-                    style={{ animation: 'pulse-ring-fs 2s ease-out infinite' }}
-                  />
-                )}
-              </motion.div>
-
-              <div className="text-center px-4">
-                <h1 className="text-xl font-bold text-white truncate max-w-xs">{currentTrack.title}</h1>
-                <p className="text-sm text-white/40 mt-0.5">{currentTrack.style || 'AI Generated'}</p>
+                <img src={coverImg} alt={currentTrack.title} className="w-full h-full object-cover" />
               </div>
-
-              <button onClick={() => setLiked(!liked)}
-                className={cn('transition-all', liked ? 'text-pink-400 scale-110' : 'text-white/30 hover:text-white/60')}>
-                <Heart className="h-5 w-5" fill={liked ? 'currentColor' : 'none'} />
-              </button>
-            </div>
-
-            {/* Right — Tab content */}
-            <div className="flex-1 flex flex-col min-h-0 lg:pl-8 lg:border-l border-white/[0.06]">
-              {/* Tab bar */}
-              <div className="flex items-center gap-1 bg-white/[0.04] backdrop-blur-md rounded-xl p-1 mb-4 flex-shrink-0 border border-white/[0.06]">
-                {TABS.map(({ id, icon: TabIcon, label }) => (
-                  <button key={id} onClick={() => setActiveTab(id)}
-                    className={cn('flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all',
-                      activeTab === id ? 'text-white' : 'text-white/30 hover:text-white/60')}
-                    style={activeTab === id ? { background: 'linear-gradient(135deg, rgba(124,58,237,0.5), rgba(236,72,153,0.3))' } : {}}
-                  >
-                    <TabIcon className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{label}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Tab content */}
-              <div className="flex-1 overflow-hidden rounded-2xl">
-                <AnimatePresence mode="wait">
-                  {activeTab === 'visualizer' && (
-                    <motion.div key="viz" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="h-full flex items-center justify-center">
-                      <div className="w-full h-full rounded-2xl overflow-hidden relative" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                        <p className="absolute inset-0 flex items-center justify-center text-white/20 text-sm">
-                          Visualizer active in background
-                        </p>
-                        {/* Smaller inline viz preview */}
-                        <BackgroundVisualizer audioRef={audioRef} isPlaying={isPlaying} />
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {activeTab === 'lyrics' && (
-                    <motion.div key="lyrics" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="h-full overflow-y-auto px-2 py-4 space-y-3" ref={lyricsRef}>
-                      {lyricLines.length > 0 ? lyricLines.map((line, i) => (
-                        <p key={i} data-active={i === currentLyricIdx ? 'true' : 'false'}
-                          className={cn('text-center transition-all duration-300 leading-relaxed',
-                            i === currentLyricIdx ? 'text-white text-lg font-semibold'
-                              : i === currentLyricIdx - 1 || i === currentLyricIdx + 1 ? 'text-white/40 text-base'
-                              : 'text-white/15 text-sm')}>
-                          {line.text}
-                        </p>
-                      )) : (
-                        <div className="flex flex-col items-center justify-center h-full text-white/20">
-                          <MicVocal className="h-10 w-10 mb-3" />
-                          <p className="text-sm">No lyrics available</p>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-
-                  {activeTab === 'art' && (
-                    <motion.div key="art" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="h-full flex items-center justify-center p-4">
-                      <div className="max-w-xs w-full aspect-square rounded-3xl overflow-hidden shadow-2xl"
-                        style={{ boxShadow: '0 20px 60px rgba(124,58,237,0.3)' }}>
-                        <img src={currentTrack.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop'}
-                          alt={currentTrack.title} className="w-full h-full object-cover" />
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {activeTab === 'queue' && (
-                    <motion.div key="queue" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="h-full overflow-y-auto space-y-1 py-2">
-                      {queue.length > 0 ? queue.filter(t => t.status === 'ready').map((track) => (
-                        <button key={track.id} onClick={() => playTrack(track, queue)}
-                          className={cn('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all',
-                            track.id === currentTrack.id ? 'bg-white/10' : 'hover:bg-white/[0.04]')}>
-                          <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-white/10">
-                            {track.cover_image_url
-                              ? <img src={track.cover_image_url} alt={track.title} className="w-full h-full object-cover" />
-                              : <div className="w-full h-full flex items-center justify-center"><Activity className="h-4 w-4 text-white/30" /></div>
-                            }
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={cn('text-sm font-medium truncate', track.id === currentTrack.id ? 'text-violet-300' : 'text-white')}>{track.title}</p>
-                            <p className="text-xs text-white/30 truncate">{track.style || 'AI Generated'}</p>
-                          </div>
-                          {track.id === currentTrack.id && isPlaying && (
-                            <div className="flex items-end gap-[2px] h-4">
-                              {[1, 0.6, 0.8].map((h, j) => (
-                                <span key={j} className="w-[2px] rounded-full bg-violet-400"
-                                  style={{ height: `${h * 100}%`, animation: `mobileViz ${0.5 + j * 0.2}s ease-in-out infinite alternate` }} />
-                              ))}
-                            </div>
-                          )}
-                        </button>
-                      )) : (
-                        <div className="flex flex-col items-center justify-center h-full text-white/20 pt-10">
-                          <ListMusic className="h-10 w-10 mb-3" />
-                          <p className="text-sm">Queue is empty</p>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
+            </motion.div>
           </div>
 
-          {/* Bottom controls */}
-          <div className="relative z-10 flex-shrink-0 px-5 pb-8 pt-3 space-y-4">
-            {/* Seek bar */}
+          {/* Track Info */}
+          <div className="relative z-10 text-center px-8 flex-shrink-0 mb-4">
+            <h1 className="text-white text-2xl font-bold tracking-tight">{currentTrack.title}</h1>
+            <p className="text-white/50 text-sm mt-1">{currentTrack.style || 'AI Generated'}</p>
+          </div>
+
+          {/* Tab Content Area */}
+          <div className="relative z-10 flex-1 min-h-0 px-5 mb-2 overflow-hidden">
+            <AnimatePresence mode="wait">
+              {activeTab === 'lyrics' && (
+                <motion.div
+                  key="lyrics"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="h-full overflow-y-auto"
+                  ref={lyricsRef}
+                  style={{ paddingBottom: '1rem' }}
+                >
+                  {lyricLines.length > 0 ? (
+                    <div className="space-y-4 py-4 text-center">
+                      {lyricLines.map((line, i) => (
+                        <p
+                          key={i}
+                          data-active={i === currentLyricIdx ? 'true' : 'false'}
+                          className={cn(
+                            'transition-all duration-500 leading-relaxed px-4',
+                            i === currentLyricIdx
+                              ? 'text-white text-xl font-bold'
+                              : Math.abs(i - currentLyricIdx) === 1
+                              ? 'text-white/50 text-base'
+                              : 'text-white/20 text-sm'
+                          )}
+                        >
+                          {line.text}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-white/20">
+                      <MicVocal className="h-10 w-10 mb-3" />
+                      <p className="text-sm">No lyrics available</p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {activeTab === 'art' && (
+                <motion.div
+                  key="art"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full flex items-center justify-center"
+                >
+                  <div className="w-full aspect-video max-h-full rounded-2xl overflow-hidden"
+                    style={{ boxShadow: '0 20px 60px rgba(192,132,252,0.2)' }}>
+                    <img src={coverImg} alt={currentTrack.title} className="w-full h-full object-cover" />
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'visualizer' && (
+                <motion.div
+                  key="visualizer"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full flex items-end rounded-2xl overflow-hidden"
+                  style={{ background: 'rgba(255,255,255,0.02)' }}
+                >
+                  <BeatVisualizer audioRef={audioRef} isPlaying={isPlaying} />
+                </motion.div>
+              )}
+
+              {activeTab === 'queue' && (
+                <motion.div
+                  key="queue"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full overflow-y-auto space-y-1 py-2"
+                >
+                  {queue.filter(t => t.status === 'ready').map((track) => (
+                    <button
+                      key={track.id}
+                      onClick={() => playTrack(track, queue)}
+                      className={cn(
+                        'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all',
+                        track.id === currentTrack.id ? 'bg-white/10' : 'hover:bg-white/[0.04]'
+                      )}
+                    >
+                      <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-white/10">
+                        {track.cover_image_url
+                          ? <img src={track.cover_image_url} alt={track.title} className="w-full h-full object-cover" />
+                          : <ListMusic className="h-4 w-4 text-white/30 m-auto mt-3" />
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn('text-sm font-medium truncate', track.id === currentTrack.id ? 'text-green-400' : 'text-white')}>
+                          {track.title}
+                        </p>
+                        <p className="text-xs text-white/30 truncate">{track.style || 'AI Generated'}</p>
+                      </div>
+                      {track.id === currentTrack.id && isPlaying && (
+                        <div className="flex items-end gap-[2px] h-4 flex-shrink-0">
+                          {[1, 0.6, 0.8].map((h, j) => (
+                            <span key={j} className="w-[2px] rounded-full bg-green-400"
+                              style={{ height: `${h * 100}%`, animation: `beat-bar ${0.5 + j * 0.2}s ease-in-out infinite alternate` }}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                  {queue.filter(t => t.status === 'ready').length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full text-white/20 pt-10">
+                      <ListMusic className="h-10 w-10 mb-3" />
+                      <p className="text-sm">Queue is empty</p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Bottom Controls */}
+          <div className="relative z-10 flex-shrink-0 px-5 pb-10 pt-2 space-y-5">
+            {/* Seek bar — green like reference */}
             <div className="flex items-center gap-3">
-              <span className="text-[11px] text-white/30 tabular-nums w-10 text-right">{fmt(currentTime)}</span>
-              <div ref={progressRef}
-                className="flex-1 h-1.5 relative rounded-full cursor-pointer touch-none"
-                style={{ background: 'rgba(255,255,255,0.1)' }}
-                onMouseDown={handleSeekStart}
-                onTouchStart={handleSeekStart}
+              <span className="text-white/40 text-xs tabular-nums w-10 text-right">{fmt(displayTime)}</span>
+              <div
+                ref={progressRef}
+                className="flex-1 relative h-1 rounded-full cursor-pointer touch-none group"
+                style={{ background: 'rgba(255,255,255,0.15)' }}
+                onMouseDown={startSeek}
+                onTouchStart={startSeek}
               >
-                <div className="absolute top-0 left-0 h-full rounded-full transition-none"
-                  style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #6d28d9, #a855f7, #ec4899)', boxShadow: '0 0 8px rgba(168,85,247,0.7)' }}
+                <div
+                  className="absolute top-0 left-0 h-full rounded-full transition-none"
+                  style={{ width: `${pct}%`, background: '#22c55e' }}
                 />
-                <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white shadow-xl"
-                  style={{ left: `calc(${pct}% - 8px)` }}
+                {/* Thumb */}
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full shadow-xl transition-opacity"
+                  style={{
+                    left: `calc(${pct}% - 8px)`,
+                    background: '#22c55e',
+                    boxShadow: '0 0 12px rgba(34,197,94,0.7)',
+                  }}
                 />
               </div>
-              <span className="text-[11px] text-white/30 tabular-nums w-10">{fmt(duration)}</span>
+              <span className="text-white/40 text-xs tabular-nums w-10">{fmt(duration)}</span>
             </div>
 
             {/* Playback controls */}
-            <div className="flex items-center justify-center gap-3">
-              <button onClick={toggleShuffle} className={cn('w-10 h-10 flex items-center justify-center rounded-full transition-all hover:bg-white/10', isShuffle ? 'text-violet-400' : 'text-white/30')}>
-                <Shuffle className="h-4 w-4" />
+            <div className="flex items-center justify-center gap-5">
+              <button
+                onClick={toggleShuffle}
+                className={cn('w-10 h-10 flex items-center justify-center rounded-full transition-all',
+                  isShuffle ? 'text-green-400' : 'text-white/30 hover:text-white/60')}
+              >
+                <Shuffle className="h-5 w-5" />
               </button>
-              <button onClick={playPrevious} className="w-12 h-12 flex items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all">
+              <button
+                onClick={playPrevious}
+                className="w-12 h-12 flex items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all"
+              >
                 <SkipBack className="h-6 w-6" />
               </button>
-              <motion.button whileTap={{ scale: 0.93 }} onClick={togglePlayPause}
-                className="w-16 h-16 rounded-full flex items-center justify-center text-white shadow-2xl"
-                style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7, #ec4899)', boxShadow: '0 8px 32px rgba(124,58,237,0.5)' }}>
-                {isPlaying ? <Pause className="h-7 w-7" /> : <Play className="h-7 w-7 ml-1" />}
+              <motion.button
+                whileTap={{ scale: 0.92 }}
+                onClick={togglePlayPause}
+                className="w-16 h-16 rounded-full flex items-center justify-center text-black font-bold shadow-2xl neon-green-glow"
+                style={{ background: '#22c55e' }}
+              >
+                {isPlaying ? <Pause className="h-7 w-7 fill-black" /> : <Play className="h-7 w-7 fill-black ml-1" />}
               </motion.button>
-              <button onClick={playNext} className="w-12 h-12 flex items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all">
+              <button
+                onClick={playNext}
+                className="w-12 h-12 flex items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-all"
+              >
                 <SkipForward className="h-6 w-6" />
               </button>
-              <button onClick={toggleRepeat} className={cn('w-10 h-10 flex items-center justify-center rounded-full transition-all hover:bg-white/10', repeatMode !== 'off' ? 'text-violet-400' : 'text-white/30')}>
-                {repeatMode === 'one' ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
+              <button
+                onClick={toggleRepeat}
+                className={cn('w-10 h-10 flex items-center justify-center rounded-full transition-all',
+                  repeatMode !== 'off' ? 'text-green-400' : 'text-white/30 hover:text-white/60')}
+              >
+                {repeatMode === 'one' ? <Repeat1 className="h-5 w-5" /> : <Repeat className="h-5 w-5" />}
               </button>
             </div>
 
@@ -488,21 +515,36 @@ export default function FullscreenPlayer() {
               <button onClick={() => changeVolume(volume === 0 ? 70 : 0)} className="text-white/30 hover:text-white/60 transition-colors">
                 {volume === 0 ? <VolumeX className="h-4 w-4" /> : volume < 50 ? <Volume1 className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               </button>
-              <div ref={volumeRef}
-                className="flex-1 h-1.5 relative rounded-full cursor-pointer touch-none"
+              <div
+                ref={volumeRef}
+                className="flex-1 h-1 relative rounded-full cursor-pointer touch-none"
                 style={{ background: 'rgba(255,255,255,0.1)' }}
-                onMouseDown={handleVolumeStart}
-                onTouchStart={handleVolumeStart}
+                onMouseDown={startVolume}
+                onTouchStart={startVolume}
               >
-                <div className="absolute top-0 left-0 h-full rounded-full" style={{ width: `${volume}%`, background: 'linear-gradient(90deg, #6d28d9, #ec4899)' }} />
+                <div className="absolute top-0 left-0 h-full rounded-full" style={{ width: `${volume}%`, background: '#22c55e' }} />
                 <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow" style={{ left: `calc(${volume}% - 6px)` }} />
               </div>
               <Volume2 className="h-4 w-4 text-white/30" />
             </div>
 
-            <p className="text-center text-[10px] text-white/15 tracking-widest hidden lg:block">
-              Space · ← → Seek · ↑ ↓ Volume · N Next · P Prev · Esc Close
-            </p>
+            {/* Tab pills */}
+            <div className="flex items-center justify-center gap-2">
+              {TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    'px-4 py-1.5 rounded-full text-xs font-medium transition-all',
+                    activeTab === tab.id
+                      ? 'bg-white/15 text-white'
+                      : 'text-white/30 hover:text-white/60'
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
         </motion.div>
       )}
@@ -510,17 +552,17 @@ export default function FullscreenPlayer() {
   );
 }
 
-// Inject keyframes once
-if (typeof document !== 'undefined' && !document.getElementById('accoustica-anim')) {
+// Inject styles once
+if (typeof document !== 'undefined' && !document.getElementById('fs-anim')) {
   const s = document.createElement('style');
-  s.id = 'accoustica-anim';
+  s.id = 'fs-anim';
   s.textContent = `
-    @keyframes pulse-ring-fs {
-      0%   { box-shadow: 0 0 0 0   rgba(124,58,237,0.45); }
-      70%  { box-shadow: 0 0 0 24px rgba(124,58,237,0); }
-      100% { box-shadow: 0 0 0 0   rgba(124,58,237,0); }
+    @keyframes pulse-ring {
+      0%   { box-shadow: 0 0 0 0 rgba(192,132,252,0.5), 0 20px 60px rgba(0,0,0,0.5); }
+      70%  { box-shadow: 0 0 0 20px rgba(192,132,252,0), 0 20px 60px rgba(0,0,0,0.5); }
+      100% { box-shadow: 0 0 0 0 rgba(192,132,252,0), 0 20px 60px rgba(0,0,0,0.5); }
     }
-    @keyframes mobileViz {
+    @keyframes beat-bar {
       from { transform: scaleY(0.3); }
       to   { transform: scaleY(1); }
     }

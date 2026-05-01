@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { haptics } from '@/components/utils/haptics';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import TrackEditDialog from '@/components/tracks/TrackEditDialog';
@@ -19,12 +19,6 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
 const FILTERS = ['All', 'Ready', 'Favorites', 'Public', 'Instrumental'];
-const SORT_OPTIONS = [
-  { value: '-created_date', label: 'Newest' },
-  { value: 'created_date', label: 'Oldest' },
-  { value: 'title', label: 'A–Z' },
-  { value: '-plays', label: 'Most Played' },
-];
 
 export default function LibraryPage() {
   const [user, setUser] = useState(null);
@@ -65,8 +59,7 @@ export default function LibraryPage() {
       filter === 'Ready' ? t.status === 'ready' :
       filter === 'Favorites' ? t.is_favorite :
       filter === 'Public' ? t.is_public :
-      filter === 'Instrumental' ? t.is_instrumental :
-      true;
+      filter === 'Instrumental' ? t.is_instrumental : true;
     return matchSearch && matchFilter;
   });
 
@@ -99,55 +92,61 @@ export default function LibraryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black pb-32">
-      {/* Header */}
-      <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-xl border-b border-white/5 px-4 pt-2 pb-3">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-bold text-white">Library</h1>
+    <div className="min-h-screen pb-36" style={{ background: '#0a0a0f' }}>
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-30 px-4 pt-4 pb-3"
+        style={{ background: 'rgba(10,10,15,0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        
+        {/* Title row */}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold text-white">Library</h1>
           <Link to={createPageUrl('Create')}>
-            <button className="w-8 h-8 rounded-xl bg-violet-500/20 flex items-center justify-center text-violet-400">
+            <button
+              className="w-9 h-9 rounded-full flex items-center justify-center text-black font-bold"
+              style={{ background: '#22c55e', boxShadow: '0 0 12px rgba(34,197,94,0.4)' }}
+            >
               <Plus className="h-5 w-5" />
             </button>
           </Link>
         </div>
 
-        {/* Stats Row */}
-        <div className="flex gap-3 mb-3">
+        {/* Stats */}
+        <div className="flex gap-3 mb-4">
           {[
             { label: 'Tracks', value: stats.total },
             { label: 'Ready', value: stats.ready },
             { label: 'Favorites', value: stats.favorites },
           ].map(s => (
-            <div key={s.label} className="flex-1 bg-white/5 rounded-xl py-2 text-center">
-              <p className="text-lg font-bold text-white">{s.value}</p>
-              <p className="text-[10px] text-white/40">{s.label}</p>
+            <div key={s.label} className="flex-1 rounded-2xl py-2.5 text-center" style={{ background: 'rgba(255,255,255,0.05)' }}>
+              <p className="text-xl font-bold text-white">{s.value}</p>
+              <p className="text-[11px] text-white/40 mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>
 
         {/* Search */}
         <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tracks..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-violet-500/50"
+            placeholder="Search your tracks..."
+            className="w-full rounded-2xl pl-10 pr-4 py-3 text-white text-sm placeholder:text-white/30 focus:outline-none"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
           />
         </div>
 
-        {/* Filter Chips */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {/* Filter chips */}
+        <div className="flex gap-2 overflow-x-auto pb-0.5">
           {FILTERS.map(f => (
             <button
               key={f}
               onClick={() => { setFilter(f); haptics.selection(); }}
-              className={cn(
-                'flex-shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all',
-                filter === f
-                  ? 'bg-violet-500/30 border border-violet-500/50 text-violet-300'
-                  : 'bg-white/5 border border-white/10 text-white/50'
-              )}
+              className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-all"
+              style={filter === f
+                ? { background: '#22c55e', color: '#000', boxShadow: '0 0 10px rgba(34,197,94,0.3)' }
+                : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }
+              }
             >
               {f}
             </button>
@@ -159,13 +158,13 @@ export default function LibraryPage() {
       <div className="px-4 pt-4">
         {isLoading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 text-violet-400 animate-spin" />
+            <Loader2 className="h-8 w-8 animate-spin" style={{ color: '#22c55e' }} />
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <Music className="h-12 w-12 text-white/10 mx-auto mb-3" />
             <p className="text-white/40 text-sm">
-              {search ? 'No matching tracks' : 'No tracks yet'}
+              {search ? 'No matching tracks' : 'No tracks yet — create one!'}
             </p>
           </div>
         ) : (
@@ -191,7 +190,7 @@ export default function LibraryPage() {
         )}
       </div>
 
-      {/* Bottom Sheet Track Actions */}
+      {/* Bottom Sheet */}
       <TrackActionsSheet
         track={bottomSheetTrack}
         onClose={() => setBottomSheetTrack(null)}
@@ -204,40 +203,17 @@ export default function LibraryPage() {
         onDelete={handleDelete}
       />
 
-      {/* Dialogs */}
-      <TrackEditDialog
-        track={editTrack}
-        open={!!editTrack}
-        onClose={() => setEditTrack(null)}
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['myTracks'] })}
-      />
-      <ShareTrackDialog
-        track={shareTrack}
-        open={!!shareTrack}
-        onClose={() => setShareTrack(null)}
-      />
-      <EnhancedMasteringDialog
-        track={masterTrack}
-        open={!!masterTrack}
-        onClose={() => setMasterTrack(null)}
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['myTracks'] })}
-      />
-      <StemSeparationDialog
-        track={stemTrack}
-        open={!!stemTrack}
-        onClose={() => setStemTrack(null)}
-      />
-      <MusicVideoGenerator
-        track={videoTrack}
-        open={!!videoTrack}
-        onClose={() => setVideoTrack(null)}
-      />
+      <TrackEditDialog track={editTrack} open={!!editTrack} onClose={() => setEditTrack(null)} onSuccess={() => queryClient.invalidateQueries({ queryKey: ['myTracks'] })} />
+      <ShareTrackDialog track={shareTrack} open={!!shareTrack} onClose={() => setShareTrack(null)} />
+      <EnhancedMasteringDialog track={masterTrack} open={!!masterTrack} onClose={() => setMasterTrack(null)} onSuccess={() => queryClient.invalidateQueries({ queryKey: ['myTracks'] })} />
+      <StemSeparationDialog track={stemTrack} open={!!stemTrack} onClose={() => setStemTrack(null)} />
+      <MusicVideoGenerator track={videoTrack} open={!!videoTrack} onClose={() => setVideoTrack(null)} />
     </div>
   );
 }
 
 function LibraryTrackRow({ track, index, isCurrentlyPlaying, onPlay, onFavorite, onMore }) {
-  const statusColors = { ready: 'text-emerald-400', generating: 'text-violet-400', queued: 'text-yellow-400', failed: 'text-red-400' };
+  const statusColors = { ready: '#22c55e', generating: '#c084fc', queued: '#facc15', failed: '#f87171' };
   const isReady = track.status === 'ready';
 
   return (
@@ -245,11 +221,15 @@ function LibraryTrackRow({ track, index, isCurrentlyPlaying, onPlay, onFavorite,
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.03 }}
-      className="flex items-center gap-3 bg-white/5 border border-white/8 rounded-xl p-3"
+      className="flex items-center gap-3 rounded-2xl p-3"
+      style={{
+        background: isCurrentlyPlaying ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.04)',
+        border: isCurrentlyPlaying ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(255,255,255,0.06)',
+      }}
     >
       {/* Art */}
       <button onClick={isReady ? onPlay : undefined} className="relative flex-shrink-0">
-        <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/10">
+        <div className="w-12 h-12 rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
           {track.cover_image_url ? (
             <img src={track.cover_image_url} alt="" className="w-full h-full object-cover" />
           ) : (
@@ -258,41 +238,54 @@ function LibraryTrackRow({ track, index, isCurrentlyPlaying, onPlay, onFavorite,
             </div>
           )}
         </div>
+        {/* Play overlay */}
         {isReady && (
-          <div className="absolute inset-0 rounded-lg flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity">
-            {isCurrentlyPlaying ? <Pause className="h-5 w-5 text-white" /> : <Play className="h-5 w-5 text-white" />}
+          <div className="absolute inset-0 rounded-xl flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 transition-opacity">
+            {isCurrentlyPlaying
+              ? <Pause className="h-5 w-5 text-white fill-white" />
+              : <Play className="h-5 w-5 text-white fill-white" />
+            }
           </div>
         )}
+        {/* Playing indicator */}
         {isCurrentlyPlaying && (
-          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 to-pink-500 rounded-b-lg" />
+          <div className="absolute bottom-1 right-1 flex items-end gap-[2px]">
+            {[0.6, 1, 0.4].map((h, i) => (
+              <span key={i} className="w-[2px] rounded-full"
+                style={{ height: `${h * 8}px`, background: '#22c55e', animation: `beat-bar ${0.5 + i * 0.15}s ease-in-out infinite alternate` }}
+              />
+            ))}
+          </div>
         )}
       </button>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className={cn('text-sm font-medium truncate', isCurrentlyPlaying ? 'text-violet-400' : 'text-white')}>
-          {track.title}
-        </p>
+        <Link to={`/TrackInfo?id=${track.id}`}>
+          <p className={cn('text-sm font-semibold truncate hover:underline', isCurrentlyPlaying ? 'text-green-400' : 'text-white')}>
+            {track.title}
+          </p>
+        </Link>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-xs text-white/40 truncate">{track.style || 'Unknown style'}</span>
+          <span className="text-xs text-white/45 truncate">{track.style || 'AI Generated'}</span>
           {!isReady && (
-            <span className={cn('text-[10px]', statusColors[track.status])}>{track.status}</span>
+            <span className="text-[10px] font-medium" style={{ color: statusColors[track.status] }}>{track.status}</span>
           )}
           {track.is_instrumental && (
-            <span className="text-[10px] text-blue-400 bg-blue-400/10 px-1.5 rounded">Inst.</span>
+            <span className="text-[10px] text-purple-400 bg-purple-400/10 px-1.5 rounded-full">Inst.</span>
           )}
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <div className="flex items-center gap-0.5 flex-shrink-0">
         {(track.status === 'generating' || track.status === 'queued') && (
-          <Loader2 className="h-4 w-4 text-violet-400 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin mr-1" style={{ color: '#c084fc' }} />
         )}
-        <button onClick={onFavorite} className="p-2 rounded-lg hover:bg-white/5">
-          <Heart className={cn('h-4 w-4', track.is_favorite ? 'text-red-500 fill-red-500' : 'text-white/30')} />
+        <button onClick={onFavorite} className="p-2 rounded-xl hover:bg-white/5 transition-colors">
+          <Heart className={cn('h-4 w-4', track.is_favorite ? 'fill-current' : '')} style={{ color: track.is_favorite ? '#f472b6' : 'rgba(255,255,255,0.3)' }} />
         </button>
-        <button onClick={onMore} className="p-2 rounded-lg hover:bg-white/5">
+        <button onClick={onMore} className="p-2 rounded-xl hover:bg-white/5 transition-colors">
           <MoreVertical className="h-4 w-4 text-white/30" />
         </button>
       </div>
@@ -302,61 +295,71 @@ function LibraryTrackRow({ track, index, isCurrentlyPlaying, onPlay, onFavorite,
 
 function TrackActionsSheet({ track, onClose, onEdit, onShare, onMaster, onStems, onVideo, onTogglePublic, onDelete }) {
   if (!track) return null;
+
   const actions = [
-    { icon: Edit3, label: 'Edit', fn: () => onEdit(track) },
-    { icon: Share2, label: 'Share', fn: () => onShare(track) },
-    { icon: Wand2, label: 'Master', fn: () => onMaster(track) },
-    { icon: Mic2, label: 'Stems', fn: () => onStems(track) },
-    { icon: Video, label: 'Video', fn: () => onVideo(track) },
+    { icon: Edit3,  label: 'Edit',   fn: () => onEdit(track) },
+    { icon: Share2, label: 'Share',  fn: () => onShare(track) },
+    { icon: Wand2,  label: 'Master', fn: () => onMaster(track) },
+    { icon: Mic2,   label: 'Stems',  fn: () => onStems(track) },
+    { icon: Video,  label: 'Video',  fn: () => onVideo(track) },
     { icon: track.is_public ? Lock : Globe, label: track.is_public ? 'Make Private' : 'Make Public', fn: () => onTogglePublic(track) },
   ];
+
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
       <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-[51] bg-zinc-900 rounded-t-3xl border-t border-white/10 safe-bottom"
+        className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-3xl border-t border-white/10 pb-8"
+        style={{ background: 'rgba(14,14,22,0.98)', backdropFilter: 'blur(30px)' }}
       >
-        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-2" />
-        <div className="px-4 pb-2">
-          <div className="flex items-center gap-3 py-3 border-b border-white/8 mb-2">
-            <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
-              {track.cover_image_url ? <img src={track.cover_image_url} alt="" className="w-full h-full object-cover" /> : <Music className="h-5 w-5 text-white/20 m-auto" />}
+        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-3" />
+        <div className="px-4">
+          {/* Track preview */}
+          <div className="flex items-center gap-3 py-2 mb-3 border-b border-white/8">
+            <div className="w-11 h-11 rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+              {track.cover_image_url ? (
+                <img src={track.cover_image_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <Music className="h-5 w-5 text-white/20 m-auto mt-3" />
+              )}
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{track.title}</p>
-              <p className="text-xs text-white/40">{track.style}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-white truncate">{track.title}</p>
+              <p className="text-xs text-white/40">{track.style || 'AI Generated'}</p>
             </div>
           </div>
+
+          {/* Action grid */}
           <div className="grid grid-cols-3 gap-2 mb-3">
             {actions.map(({ icon: Icon, label, fn }) => (
               <button
                 key={label}
                 onClick={() => { haptics.light(); fn(); }}
-                className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-white/5 border border-white/8 text-white/70 active:bg-white/10"
+                className="flex flex-col items-center gap-2 py-3.5 rounded-2xl transition-all active:scale-95"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
               >
-                <Icon className="h-5 w-5" />
-                <span className="text-[11px]">{label}</span>
+                <Icon className="h-5 w-5 text-white/70" />
+                <span className="text-xs text-white/60 font-medium">{label}</span>
               </button>
             ))}
           </div>
+
+          {/* Delete */}
           <button
             onClick={() => onDelete(track)}
-            className="w-full py-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-semibold flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 mb-2"
+            style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)', color: '#f87171' }}
           >
             <Trash2 className="h-4 w-4" />
             Delete Track
           </button>
-          <button onClick={onClose} className="w-full py-3.5 mt-2 rounded-xl text-white/40 text-sm">Cancel</button>
+          <button onClick={onClose} className="w-full py-3 text-white/40 text-sm">Cancel</button>
         </div>
       </motion.div>
     </AnimatePresence>

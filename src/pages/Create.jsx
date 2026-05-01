@@ -259,24 +259,24 @@ export default function CreatePage() {
   const suggestedLanguages = getSuggestedChips(CULTURE_CHIPS, selectedLanguages);
 
   return (
-    <div className="min-h-screen bg-black pb-40">
-      {/* Ambient */}
+    <div className="min-h-screen pb-40" style={{ background: '#0a0a0f' }}>
+      {/* Ambient gradient */}
       <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-        <div className="absolute inset-0 bg-black" />
         <div className="absolute inset-0" style={{
-          background: 'radial-gradient(ellipse 80% 50% at 20% 0%, rgba(124,58,237,0.12) 0%, transparent 70%), radial-gradient(ellipse 60% 40% at 80% 90%, rgba(236,72,153,0.07) 0%, transparent 60%)',
+          background: 'radial-gradient(ellipse 70% 40% at 50% 0%, rgba(192,132,252,0.08) 0%, transparent 60%)',
         }} />
       </div>
 
       {/* Sticky Header */}
-      <div className="sticky top-0 z-30 bg-black/70 backdrop-blur-2xl border-b border-white/[0.06] px-4 pt-3 pb-3">
-        <h1 className="text-xl font-bold text-white mb-3">Create</h1>
-        <div className="flex gap-1 bg-white/[0.04] rounded-xl p-1">
+      <div className="sticky top-0 z-30 px-4 pt-4 pb-3"
+        style={{ background: 'rgba(10,10,15,0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <h1 className="text-2xl font-bold text-white mb-3">Create</h1>
+        <div className="flex gap-1 rounded-2xl p-1" style={{ background: 'rgba(255,255,255,0.04)' }}>
           {MODES.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => { setMode(id); haptics.light(); }}
-              className={cn('flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all',
-                mode === id ? 'text-white' : 'text-white/40 hover:text-white/70')}
-              style={mode === id ? { background: 'linear-gradient(135deg, rgba(124,58,237,0.8), rgba(236,72,153,0.7))', boxShadow: '0 4px 16px rgba(124,58,237,0.25)' } : {}}
+              className={cn('flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold transition-all',
+                mode === id ? 'text-black' : 'text-white/40 hover:text-white/70')}
+              style={mode === id ? { background: '#22c55e', boxShadow: '0 0 16px rgba(34,197,94,0.35)' } : {}}
             >
               <Icon className="h-3.5 w-3.5" />{label}
             </button>
@@ -454,12 +454,12 @@ export default function CreatePage() {
           <button
             onClick={() => createMutation.mutate()}
             disabled={isGenerating || !canGenerate || remaining <= 0}
-            className={cn('w-full py-4 rounded-xl font-bold text-white text-base transition-all flex items-center justify-center gap-2',
-              isGenerating || !canGenerate || remaining <= 0 ? 'bg-white/[0.06] text-white/30 cursor-not-allowed' : 'active:scale-[0.98]')}
+            className={cn('w-full py-4 rounded-2xl font-bold text-base transition-all flex items-center justify-center gap-2',
+              isGenerating || !canGenerate || remaining <= 0 ? 'text-white/30 cursor-not-allowed' : 'text-black active:scale-[0.98]')}
             style={!isGenerating && canGenerate && remaining > 0 ? {
-              background: 'linear-gradient(135deg, #7c3aed, #a855f7, #ec4899)',
-              boxShadow: '0 8px 32px rgba(124,58,237,0.35)',
-            } : {}}
+              background: '#22c55e',
+              boxShadow: '0 0 30px rgba(34,197,94,0.4)',
+            } : { background: 'rgba(255,255,255,0.06)' }}
           >
             {isGenerating ? (
               <><Loader2 className="h-5 w-5 animate-spin" /> Generating…</>

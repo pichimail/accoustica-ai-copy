@@ -16,7 +16,7 @@ import {
         Plus, Library, Crown, Home,
         Disc, MessageCircle, PanelLeftClose, PanelLeftOpen
       } from 'lucide-react';
-      import DynamicGradient from '@/components/background/DynamicGradient';
+      
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from 'framer-motion';
 import { AudioPlayerProvider } from '@/components/audio/AudioPlayerContext';
@@ -48,15 +48,15 @@ export default function Layout({ children, currentPageName }) {
   };
 
   const navLinks = [
-    { name: 'Home', icon: Home, page: 'Home' },
-    { name: 'For You', icon: Sparkles, page: 'ForYou', requireAuth: true },
-    { name: 'Create', icon: Plus, page: 'Create', requireAuth: true },
-    { name: 'Library', icon: Library, page: 'Library', requireAuth: true },
-    { name: 'Feed', icon: MessageCircle, page: 'SocialFeed' },
-    { name: 'Discover', icon: Globe, page: 'Discover' },
-    { name: 'Studio', icon: Music, page: 'CollaborativeStudio', requireAuth: true },
-    { name: 'Stems', icon: Disc, page: 'StemStudio', requireAuth: true },
-    { name: 'Profile', icon: User, page: 'Profile', requireAuth: true },
+    { name: 'Home',     icon: Home,        page: 'Home' },
+    { name: 'For You',  icon: Sparkles,    page: 'ForYou',              requireAuth: true },
+    { name: 'Create',   icon: Plus,        page: 'Create',              requireAuth: true },
+    { name: 'Library',  icon: Library,     page: 'Library',             requireAuth: true },
+    { name: 'Feed',     icon: MessageCircle, page: 'SocialFeed' },
+    { name: 'Discover', icon: Globe,       page: 'Discover' },
+    { name: 'Studio',   icon: Music,       page: 'CollaborativeStudio', requireAuth: true },
+    { name: 'Stems',    icon: Disc,        page: 'StemStudio',          requireAuth: true },
+    { name: 'Profile',  icon: User,        page: 'Profile',             requireAuth: true },
   ];
 
   const filteredNavLinks = navLinks.filter(link => {
@@ -75,14 +75,15 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <AudioPlayerProvider>
-    <div className="min-h-screen bg-slate-950 flex flex-col">
-      {/* Global Dynamic Gradient Background */}
-      <DynamicGradient />
+    <div className="min-h-screen flex flex-col" style={{ background: '#0a0a0f' }}>
+      {/* Ambient gradient — static, no performance cost */}
       {/* Mobile Top Bar */}
       <header className={cn(
-        "lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900/30 backdrop-blur-md border-b border-white/10 safe-top",
+        "lg:hidden fixed top-0 left-0 right-0 z-50 safe-top",
         currentPageName === 'Home' && "hidden"
-      )}>
+      )}
+        style={{ background: 'rgba(10,10,15,0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+      >
         <div className="flex items-center justify-between px-4 h-16">
           <Link to={createPageUrl('Home')} className="flex items-center gap-2">
             <img 
@@ -96,31 +97,31 @@ export default function Layout({ children, currentPageName }) {
             {user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-700">
+                  <button className="w-8 h-8 rounded-full overflow-hidden border border-white/10">
                     <img src={avatarUrl} alt={user.full_name} className="w-full h-full object-cover" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-slate-800 border-slate-700">
+                <DropdownMenuContent align="end" className="w-56" style={{ background: 'rgba(14,14,22,0.98)', border: '1px solid rgba(255,255,255,0.1)' }}>
                   <div className="px-3 py-2">
-                    <p className="font-medium text-white text-sm">{user.full_name}</p>
-                    <p className="text-xs text-slate-400">{user.email}</p>
+                    <p className="font-bold text-white text-sm">{user.full_name}</p>
+                    <p className="text-xs text-white/40">{user.email}</p>
                   </div>
-                  <DropdownMenuSeparator className="bg-slate-700" />
-                  <DropdownMenuItem asChild className="text-slate-300 focus:text-white focus:bg-slate-700">
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem asChild className="text-white/70 focus:text-white focus:bg-white/10">
                     <Link to={createPageUrl('Profile')}>
                       <User className="h-4 w-4 mr-2" />
                       Profile
                     </Link>
                   </DropdownMenuItem>
                   {user.role === 'admin' && (
-                    <DropdownMenuItem asChild className="text-violet-400 focus:text-violet-300 focus:bg-slate-700">
+                    <DropdownMenuItem asChild className="text-green-400 focus:text-green-300 focus:bg-white/10">
                       <Link to={createPageUrl('AdminDashboard')}>
                         <Crown className="h-4 w-4 mr-2" />
                         Admin
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuSeparator className="bg-slate-700" />
+                  <DropdownMenuSeparator className="bg-white/10" />
                   <DropdownMenuItem onClick={handleLogout} className="text-red-400 focus:text-red-300 focus:bg-red-500/10">
                     <LogOut className="h-4 w-4 mr-2" />
                     Log Out
@@ -133,89 +134,95 @@ export default function Layout({ children, currentPageName }) {
       </header>
 
       {/* Desktop Sidebar */}
-      <aside className={cn(
-        "hidden lg:flex fixed left-0 top-0 h-screen bg-slate-900/30 backdrop-blur-md border-r border-white/10 z-40 transition-all duration-300",
-        sidebarOpen ? "w-64" : "w-20",
-        currentPageName === 'Home' && "hidden"
-      )}>
+      <aside
+        className={cn(
+          "hidden lg:flex fixed left-0 top-0 h-screen z-40 transition-all duration-300",
+          sidebarOpen ? "w-64" : "w-20",
+          currentPageName === 'Home' && "hidden"
+        )}
+        style={{ background: 'rgba(10,10,15,0.97)', backdropFilter: 'blur(24px)', borderRight: '1px solid rgba(255,255,255,0.06)' }}
+      >
         <div className="flex flex-col w-full">
           {/* Logo & Toggle */}
-          <div className="flex items-center justify-between p-4 border-b border-slate-800/50">
+          <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             {sidebarOpen ? (
               <>
                 <Link to={createPageUrl('Home')} className="flex items-center gap-3">
-                  <img 
-                    src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6937c84c50aa245e9602d1ce/016bba8f4_accostica-logo-366x111.png" 
-                    alt="Accoustica" 
-                    className="h-10"
+                  <img
+                    src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6937c84c50aa245e9602d1ce/016bba8f4_accostica-logo-366x111.png"
+                    alt="Accoustica"
+                    className="h-9"
                   />
                 </Link>
-                <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-white">
+                <button onClick={() => setSidebarOpen(false)} className="text-white/30 hover:text-white transition-colors">
                   <PanelLeftClose className="h-5 w-5" />
                 </button>
               </>
             ) : (
-              <button onClick={() => setSidebarOpen(true)} className="mx-auto text-slate-400 hover:text-white">
+              <button onClick={() => setSidebarOpen(true)} className="mx-auto text-white/30 hover:text-white transition-colors">
                 <PanelLeftOpen className="h-5 w-5" />
               </button>
             )}
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-3 py-4 space-y-1">
-            {filteredNavLinks.map((link) => (
-              <Link key={link.page} to={createPageUrl(link.page)}>
-                <button 
-                  onClick={() => haptics.light()}
-                  className={cn(
-                  "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all",
-                  currentPageName === link.page 
-                    ? "bg-gradient-to-r from-violet-500 to-pink-500 text-white shadow-lg shadow-violet-500/25" 
-                    : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-                )}>
-                  <link.icon className="h-5 w-5 flex-shrink-0" />
-                  {sidebarOpen && <span className="font-medium">{link.name}</span>}
-                </button>
-              </Link>
-            ))}
+          <nav className="flex-1 px-3 py-4 space-y-0.5">
+            {filteredNavLinks.map((link) => {
+              const isActive = currentPageName === link.page;
+              return (
+                <Link key={link.page} to={createPageUrl(link.page)}>
+                  <button
+                    onClick={() => haptics.light()}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all",
+                      isActive ? "text-black font-semibold" : "text-white/50 hover:text-white hover:bg-white/5"
+                    )}
+                    style={isActive ? { background: '#22c55e', boxShadow: '0 0 16px rgba(34,197,94,0.35)' } : {}}
+                  >
+                    <link.icon className="h-5 w-5 flex-shrink-0" />
+                    {sidebarOpen && <span className="text-sm font-medium">{link.name}</span>}
+                  </button>
+                </Link>
+              );
+            })}
           </nav>
 
           {/* User Profile */}
           {user && (
-            <div className="p-3 border-t border-slate-800/50">
+            <div className="p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className={cn(
-                    "w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800/50 transition-all",
+                    "w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-all",
                     !sidebarOpen && "justify-center"
                   )}>
-                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-700 flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
                       <img src={avatarUrl} alt={user.full_name} className="w-full h-full object-cover" />
                     </div>
                     {sidebarOpen && (
                       <div className="flex-1 text-left overflow-hidden">
-                        <p className="text-white text-sm font-medium truncate">{user.full_name}</p>
-                        <p className="text-slate-400 text-xs truncate">{user.email}</p>
+                        <p className="text-white text-sm font-semibold truncate">{user.full_name}</p>
+                        <p className="text-white/40 text-xs truncate">{user.email}</p>
                       </div>
                     )}
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-slate-800 border-slate-700">
-                  <DropdownMenuItem asChild className="text-slate-300 focus:text-white focus:bg-slate-700">
+                <DropdownMenuContent align="end" className="w-56" style={{ background: 'rgba(18,18,28,0.98)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <DropdownMenuItem asChild className="text-white/70 focus:text-white focus:bg-white/10">
                     <Link to={createPageUrl('Profile')}>
                       <User className="h-4 w-4 mr-2" />
                       Profile
                     </Link>
                   </DropdownMenuItem>
                   {user.role === 'admin' && (
-                    <DropdownMenuItem asChild className="text-violet-400 focus:text-violet-300 focus:bg-slate-700">
+                    <DropdownMenuItem asChild className="text-green-400 focus:text-green-300 focus:bg-white/10">
                       <Link to={createPageUrl('AdminDashboard')}>
                         <Crown className="h-4 w-4 mr-2" />
                         Admin Dashboard
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuSeparator className="bg-slate-700" />
+                  <DropdownMenuSeparator className="bg-white/10" />
                   <DropdownMenuItem onClick={handleLogout} className="text-red-400 focus:text-red-300 focus:bg-red-500/10">
                     <LogOut className="h-4 w-4 mr-2" />
                     Log Out
@@ -230,7 +237,7 @@ export default function Layout({ children, currentPageName }) {
       {/* Main Content — extra bottom padding on mobile accounts for nav bar (56px) + player (60px) */}
       <main className={cn(
         "flex-1 lg:transition-all lg:duration-300 relative z-10",
-        currentPageName === 'Home' ? "pt-0 pb-0 lg:pb-0" : "pt-14 pb-[140px] lg:pt-0 lg:pb-20",
+        currentPageName === 'Home' ? "pt-0 pb-0 lg:pb-0" : "pt-14 pb-[160px] lg:pt-0 lg:pb-20",
         showSidebar && (sidebarOpen ? "lg:ml-64" : "lg:ml-20")
       )}>
         {children}

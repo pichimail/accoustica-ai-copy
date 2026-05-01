@@ -1,240 +1,95 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
-  :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 263.4 70% 50.4%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 263.4 70% 50.4%;
-    --radius: 0.75rem;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  }
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(30, 41, 59, 0.5);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.5);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.7);
-}
-
-/* Slider styling for audio player */
-.slider-thumb {
-  @apply w-4 h-4 rounded-full bg-gradient-to-r from-violet-500 to-pink-500 shadow-lg;
-}
-
-/* Animation utilities */
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 40px rgba(139, 92, 246, 0.6);
-  }
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-/* Audio visualizer bars */
-@keyframes sound-wave {
-  0%, 100% {
-    transform: scaleY(0.5);
-  }
-  50% {
-    transform: scaleY(1);
-  }
-}
-
-.sound-bar {
-  animation: sound-wave 0.5s ease-in-out infinite;
-}
-
-/* Gradient text */
-.gradient-text {
-  @apply text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-pink-400 to-purple-400;
-}
-
-/* Glass effect */
-.glass {
-  @apply bg-slate-800/50 backdrop-blur-xl border border-slate-700/50;
-}
-
-/* Focus styles */
-input:focus,
-textarea:focus,
-button:focus-visible {
-  @apply outline-none ring-2 ring-violet-500/50 ring-offset-2 ring-offset-slate-900;
-}
-
-/* Frosted glass hover effects */
-.glass-hover {
-  @apply hover:bg-white/5 hover:backdrop-blur-xl hover:border-white/20 transition-all duration-300;
-}
-
-/* Button hover states with glass effect */
-button:not(:disabled):hover,
-a:hover {
-  @apply backdrop-blur-sm;
-}
-
-/* Override default white hover colors */
-.hover-glass {
-  @apply hover:bg-violet-500/10 hover:text-violet-300 transition-all duration-200;
-}
-
-/* Smooth transitions */
+/* Hide ALL scrollbars globally but keep scrolling working */
 * {
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
-/* Mobile-first safe areas */
-.safe-top {
-  padding-top: env(safe-area-inset-top);
-}
+/* Safe area support */
+.safe-top    { padding-top:    env(safe-area-inset-top,    0px); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.safe-left   { padding-left:   env(safe-area-inset-left,   0px); }
+.safe-right  { padding-right:  env(safe-area-inset-right,  0px); }
 
-.safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* Native app feel - disable text selection and tap highlight */
-@media (max-width: 1024px) {
-  * {
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-  }
-
-  button, a {
-    user-select: none;
-    -webkit-user-select: none;
-  }
-
-  /* Enable smooth momentum scrolling */
-  body, html {
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
-  }
-
-  /* Pull-to-refresh override */
-  body {
-    overscroll-behavior: none;
-  }
-}
-
-/* Native-like button press states */
-button:active, a:active {
-  transform: scale(0.97);
-  transition: transform 0.1s ease-in-out;
-}
-
-/* Smooth spring animations */
-@keyframes spring-in {
-  0% {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.02);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.animate-spring-in {
-  animation: spring-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* Elevated cards with depth */
-.card-elevated {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-
-/* Native iOS-like blur */
-.blur-native {
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-}
-
-/* Smooth native scrolling */
-* {
+/* Smooth momentum scrolling */
+.scroll-smooth-ios {
   -webkit-overflow-scrolling: touch;
+  overflow-scrolling: touch;
 }
 
-/* Hide scrollbar on mobile for native feel */
-@media (max-width: 1024px) {
-  ::-webkit-scrollbar {
-    display: none;
-  }
-  * {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+/* Touch manipulation */
+button, a, [role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Transparent scrollbar for inspiration tags */
-.inspiration-scrollbar::-webkit-scrollbar {
-  height: 4px;
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #c084fc, #f472b6, #22c55e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.inspiration-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+/* Glass card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.inspiration-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.3);
-  border-radius: 4px;
+/* New UI design tokens */
+:root {
+  --accent-green: #22c55e;
+  --accent-purple: #c084fc;
+  --accent-pink: #f472b6;
+  --bg-dark: #0a0a0f;
+  --bg-card: rgba(255,255,255,0.04);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255,255,255,0.6);
+  --text-muted: rgba(255,255,255,0.3);
 }
 
-.inspiration-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.5);
+/* Neon green glow for active elements */
+.neon-green-glow {
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.4), 0 0 40px rgba(34, 197, 94, 0.15);
 }
 
-.inspiration-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
+/* Pulse animation for album art */
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(192,132,252,0.5); }
+  70%  { box-shadow: 0 0 0 20px rgba(192,132,252,0); }
+  100% { box-shadow: 0 0 0 0 rgba(192,132,252,0); }
+}
+
+/* Beat bars */
+@keyframes beat-bar {
+  0%, 100% { transform: scaleY(0.3); }
+  50%       { transform: scaleY(1); }
+}
+
+/* Spring in */
+@keyframes spring-in {
+  0%   { transform: scale(0.85) translateY(20px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.spring-in {
+  animation: spring-in 0.4s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+
+/* Input focus ring */
+input:focus, textarea:focus {
+  outline: none;
+}
+
+/* Disable text selection on controls */
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
 }
