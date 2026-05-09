@@ -1,0 +1,35 @@
+{
+  "name": "TrackShare",
+  "type": "object",
+  "properties": {
+    "track_id": {
+      "type": "string",
+      "description": "ID of the shared track"
+    },
+    "shared_with_email": {
+      "type": "string",
+      "description": "Email recipient for private shares"
+    },
+    "permission": {
+      "type": "string",
+      "enum": ["view", "edit"],
+      "default": "view",
+      "description": "Private share permission"
+    },
+    "message": {
+      "type": "string",
+      "description": "Optional share message"
+    },
+    "public_url": {
+      "type": "string",
+      "description": "Generated public sharing URL"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "active", "revoked"],
+      "default": "pending",
+      "description": "Share status"
+    }
+  },
+  "required": ["track_id"]
+}

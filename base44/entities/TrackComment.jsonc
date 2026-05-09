@@ -1,0 +1,28 @@
+{
+  "name": "TrackComment",
+  "type": "object",
+  "properties": {
+    "track_id": {
+      "type": "string",
+      "description": "ID of the commented track"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the commenting user"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Display name of the commenting user"
+    },
+    "comment_text": {
+      "type": "string",
+      "description": "Comment body"
+    },
+    "timestamp_seconds": {
+      "type": "number",
+      "default": 0,
+      "description": "Playback timestamp attached to the comment"
+    }
+  },
+  "required": ["track_id", "comment_text"]
+}

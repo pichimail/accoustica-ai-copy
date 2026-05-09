@@ -1,140 +1,212 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, Check, X, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Copy, Globe, Loader2, Send, Share2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useQuery } from '@tanstack/react-query';
+import { getPublicTrackUrl, getSeoDescription, getTrackPublicSlug } from '@/lib/trackSharing';
 
 export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
   const [email, setEmail] = useState('');
-  const [permission, setPermission] = useState('view');
   const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
+
+  const publicUrl = useMemo(() => track ? getPublicTrackUrl(track) : '', [track]);
 
   const { data: shares = [] } = useQuery({
     queryKey: ['trackShares', track?.id],
     queryFn: async () => {
       if (!track?.id) return [];
-      return await base44.entities.TrackShare.filter({ track_id: track.id });
+      return base44.entities.TrackShare.filter({ track_id: track.id }, '-created_date', 50);
     },
     enabled: !!track?.id && open,
   });
 
-  const handleShare = async () => {
-    if (!email) {
-      toast.error('Please enter an email address');
+  if (!track) return null;
+
+  const ensurePublic = async () => {
+    const slug = getTrackPublicSlug(track);
+    const seoTitle = track.seo_title || `${track.title} by ${track.created_by?.split('@')[0] || 'Accoustica'}`;
+    const seoDescription = track.seo_description || getSeoDescription(track);
+    await base44.entities.Track.update(track.id, {
+      is_public: true,
+      public_slug: slug,
+      seo_title: seoTitle,
+      seo_description: seoDescription,
+    });
+    return slug;
+  };
+
+  const handleCopyPublicLink = async () => {
+    setSaving(true);
+    try {
+      await ensurePublic();
+      await navigator.clipboard.writeText(publicUrl);
+      await base44.entities.TrackShare.create({
+        track_id: track.id,
+        public_url: publicUrl,
+        status: 'active',
+      });
+      await base44.entities.Track.update(track.id, {
+        share_count: (track.share_count || 0) + 1,
+      });
+      toast.success('Public player link copied');
+      queryClient.invalidateQueries({ queryKey: ['myTracks'] });
+      queryClient.invalidateQueries({ queryKey: ['trackShares', track.id] });
+      onSuccess?.();
+    } catch (error) {
+      toast.error(error.message || 'Could not create public link');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleNativeShare = async () => {
+    setSaving(true);
+    try {
+      await ensurePublic();
+      if (navigator.share) {
+        await navigator.share({
+          title: track.seo_title || track.title,
+          text: track.seo_description || getSeoDescription(track),
+          url: publicUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(publicUrl);
+        toast.success('Public player link copied');
+      }
+      await base44.entities.Track.update(track.id, {
+        share_count: (track.share_count || 0) + 1,
+      });
+      queryClient.invalidateQueries({ queryKey: ['myTracks'] });
+      onSuccess?.();
+    } catch (error) {
+      if (error?.name !== 'AbortError') toast.error(error.message || 'Could not share track');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePrivateShare = async () => {
+    if (!email.trim()) {
+      toast.error('Enter an email address');
       return;
     }
-
-    setLoading(true);
+    setSaving(true);
     try {
       await base44.entities.TrackShare.create({
         track_id: track.id,
-        shared_with_email: email,
-        permission,
-        message,
+        shared_with_email: email.trim(),
+        permission: 'view',
+        message: message.trim(),
+        public_url: publicUrl,
         status: 'pending',
       });
-
-      toast.success(`Track shared with ${email}`);
       setEmail('');
       setMessage('');
+      queryClient.invalidateQueries({ queryKey: ['trackShares', track.id] });
+      toast.success('Private share created');
       onSuccess?.();
     } catch (error) {
-      toast.error('Failed to share track: ' + error.message);
+      toast.error(error.message || 'Could not share privately');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   const handleRemoveShare = async (shareId) => {
-    try {
-      await base44.entities.TrackShare.delete(shareId);
-      toast.success('Share removed');
-      onSuccess?.();
-    } catch (error) {
-      toast.error('Failed to remove share');
-    }
+    await base44.entities.TrackShare.delete(shareId);
+    queryClient.invalidateQueries({ queryKey: ['trackShares', track.id] });
+    toast.success('Share removed');
   };
-
-  if (!track) return null;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-slate-900 border-slate-700 max-w-lg">
+      <DialogContent className="max-w-xl border-white/10 bg-[#09090f] text-white shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="text-white">Share Track: {track.title}</DialogTitle>
+          <DialogTitle className="text-lg font-extrabold">Share Track</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div>
-            <Label className="text-slate-300">Email Address</Label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="user@example.com"
-              className="bg-slate-800 border-slate-700 text-white"
-            />
+        <div className="space-y-5">
+          <div className="flex items-center gap-3 border-b pb-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+            <div className="h-14 w-14 overflow-hidden border flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)' }}>
+              {track.cover_image_url ? <img src={track.cover_image_url} alt="" className="h-full w-full object-cover" /> : <Globe className="h-5 w-5 m-4 text-white/25" />}
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold truncate">{track.title}</p>
+              <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>{publicUrl}</p>
+            </div>
           </div>
 
-          <div>
-            <Label className="text-slate-300">Permission</Label>
-            <Select value={permission} onValueChange={setPermission}>
-              <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
-                <SelectItem value="view" className="text-slate-300 focus:text-white focus:bg-slate-700">
-                  View Only
-                </SelectItem>
-                <SelectItem value="edit" className="text-slate-300 focus:text-white focus:bg-slate-700">
-                  Can Edit
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid sm:grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handleCopyPublicLink}
+              disabled={saving}
+              className="flex items-center justify-center gap-2 border px-4 py-3 text-sm font-bold disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-rose-400"
+              style={{ background: '#e11d48', borderColor: '#e11d48' }}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+              Copy Public Link
+            </button>
+            <button
+              type="button"
+              onClick={handleNativeShare}
+              disabled={saving}
+              className="flex items-center justify-center gap-2 border px-4 py-3 text-sm font-bold disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-rose-400"
+              style={{ background: 'rgba(255,255,255,0.045)', borderColor: 'rgba(255,255,255,0.1)' }}
+            >
+              <Share2 className="h-4 w-4" />
+              Share
+            </button>
           </div>
 
-          <div>
-            <Label className="text-slate-300">Message (Optional)</Label>
-            <Textarea
+          <div className="border-t pt-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+            <p className="text-xs font-extrabold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>Private Invite</p>
+            <div className="grid sm:grid-cols-[1fr_auto] gap-2">
+              <input
+                type="email"
+                value={email}
+                onChange={event => setEmail(event.target.value)}
+                placeholder="user@example.com"
+                aria-label="Invite email"
+                className="px-3 py-2.5 text-sm bg-white/[0.04] border border-white/10 text-white placeholder:text-white/25 focus:outline-none focus:ring-1 focus:ring-rose-400"
+              />
+              <button
+                type="button"
+                onClick={handlePrivateShare}
+                disabled={saving}
+                className="px-4 py-2.5 border text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.055)' }}
+              >
+                <Send className="h-4 w-4" />
+                Invite
+              </button>
+            </div>
+            <textarea
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Add a message..."
-              className="bg-slate-800 border-slate-700 text-white"
+              onChange={event => setMessage(event.target.value)}
+              placeholder="Optional message"
+              aria-label="Share message"
+              rows={3}
+              className="mt-2 w-full px-3 py-2.5 text-sm bg-white/[0.04] border border-white/10 text-white placeholder:text-white/25 resize-none focus:outline-none focus:ring-1 focus:ring-rose-400"
             />
           </div>
-
-          <Button onClick={handleShare} disabled={loading} className="w-full bg-violet-600 hover:bg-violet-700">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4 mr-2" />}
-            Share Track
-          </Button>
 
           {shares.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold text-slate-300 mb-2">Shared With</h3>
-              <div className="space-y-2">
-                {shares.map((share) => (
-                  <div key={share.id} className="flex items-center justify-between bg-slate-800 p-3 rounded-lg">
-                    <div>
-                      <p className="text-white text-sm">{share.shared_with_email}</p>
-                      <p className="text-slate-400 text-xs">
-                        {share.permission} • {share.status}
-                      </p>
+            <div className="border-t pt-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+              <p className="text-xs font-extrabold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>Share History</p>
+              <div className="divide-y divide-white/5 border" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                {shares.map(share => (
+                  <div key={share.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-sm truncate">{share.shared_with_email || 'Public link'}</p>
+                      <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.38)' }}>{share.status}</p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveShare(share.id)}
-                      className="text-red-400 hover:text-red-300"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <button type="button" onClick={() => handleRemoveShare(share.id)} aria-label="Remove share" className="p-2 text-red-400 hover:bg-red-500/10">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 ))}
               </div>

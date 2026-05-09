@@ -1,297 +1,280 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { Heart, Loader2, MessageCircle, Pause, Play, Search, Send, Share2, TrendingUp } from 'lucide-react';
+import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
-import { Link } from 'react-router-dom';
-import { toast } from 'sonner';
-import {
-  Play, Pause, Heart, MessageCircle, Share2, Send, Zap,
-  Loader2, Music, Clock, TrendingUp, Globe, UserPlus
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { getPublicTrackUrl } from '@/lib/trackSharing';
 
 export default function SocialFeedPage() {
   const [user, setUser] = useState(null);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState('-created_date');
   const [commentInput, setCommentInput] = useState({});
-  const [expandedComments, setExpandedComments] = useState({});
-  const [following, setFollowing] = useState({});
+  const [openComments, setOpenComments] = useState({});
   const { playTrack, currentTrack, isPlaying, currentTime } = useAudioPlayer();
   const queryClient = useQueryClient();
 
-  useEffect(() => { base44.auth.me().then(setUser); }, []);
+  useEffect(() => {
+    base44.auth.isAuthenticated().then((ok) => ok ? base44.auth.me().then(setUser) : null);
+  }, []);
 
   const { data: tracks = [], isLoading } = useQuery({
-    queryKey: ['socialFeed'],
-    queryFn: () => base44.entities.Track.filter({ is_public: true, status: 'ready' }, '-created_date', 30),
-    refetchInterval: 15000, // live refresh every 15s
+    queryKey: ['socialPublicTracks', sort],
+    queryFn: () => base44.entities.Track.filter({ is_public: true, status: 'ready' }, sort, 80),
+    refetchInterval: 20000,
   });
 
   const { data: comments = [] } = useQuery({
     queryKey: ['feedComments'],
-    queryFn: () => base44.entities.TrackComment.list('-created_date', 200),
-    refetchInterval: 10000,
+    queryFn: () => base44.entities.TrackComment.list('-created_date', 500),
+    refetchInterval: 12000,
   });
 
   const { data: likes = [] } = useQuery({
     queryKey: ['trackLikes'],
-    queryFn: () => base44.entities.TrackLike.list('-created_date', 500),
+    queryFn: () => base44.entities.TrackLike.list('-created_date', 1000),
+    refetchInterval: 15000,
   });
 
-  const getTrackComments = (trackId) => comments.filter(c => c.track_id === trackId);
-  const getTrackLikes = (trackId) => likes.filter(l => l.track_id === trackId && l.type === 'like');
-  const isLiked = (trackId) => !!likes.find(l => l.track_id === trackId && l.user_email === user?.email && l.type === 'like');
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return tracks;
+    return tracks.filter(track =>
+      track.title?.toLowerCase().includes(q)
+      || track.style?.toLowerCase().includes(q)
+      || track.tags?.toLowerCase().includes(q)
+      || track.created_by?.toLowerCase().includes(q)
+    );
+  }, [search, tracks]);
+
+  const handlePlay = async (track) => {
+    haptics.medium();
+    playTrack(track, filtered);
+    await Promise.allSettled([
+      base44.entities.Track.update(track.id, { plays: (track.plays || 0) + 1 }),
+      base44.entities.TrackPlay.create({
+        track_id: track.id,
+        user_email: user?.email || '',
+        played_at: new Date().toISOString(),
+        source: 'feed',
+        referrer: window.location.href,
+      }),
+    ]);
+  };
 
   const handleLike = async (track) => {
-    if (!user) { toast.error('Sign in to like tracks'); return; }
-    haptics.light();
-    const existing = likes.find(l => l.track_id === track.id && l.user_email === user.email);
-    if (existing) {
-      await base44.entities.TrackLike.delete(existing.id);
-    } else {
-      await base44.entities.TrackLike.create({ track_id: track.id, user_email: user.email, type: 'like' });
+    if (!user?.email) {
+      toast.error('Sign in to like tracks');
+      return;
     }
+    haptics.light();
+    const existing = likes.find(like => like.track_id === track.id && like.user_email === user.email);
+    if (existing) await base44.entities.TrackLike.delete(existing.id);
+    else await base44.entities.TrackLike.create({ track_id: track.id, user_email: user.email, type: 'like' });
     queryClient.invalidateQueries({ queryKey: ['trackLikes'] });
   };
 
   const handleComment = async (track) => {
     const text = commentInput[track.id]?.trim();
-    if (!text || !user) return;
+    if (!text) return;
+    if (!user?.email) {
+      toast.error('Sign in to comment');
+      return;
+    }
     haptics.medium();
-    const ts = Math.round(currentTrack?.id === track.id ? currentTime : 0);
     await base44.entities.TrackComment.create({
       track_id: track.id,
       user_email: user.email,
       user_name: user.full_name || user.email.split('@')[0],
       comment_text: text,
-      timestamp_seconds: ts,
+      timestamp_seconds: Math.round(currentTrack?.id === track.id ? currentTime : 0),
     });
-    setCommentInput(p => ({ ...p, [track.id]: '' }));
+    setCommentInput(prev => ({ ...prev, [track.id]: '' }));
+    setOpenComments(prev => ({ ...prev, [track.id]: true }));
     queryClient.invalidateQueries({ queryKey: ['feedComments'] });
-    toast.success('Comment posted!');
   };
 
-  const handleShare = (track) => {
-    haptics.light();
-    const url = `${window.location.origin}/TrackInfo?id=${track.id}`;
+  const handleShare = async (track) => {
+    const url = getPublicTrackUrl(track);
     if (navigator.share) {
-      navigator.share({ title: track.title, url });
-    } else {
-      navigator.clipboard.writeText(url);
-      toast.success('Link copied!');
+      await navigator.share({ title: track.title, text: track.seo_description || track.style || 'Listen on Accoustica', url });
+      return;
     }
-  };
-
-  const fmt = (s) => {
-    if (!s || isNaN(s)) return '0:00';
-    return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+    await navigator.clipboard.writeText(url);
+    toast.success('Public player link copied');
   };
 
   return (
-    <div className="min-h-screen bg-black pb-36">
-      {/* Ambient */}
-      <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-        <div className="absolute inset-0 bg-black" />
-        <div className="absolute inset-0" style={{
-          background: 'radial-gradient(ellipse 80% 40% at 20% 10%, rgba(124,58,237,0.12) 0%, transparent 70%), radial-gradient(ellipse 60% 40% at 80% 80%, rgba(236,72,153,0.07) 0%, transparent 60%)',
-        }} />
+    <main className="min-h-screen pb-36" style={{ background: '#020204', color: '#fff' }}>
+      <header className="sticky top-0 z-30 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(2,2,4,0.92)', backdropFilter: 'blur(18px)' }}>
+        <div className="px-4 md:px-6 py-4 max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end gap-4 md:justify-between">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-extrabold">Social Discovery</h1>
+              <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.46)' }}>Public tracks, listener reactions, and creator conversations.</p>
+            </div>
+            <div className="flex gap-2">
+              {[{ value: '-created_date', label: 'New' }, { value: '-plays', label: 'Hot' }].map(item => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setSort(item.value)}
+                  className="px-4 py-2 border text-sm font-bold focus:outline-none focus:ring-2 focus:ring-rose-400"
+                  style={sort === item.value
+                    ? { background: '#22c55e', borderColor: '#22c55e', color: '#020204' }
+                    : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.62)' }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="relative mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'rgba(255,255,255,0.34)' }} />
+            <input
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="Search tracks, styles, creators..."
+              aria-label="Search public tracks"
+              className="w-full pl-10 pr-3 py-3 text-sm bg-white/[0.045] border border-white/10 text-white placeholder:text-white/25 focus:outline-none focus:ring-1 focus:ring-rose-400"
+            />
+          </div>
+        </div>
+      </header>
+
+      <section className="max-w-7xl mx-auto px-4 md:px-6 py-5">
+        {isLoading ? (
+          <div className="flex justify-center py-24">
+            <Loader2 className="h-8 w-8 animate-spin" style={{ color: '#22c55e' }} />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-24 text-center border" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.42)' }}>No public tracks match this search.</p>
+          </div>
+        ) : (
+          <div className="columns-1 sm:columns-2 xl:columns-3 gap-3 [column-fill:_balance]">
+            {filtered.map(track => (
+              <TrackMasonryCard
+                key={track.id}
+                track={track}
+                comments={comments.filter(comment => comment.track_id === track.id)}
+                likes={likes.filter(like => like.track_id === track.id)}
+                liked={!!likes.find(like => like.track_id === track.id && like.user_email === user?.email)}
+                playing={currentTrack?.id === track.id && isPlaying}
+                openComments={!!openComments[track.id]}
+                commentValue={commentInput[track.id] || ''}
+                onToggleComments={() => setOpenComments(prev => ({ ...prev, [track.id]: !prev[track.id] }))}
+                onCommentChange={value => setCommentInput(prev => ({ ...prev, [track.id]: value }))}
+                onComment={() => handleComment(track)}
+                onLike={() => handleLike(track)}
+                onPlay={() => handlePlay(track)}
+                onShare={() => handleShare(track)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
+
+function TrackMasonryCard({
+  track,
+  comments,
+  likes,
+  liked,
+  playing,
+  openComments,
+  commentValue,
+  onToggleComments,
+  onCommentChange,
+  onComment,
+  onLike,
+  onPlay,
+  onShare,
+}) {
+  const cover = track.cover_image_url || '';
+  const publicUrl = getPublicTrackUrl(track);
+  const tall = (track.title?.length || 0) % 3 === 0;
+
+  return (
+    <article className="break-inside-avoid mb-3 border overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#09090f' }}>
+      <div className={`relative ${tall ? 'aspect-[4/5]' : 'aspect-square'} border-b`} style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)' }}>
+        {cover ? <img src={cover} alt={track.title} className="h-full w-full object-cover" /> : null}
+        <button type="button" onClick={onPlay} className="absolute inset-0 flex items-center justify-center bg-black/18 hover:bg-black/42 transition-colors" aria-label={playing ? 'Pause track' : 'Play track'}>
+          <span className="h-14 w-14 flex items-center justify-center border" style={{ background: playing ? '#22c55e' : 'rgba(2,2,4,0.72)', borderColor: playing ? '#22c55e' : 'rgba(255,255,255,0.2)', color: playing ? '#020204' : '#fff' }}>
+            {playing ? <Pause className="h-6 w-6 fill-current" /> : <Play className="h-6 w-6 fill-current ml-0.5" />}
+          </span>
+        </button>
+        {playing && <div className="absolute left-0 right-0 bottom-0 h-1" style={{ background: '#22c55e' }} />}
       </div>
 
-      {/* Header */}
-      <div className="relative z-10 sticky top-0 bg-black/70 backdrop-blur-2xl border-b border-white/[0.06] px-4 pt-3 pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-white">Feed</h1>
-            <p className="text-[11px] text-white/30">Live stream of new tracks</p>
-          </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-400 border border-emerald-500/30" style={{ background: 'rgba(16,185,129,0.1)' }}>
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Live
-          </div>
+      <div className="p-4">
+        <Link to={publicUrl.replace(window.location.origin, '')}>
+          <h2 className="text-lg font-extrabold leading-tight hover:text-rose-300 transition-colors">{track.title}</h2>
+        </Link>
+        <p className="mt-1 text-sm line-clamp-2" style={{ color: 'rgba(255,255,255,0.52)' }}>{track.style || track.tags || 'AI Generated'}</p>
+        <p className="mt-2 text-xs" style={{ color: 'rgba(255,255,255,0.34)' }}>{track.created_by?.split('@')[0] || 'Accoustica'}</p>
+      </div>
+
+      <div className="grid grid-cols-4 border-t border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+        <ActionButton active={liked} onClick={onLike} label={likes.length || ''}><Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} /></ActionButton>
+        <ActionButton active={openComments} onClick={onToggleComments} label={comments.length || ''}><MessageCircle className="h-4 w-4" /></ActionButton>
+        <ActionButton onClick={onShare}><Share2 className="h-4 w-4" /></ActionButton>
+        <div className="flex items-center justify-center gap-1 text-xs" style={{ color: 'rgba(255,255,255,0.42)' }}>
+          <TrendingUp className="h-4 w-4" />
+          {track.plays || 0}
         </div>
       </div>
 
-      {/* Feed */}
-      <div className="relative z-10 space-y-3 px-4 pt-4">
-        {isLoading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 text-violet-400 animate-spin" />
+      {openComments && (
+        <div className="p-3 space-y-3">
+          <div className="max-h-48 overflow-y-auto divide-y divide-white/5 border" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+            {comments.length === 0 ? (
+              <p className="text-xs text-center py-4" style={{ color: 'rgba(255,255,255,0.34)' }}>No comments yet</p>
+            ) : comments.slice(0, 12).map(comment => (
+              <div key={comment.id} className="px-3 py-2">
+                <p className="text-xs font-bold" style={{ color: '#fb7185' }}>{comment.user_name || comment.user_email || 'Listener'}</p>
+                <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.68)' }}>{comment.comment_text}</p>
+              </div>
+            ))}
           </div>
-        ) : tracks.length === 0 ? (
-          <div className="text-center py-20">
-            <Globe className="h-12 w-12 text-white/10 mx-auto mb-3" />
-            <p className="text-white/30 text-sm">No public tracks yet</p>
+          <div className="flex gap-2">
+            <input
+              value={commentValue}
+              onChange={event => onCommentChange(event.target.value)}
+              onKeyDown={event => event.key === 'Enter' && onComment()}
+              placeholder="Add a comment..."
+              aria-label={`Comment on ${track.title}`}
+              className="flex-1 px-3 py-2 text-sm bg-white/[0.04] border border-white/10 text-white placeholder:text-white/25 focus:outline-none focus:ring-1 focus:ring-rose-400"
+            />
+            <button type="button" onClick={onComment} className="px-3 border" aria-label="Send comment" style={{ background: '#e11d48', borderColor: '#e11d48' }}>
+              <Send className="h-4 w-4" />
+            </button>
           </div>
-        ) : (
-          tracks.map((track, i) => {
-            const trackComments = getTrackComments(track.id);
-            const trackLikes = getTrackLikes(track.id);
-            const liked = isLiked(track.id);
-            const isCurrentlyPlaying = currentTrack?.id === track.id && isPlaying;
-            const artistHandle = `Accoustica-${(track.created_by || '').split('@')[0]}`;
-            const showComments = expandedComments[track.id];
+        </div>
+      )}
+    </article>
+  );
+}
 
-            return (
-              <motion.article
-                key={track.id}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                className="bg-white/[0.04] backdrop-blur-md border border-white/[0.06] rounded-2xl overflow-hidden"
-              >
-                {/* Artist row */}
-                <div className="flex items-center gap-3 px-4 pt-4 pb-3">
-                  <Link to={`/ArtistInfo?email=${encodeURIComponent(track.created_by)}`}>
-                    <div className="w-9 h-9 rounded-full overflow-hidden border border-white/10 bg-gradient-to-br from-violet-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0">
-                      {track.cover_image_url ? (
-                        <img src={track.cover_image_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <Music className="h-4 w-4 text-white/30" />
-                      )}
-                    </div>
-                  </Link>
-                  <div className="flex-1 min-w-0">
-                    <Link to={`/ArtistInfo?email=${encodeURIComponent(track.created_by)}`}>
-                      <p className="text-sm font-semibold text-white hover:text-violet-300 transition-colors">{artistHandle}</p>
-                    </Link>
-                    <p className="text-[11px] text-white/30">{track.created_date ? new Date(track.created_date).toLocaleDateString() : ''}</p>
-                  </div>
-                  <button
-                    onClick={() => { setFollowing(f => ({ ...f, [track.created_by]: !f[track.created_by] })); haptics.light(); }}
-                    className={cn(
-                      'px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all',
-                      following[track.created_by] ? 'bg-white/10 text-white/50 border border-white/10' : 'text-violet-300 border border-violet-500/40'
-                    )}
-                    style={!following[track.created_by] ? { background: 'rgba(124,58,237,0.15)' } : {}}
-                  >
-                    {following[track.created_by] ? 'Following' : 'Follow'}
-                  </button>
-                </div>
-
-                {/* Track card */}
-                <div className="relative mx-4 mb-3 rounded-2xl overflow-hidden">
-                  {/* Cover art */}
-                  <div className="relative aspect-video sm:aspect-[2/1] bg-black overflow-hidden">
-                    {track.cover_image_url ? (
-                      <>
-                        <img src={track.cover_image_url} alt={track.title}
-                          className="absolute inset-0 w-full h-full object-cover scale-110 opacity-60"
-                          style={{ filter: 'blur(20px)' }} />
-                        <img src={track.cover_image_url} alt={track.title}
-                          className="relative z-10 h-full mx-auto object-contain" />
-                      </>
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-violet-500/20 to-pink-500/20 flex items-center justify-center">
-                        <Music className="h-16 w-16 text-white/20" />
-                      </div>
-                    )}
-                    {/* Play overlay */}
-                    <button
-                      onClick={() => { haptics.medium(); playTrack(track, tracks); }}
-                      className="absolute inset-0 z-20 flex items-center justify-center bg-black/20 hover:bg-black/40 transition-colors"
-                    >
-                      <div className="w-16 h-16 rounded-full flex items-center justify-center backdrop-blur-md bg-black/40 border border-white/20 shadow-2xl">
-                        {isCurrentlyPlaying ? <Pause className="h-7 w-7 text-white" /> : <Play className="h-7 w-7 text-white ml-1" />}
-                      </div>
-                    </button>
-                    {/* Now playing indicator */}
-                    {isCurrentlyPlaying && (
-                      <div className="absolute bottom-0 left-0 right-0 h-1 z-20" style={{ background: 'linear-gradient(90deg, #7c3aed, #ec4899)' }} />
-                    )}
-                  </div>
-
-                  {/* Track info */}
-                  <div className="bg-black/40 backdrop-blur-md px-4 py-3 border-t border-white/[0.06]">
-                    <Link to={`/TrackInfo?id=${track.id}`}>
-                      <h3 className="font-semibold text-white hover:text-violet-300 transition-colors truncate">{track.title}</h3>
-                    </Link>
-                    <p className="text-xs text-white/40 truncate mt-0.5">{track.style || 'AI Generated'}</p>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-1 px-4 pb-3">
-                  <button onClick={() => handleLike(track)}
-                    className={cn('flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all', liked ? 'text-red-400' : 'text-white/40 hover:text-white/70')}
-                    style={liked ? { background: 'rgba(239,68,68,0.1)' } : {}}
-                  >
-                    <Heart className={cn('h-4 w-4', liked && 'fill-red-400')} />
-                    <span className="text-[12px]">{trackLikes.length || ''}</span>
-                  </button>
-
-                  <button
-                    onClick={() => { setExpandedComments(p => ({ ...p, [track.id]: !p[track.id] })); haptics.selection(); }}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-white/40 hover:text-white/70 transition-all"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    <span className="text-[12px]">{trackComments.length || ''}</span>
-                  </button>
-
-                  <button onClick={() => handleShare(track)}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-white/40 hover:text-white/70 transition-all">
-                    <Share2 className="h-4 w-4" />
-                  </button>
-
-                  <div className="flex-1" />
-                  <div className="flex items-center gap-1 text-white/20 text-[11px]">
-                    <TrendingUp className="h-3 w-3" />
-                    {track.plays || 0}
-                  </div>
-                </div>
-
-                {/* Comments */}
-                <AnimatePresence>
-                  {showComments && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden border-t border-white/[0.06]"
-                    >
-                      <div className="px-4 py-3 space-y-2 max-h-48 overflow-y-auto">
-                        {trackComments.length === 0 ? (
-                          <p className="text-xs text-white/25 text-center py-2">No comments yet</p>
-                        ) : (
-                          trackComments.slice(-10).map(c => (
-                            <div key={c.id} className="flex gap-2">
-                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500/30 to-pink-500/20 flex-shrink-0" />
-                              <div>
-                                <span className="text-[11px] font-semibold text-violet-400">{c.user_name} </span>
-                                <span className="text-[11px] text-white/60">{c.comment_text}</span>
-                                {c.timestamp_seconds > 0 && (
-                                  <span className="text-[10px] text-white/25 ml-1">@ {fmt(c.timestamp_seconds)}</span>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-
-                      {user && (
-                        <div className="flex gap-2 px-4 pb-3">
-                          <input
-                            value={commentInput[track.id] || ''}
-                            onChange={e => setCommentInput(p => ({ ...p, [track.id]: e.target.value }))}
-                            onKeyDown={e => e.key === 'Enter' && handleComment(track)}
-                            placeholder="Add a comment..."
-                            className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/25 focus:outline-none focus:border-violet-500/40"
-                          />
-                          <button onClick={() => handleComment(track)}
-                            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                            style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.7), rgba(236,72,153,0.6))' }}>
-                            <Send className="h-4 w-4 text-white" />
-                          </button>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.article>
-            );
-          })
-        )}
-      </div>
-    </div>
+function ActionButton({ active, onClick, label, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="h-11 flex items-center justify-center gap-1 border-r text-sm font-bold focus:outline-none focus:ring-1 focus:ring-rose-400"
+      style={{
+        borderColor: 'rgba(255,255,255,0.08)',
+        color: active ? '#fb7185' : 'rgba(255,255,255,0.48)',
+        background: active ? 'rgba(225,29,72,0.1)' : 'transparent',
+      }}
+    >
+      {children}
+      {label && <span className="text-xs">{label}</span>}
+    </button>
   );
 }

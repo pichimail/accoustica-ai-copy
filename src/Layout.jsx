@@ -14,7 +14,7 @@ import {
 import {
   Sparkles, Music, Globe, User, LogOut,
   Plus, Library, Crown, Home,
-  Disc, MessageCircle, PanelLeftClose, PanelLeftOpen, GitBranch, Volume2, Edit3 } from
+  Disc, MessageCircle, PanelLeftClose, PanelLeftOpen, GitBranch, Volume2, Edit3, BarChart3 } from
 'lucide-react';
 
 import { cn } from "@/lib/utils";
@@ -52,6 +52,7 @@ export default function Layout({ children, currentPageName }) {
   { name: 'For You', icon: Sparkles, page: 'ForYou', requireAuth: true },
   { name: 'Create', icon: Plus, page: 'Create', requireAuth: true },
   { name: 'Library', icon: Library, page: 'Library', requireAuth: true },
+  { name: 'Insights', icon: BarChart3, page: 'Insights', requireAuth: true },
   { name: 'Feed', icon: MessageCircle, page: 'SocialFeed' },
   { name: 'Discover', icon: Globe, page: 'Discover' },
   { name: 'Studio', icon: Music, page: 'CollaborativeStudio', requireAuth: true },

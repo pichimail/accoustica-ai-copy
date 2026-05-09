@@ -1,0 +1,27 @@
+{
+  "name": "TrackPlay",
+  "type": "object",
+  "properties": {
+    "track_id": {
+      "type": "string",
+      "description": "ID of the played track"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the listener if authenticated"
+    },
+    "played_at": {
+      "type": "string",
+      "description": "ISO timestamp of the play"
+    },
+    "source": {
+      "type": "string",
+      "description": "Playback source such as public, feed, discover, library"
+    },
+    "referrer": {
+      "type": "string",
+      "description": "Document referrer for public analytics"
+    }
+  },
+  "required": ["track_id", "played_at"]
+}

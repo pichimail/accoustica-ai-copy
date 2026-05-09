@@ -77,6 +77,32 @@
       "default": 0,
       "description": "Number of times played"
     },
+    "public_slug": {
+      "type": "string",
+      "description": "SEO-friendly public sharing slug"
+    },
+    "seo_title": {
+      "type": "string",
+      "description": "Title used for public social preview metadata"
+    },
+    "seo_description": {
+      "type": "string",
+      "description": "Description used for public social preview metadata"
+    },
+    "share_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of public share actions"
+    },
+    "modified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the track has been edited, remixed, extended, or otherwise modified"
+    },
+    "modification_type": {
+      "type": "string",
+      "description": "Type of modification applied to this track"
+    },
     "error_message": {
       "type": "string",
       "description": "Error message if generation failed"

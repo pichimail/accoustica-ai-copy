@@ -1,0 +1,21 @@
+{
+  "name": "TrackLike",
+  "type": "object",
+  "properties": {
+    "track_id": {
+      "type": "string",
+      "description": "ID of the liked track"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who liked the track"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["like"],
+      "default": "like",
+      "description": "Reaction type"
+    }
+  },
+  "required": ["track_id", "user_email"]
+}

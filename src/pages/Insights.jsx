@@ -1,0 +1,260 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import { BarChart3, Disc3, Loader2, Music2, Sparkles, TrendingUp, Wand2 } from 'lucide-react';
+
+export default function InsightsPage() {
+  const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    base44.auth.isAuthenticated()
+      .then(ok => ok ? base44.auth.me().then(setUser) : null)
+      .finally(() => setAuthChecked(true));
+  }, []);
+
+  const { data: tracks = [], isLoading: loadingTracks } = useQuery({
+    queryKey: ['insightTracks', user?.email],
+    queryFn: () => base44.entities.Track.filter({ created_by: user.email }, '-created_date', 200),
+    enabled: !!user?.email,
+  });
+
+  const { data: plays = [], isLoading: loadingPlays } = useQuery({
+    queryKey: ['insightPlays'],
+    queryFn: () => base44.entities.TrackPlay.list('-created_date', 1000),
+    enabled: !!user?.email,
+  });
+
+  const ownedIds = useMemo(() => new Set(tracks.map(track => track.id)), [tracks]);
+  const ownedPlays = useMemo(() => plays.filter(play => ownedIds.has(play.track_id)), [ownedIds, plays]);
+
+  const metrics = useMemo(() => {
+    const ready = tracks.filter(track => track.status === 'ready');
+    const mastered = tracks.filter(track => track.mastered || track.tags?.includes('mastered'));
+    const modified = tracks.filter(track => track.modified || track.parent_track_id || track.modification_type);
+    const publicTracks = tracks.filter(track => track.is_public);
+    const totalPlays = tracks.reduce((sum, track) => sum + (track.plays || 0), 0);
+    return { ready: ready.length, mastered: mastered.length, modified: modified.length, publicTracks: publicTracks.length, totalPlays };
+  }, [tracks]);
+
+  const playsByDay = useMemo(() => {
+    const days = Array.from({ length: 14 }, (_, index) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (13 - index));
+      const key = date.toISOString().slice(0, 10);
+      return { key, label: date.toLocaleDateString('en-US', { weekday: 'short' }), value: 0 };
+    });
+    const map = new Map(days.map(day => [day.key, day]));
+    ownedPlays.forEach(play => {
+      const key = (play.played_at || play.created_date || '').slice(0, 10);
+      if (map.has(key)) map.get(key).value += 1;
+    });
+    if (!ownedPlays.length) {
+      tracks.forEach(track => {
+        const key = (track.created_date || '').slice(0, 10);
+        if (map.has(key)) map.get(key).value += track.plays || 0;
+      });
+    }
+    return days;
+  }, [ownedPlays, tracks]);
+
+  const genres = useMemo(() => {
+    const counts = new Map();
+    tracks.forEach(track => {
+      const raw = track.style || track.tags || 'AI Generated';
+      raw.split(',').slice(0, 4).forEach(token => {
+        const genre = token.trim() || 'AI Generated';
+        counts.set(genre, (counts.get(genre) || 0) + (track.plays || 1));
+      });
+    });
+    return [...counts.entries()]
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [tracks]);
+
+  const statusBreakdown = useMemo(() => [
+    { label: 'Ready', value: metrics.ready, color: '#22c55e' },
+    { label: 'Mastered', value: metrics.mastered, color: '#fb7185' },
+    { label: 'Modified', value: metrics.modified, color: '#a78bfa' },
+    { label: 'Public', value: metrics.publicTracks, color: '#38bdf8' },
+  ], [metrics]);
+
+  if (!authChecked || (user && (loadingTracks || loadingPlays))) {
+    return (
+      <main className="min-h-screen flex items-center justify-center" style={{ background: '#020204' }}>
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: '#22c55e' }} />
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-5 text-center" style={{ background: '#020204', color: '#fff' }}>
+        <div className="max-w-md">
+          <BarChart3 className="h-12 w-12 mx-auto mb-4" style={{ color: 'rgba(255,255,255,0.22)' }} />
+          <h1 className="text-2xl font-extrabold">Insights require sign in</h1>
+          <p className="mt-2 text-sm" style={{ color: 'rgba(255,255,255,0.52)' }}>Sign in to view plays, genre performance, and mastering analytics for your generated tracks.</p>
+          <button type="button" onClick={() => base44.auth.login()} className="mt-5 px-4 py-2 border text-sm font-bold" style={{ background: '#22c55e', borderColor: '#22c55e', color: '#020204' }}>Sign In</button>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen pb-32" style={{ background: '#020204', color: '#fff' }}>
+      <header className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#07070b' }}>
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-widest" style={{ color: '#fb7185' }}>Dashboard</p>
+              <h1 className="text-3xl md:text-5xl font-extrabold mt-1">Music Insights</h1>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-px border min-w-full md:min-w-[520px]" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.08)' }}>
+              <Metric label="Tracks" value={tracks.length} icon={Music2} />
+              <Metric label="Ready" value={metrics.ready} icon={Disc3} />
+              <Metric label="Plays" value={metrics.totalPlays} icon={TrendingUp} />
+              <Metric label="Public" value={metrics.publicTracks} icon={Sparkles} />
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section className="max-w-7xl mx-auto px-4 md:px-8 py-6 grid xl:grid-cols-[1.35fr_0.65fr] gap-4">
+        <Panel title="Plays Over Time" icon={BarChart3}>
+          <PlayBars data={playsByDay} />
+        </Panel>
+        <Panel title="Track Processing" icon={Wand2}>
+          <RadialBreakdown data={statusBreakdown} total={Math.max(1, tracks.length)} />
+        </Panel>
+        <Panel title="Top Performing Genres" icon={TrendingUp}>
+          <GenreBars data={genres} />
+        </Panel>
+        <Panel title="Mastered & Modified Tracks" icon={Disc3}>
+          <TrackBreakdown tracks={tracks} />
+        </Panel>
+      </section>
+    </main>
+  );
+}
+
+function Metric({ label, value, icon: Icon }) {
+  return (
+    <div className="p-4" style={{ background: '#09090f' }}>
+      <Icon className="h-4 w-4 mb-3" style={{ color: '#22c55e' }} />
+      <p className="text-2xl font-extrabold tabular-nums">{value}</p>
+      <p className="text-[10px] uppercase tracking-wider mt-1" style={{ color: 'rgba(255,255,255,0.42)' }}>{label}</p>
+    </div>
+  );
+}
+
+function Panel({ title, icon: Icon, children }) {
+  return (
+    <section className="border" style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#09090f' }}>
+      <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+        <Icon className="h-4 w-4" style={{ color: '#fb7185' }} />
+        <h2 className="text-sm font-extrabold uppercase tracking-wider">{title}</h2>
+      </div>
+      <div className="p-4 md:p-5">{children}</div>
+    </section>
+  );
+}
+
+function PlayBars({ data }) {
+  const max = Math.max(1, ...data.map(item => item.value));
+  return (
+    <div className="h-80 flex items-end gap-2 md:gap-3 pt-6" style={{ perspective: '900px' }}>
+      {data.map((item, index) => {
+        const height = Math.max(8, (item.value / max) * 100);
+        return (
+          <div key={item.key} className="flex-1 h-full flex flex-col justify-end items-center gap-2">
+            <div className="relative w-full flex items-end justify-center h-full">
+              <div
+                className="w-full max-w-10 border"
+                style={{
+                  height: `${height}%`,
+                  minHeight: 12,
+                  background: 'linear-gradient(180deg, #22c55e, #0f766e)',
+                  borderColor: 'rgba(34,197,94,0.45)',
+                  boxShadow: `0 ${10 + index}px 34px rgba(34,197,94,0.22)`,
+                  transform: 'rotateX(14deg) rotateY(-8deg)',
+                  transformOrigin: 'bottom',
+                }}
+                title={`${item.label}: ${item.value}`}
+              />
+              <span className="absolute -top-5 text-xs font-bold tabular-nums" style={{ color: 'rgba(255,255,255,0.62)' }}>{item.value}</span>
+            </div>
+            <span className="text-[10px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.36)' }}>{item.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function GenreBars({ data }) {
+  const max = Math.max(1, ...data.map(item => item.value));
+  return (
+    <div className="space-y-3">
+      {data.length === 0 ? <Empty /> : data.map(item => (
+        <div key={item.label}>
+          <div className="flex justify-between gap-3 text-sm mb-1">
+            <span className="font-semibold truncate">{item.label}</span>
+            <span className="tabular-nums" style={{ color: 'rgba(255,255,255,0.46)' }}>{item.value}</span>
+          </div>
+          <div className="h-3 border" style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#020204' }}>
+            <div className="h-full" style={{ width: `${(item.value / max) * 100}%`, background: 'linear-gradient(90deg, #fb7185, #a78bfa)' }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RadialBreakdown({ data, total }) {
+  return (
+    <div className="grid grid-cols-2 gap-px border" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.08)' }}>
+      {data.map(item => {
+        const pct = Math.round((item.value / total) * 100);
+        return (
+          <div key={item.label} className="p-4 min-h-32" style={{ background: '#09090f' }}>
+            <div className="h-16 w-16 mb-4 border" style={{
+              borderColor: 'rgba(255,255,255,0.1)',
+              background: `conic-gradient(${item.color} ${pct * 3.6}deg, rgba(255,255,255,0.08) 0deg)`,
+              boxShadow: `0 0 30px ${item.color}33`,
+            }} />
+            <p className="text-xl font-extrabold">{pct}%</p>
+            <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.48)' }}>{item.label} ({item.value})</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TrackBreakdown({ tracks }) {
+  const rows = tracks
+    .filter(track => track.mastered || track.modified || track.parent_track_id || track.modification_type)
+    .slice(0, 8);
+  if (rows.length === 0) return <Empty />;
+  return (
+    <div className="divide-y divide-white/5 border" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+      {rows.map(track => (
+        <div key={track.id} className="flex items-center gap-3 px-3 py-3">
+          <div className="h-10 w-10 flex-shrink-0 overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)' }}>
+            {track.cover_image_url ? <img src={track.cover_image_url} alt="" className="h-full w-full object-cover" /> : null}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold truncate">{track.title}</p>
+            <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.42)' }}>{track.mastered ? 'Mastered' : track.modification_type || 'Modified'}</p>
+          </div>
+          <span className="text-xs tabular-nums" style={{ color: '#22c55e' }}>{track.plays || 0}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Empty() {
+  return <p className="text-sm py-8 text-center" style={{ color: 'rgba(255,255,255,0.36)' }}>No data yet</p>;
+}

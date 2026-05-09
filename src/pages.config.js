@@ -22,6 +22,7 @@ import SongEditor from './pages/SongEditor';
 import RemixStudio from './pages/RemixStudio';
 import MasteringProStudio from './pages/MasteringProStudio';
 import AdminFeatureFlags from './pages/AdminFeatureFlags';
+import Insights from './pages/Insights';
 import __Layout from './Layout.jsx';
 
 
@@ -50,6 +51,7 @@ export const PAGES = {
     "RemixStudio": RemixStudio,
     "MasteringProStudio": MasteringProStudio,
     "AdminFeatureFlags": AdminFeatureFlags,
+    "Insights": Insights,
 }
 
 export const pagesConfig = {

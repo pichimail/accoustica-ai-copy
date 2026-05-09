@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Home, Sparkles, Plus, Library, Globe, Music, User, Disc, MoreHorizontal, X, MessageCircle } from 'lucide-react';
+import { Home, Sparkles, Plus, Library, Globe, Music, User, Disc, MoreHorizontal, X, MessageCircle, BarChart3 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { haptics } from '@/components/utils/haptics';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MORE_ITEMS = [
+  { name: 'Insights', icon: BarChart3, page: 'Insights' },
   { name: 'Studio',  icon: Music, page: 'CollaborativeStudio' },
   { name: 'Stems',   icon: Disc,  page: 'StemStudio' },
   { name: 'Profile', icon: User,  page: 'Profile' },
