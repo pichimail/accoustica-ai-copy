@@ -1,0 +1,47 @@
+{
+  "name": "TrackVersion",
+  "type": "object",
+  "properties": {
+    "track_id": {
+      "type": "string",
+      "description": "ID of the current version track"
+    },
+    "parent_track_id": {
+      "type": "string",
+      "description": "ID of the original/parent track"
+    },
+    "version_number": {
+      "type": "number",
+      "description": "Version number"
+    },
+    "changes_description": {
+      "type": "string",
+      "description": "Description of changes made in this version"
+    },
+    "edit_type": {
+      "type": "string",
+      "enum": [
+        "extend",
+        "replace",
+        "add_vocals",
+        "add_instrumental",
+        "remix",
+        "other"
+      ],
+      "description": "Type of edit performed"
+    },
+    "edit_metadata": {
+      "type": "string",
+      "description": "JSON string of additional edit metadata (stem type, URLs, etc.)"
+    },
+    "edited_by": {
+      "type": "string",
+      "description": "Email of user who created this version"
+    }
+  },
+  "required": [
+    "track_id",
+    "parent_track_id",
+    "changes_description"
+  ]
+}

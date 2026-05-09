@@ -1,0 +1,114 @@
+{
+  "name": "Track",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the track"
+    },
+    "prompt": {
+      "type": "string",
+      "description": "The prompt used to generate the track"
+    },
+    "style": {
+      "type": "string",
+      "description": "Music style/genre"
+    },
+    "task_id": {
+      "type": "string",
+      "description": "External API task ID"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "generating",
+        "ready",
+        "failed"
+      ],
+      "default": "queued",
+      "description": "Current status of the track"
+    },
+    "audio_url": {
+      "type": "string",
+      "description": "URL to the audio file"
+    },
+    "stream_audio_url": {
+      "type": "string",
+      "description": "URL for streaming audio"
+    },
+    "cover_image_url": {
+      "type": "string",
+      "description": "URL to the cover image"
+    },
+    "duration": {
+      "type": "number",
+      "description": "Duration in seconds"
+    },
+    "is_public": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the track is publicly visible"
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the track is favorited by the user"
+    },
+    "is_instrumental": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the track is instrumental only"
+    },
+    "model_version": {
+      "type": "string",
+      "description": "AI model version used"
+    },
+    "tags": {
+      "type": "string",
+      "description": "Music tags/genres"
+    },
+    "lyrics": {
+      "type": "string",
+      "description": "Generated lyrics if not instrumental"
+    },
+    "plays": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of times played"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Error message if generation failed"
+    },
+    "external_audio_id": {
+      "type": "string",
+      "description": "External audio ID from the API"
+    },
+    "parent_track_id": {
+      "type": "string",
+      "description": "ID of the parent track if this is an extended or modified version"
+    },
+    "mastered": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the track has been mastered"
+    },
+    "mastering_profile": {
+      "type": "string",
+      "description": "JSON string of mastering chain settings"
+    },
+    "mastering_lufs": {
+      "type": "number",
+      "description": "Target LUFS applied during mastering"
+    },
+    "mastering_report": {
+      "type": "string",
+      "description": "AI-generated mastering report"
+    }
+  },
+  "required": [
+    "title",
+    "prompt"
+  ]
+}
