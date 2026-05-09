@@ -14,7 +14,7 @@ import {
 import { 
         Sparkles, Music, Globe, User, LogOut,
         Plus, Library, Crown, Home,
-        Disc, MessageCircle, PanelLeftClose, PanelLeftOpen
+        Disc, MessageCircle, PanelLeftClose, PanelLeftOpen, GitBranch, Volume2, Edit3
       } from 'lucide-react';
       
 import { cn } from "@/lib/utils";
@@ -56,6 +56,9 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Discover', icon: Globe,       page: 'Discover' },
     { name: 'Studio',   icon: Music,       page: 'CollaborativeStudio', requireAuth: true },
     { name: 'Stems',    icon: Disc,        page: 'StemStudio',          requireAuth: true },
+    { name: 'Remix',    icon: GitBranch,   page: 'RemixStudio',         requireAuth: true },
+    { name: 'Master',   icon: Volume2,     page: 'MasteringProStudio',  requireAuth: true },
+    { name: 'Editor',   icon: Edit3,       page: 'SongEditor',          requireAuth: true },
     { name: 'Profile',  icon: User,        page: 'Profile',             requireAuth: true },
   ];
 

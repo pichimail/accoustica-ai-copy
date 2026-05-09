@@ -18,6 +18,10 @@ import ForYou from './pages/ForYou';
 import TrackInfo from './pages/TrackInfo';
 import ArtistInfo from './pages/ArtistInfo';
 import SocialFeed from './pages/SocialFeed';
+import SongEditor from './pages/SongEditor';
+import RemixStudio from './pages/RemixStudio';
+import MasteringProStudio from './pages/MasteringProStudio';
+import AdminFeatureFlags from './pages/AdminFeatureFlags';
 import __Layout from './Layout.jsx';
 
 
@@ -42,6 +46,10 @@ export const PAGES = {
     "TrackInfo": TrackInfo,
     "ArtistInfo": ArtistInfo,
     "SocialFeed": SocialFeed,
+    "SongEditor": SongEditor,
+    "RemixStudio": RemixStudio,
+    "MasteringProStudio": MasteringProStudio,
+    "AdminFeatureFlags": AdminFeatureFlags,
 }
 
 export const pagesConfig = {

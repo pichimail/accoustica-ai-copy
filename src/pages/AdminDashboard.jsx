@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Users, Music, TrendingUp, Zap, Crown, ArrowRight,
-  BarChart3, Calendar, Clock, CheckCircle2
+  BarChart3, Calendar, Clock, CheckCircle2, Shield
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -291,6 +291,15 @@ export default function AdminDashboardPage() {
                   <span className="flex items-center gap-2">
                     <Music className="h-4 w-4" />
                     View All Tracks
+                  </span>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Link to={createPageUrl('AdminFeatureFlags')}>
+                <Button variant="outline" className="w-full justify-between bg-slate-700/50 border-slate-600 text-white hover:bg-slate-700">
+                  <span className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-yellow-400" />
+                    Feature Flags
                   </span>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
