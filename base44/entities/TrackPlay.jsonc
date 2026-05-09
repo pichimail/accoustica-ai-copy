@@ -4,24 +4,34 @@
   "properties": {
     "track_id": {
       "type": "string",
-      "description": "ID of the played track"
-    },
-    "user_email": {
-      "type": "string",
-      "description": "Email of the listener if authenticated"
+      "description": "ID of the track that was played"
     },
     "played_at": {
       "type": "string",
-      "description": "ISO timestamp of the play"
+      "description": "ISO timestamp when the track was played"
     },
     "source": {
       "type": "string",
-      "description": "Playback source such as public, feed, discover, library"
+      "enum": [
+        "public",
+        "library",
+        "discover",
+        "embed",
+        "other"
+      ],
+      "default": "other",
+      "description": "Where the play originated from"
     },
     "referrer": {
       "type": "string",
-      "description": "Document referrer for public analytics"
+      "description": "HTTP referrer URL if available"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of user who played (empty for anonymous public plays)"
     }
   },
-  "required": ["track_id", "played_at"]
+  "required": [
+    "track_id"
+  ]
 }

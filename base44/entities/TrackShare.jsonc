@@ -4,32 +4,42 @@
   "properties": {
     "track_id": {
       "type": "string",
-      "description": "ID of the shared track"
+      "description": "ID of the track being shared"
     },
     "shared_with_email": {
       "type": "string",
-      "description": "Email recipient for private shares"
+      "description": "Email of the user the track is shared with (empty for public shares)"
     },
     "permission": {
       "type": "string",
-      "enum": ["view", "edit"],
+      "enum": [
+        "view",
+        "edit"
+      ],
       "default": "view",
-      "description": "Private share permission"
-    },
-    "message": {
-      "type": "string",
-      "description": "Optional share message"
-    },
-    "public_url": {
-      "type": "string",
-      "description": "Generated public sharing URL"
+      "description": "Permission level for the shared track"
     },
     "status": {
       "type": "string",
-      "enum": ["pending", "active", "revoked"],
+      "enum": [
+        "pending",
+        "accepted",
+        "declined",
+        "active"
+      ],
       "default": "pending",
-      "description": "Share status"
+      "description": "Status of the share invitation"
+    },
+    "message": {
+      "type": "string",
+      "description": "Optional message from the sharer"
+    },
+    "public_url": {
+      "type": "string",
+      "description": "The public URL that was shared"
     }
   },
-  "required": ["track_id"]
+  "required": [
+    "track_id"
+  ]
 }
