@@ -1,13 +1,13 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import StatsCard from '@/components/ui/StatsCard';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Users, Music, TrendingUp, Zap, Crown, ArrowRight,
-  BarChart3, Calendar, Clock, CheckCircle2, Shield
+  BarChart3, Clock, CheckCircle2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';

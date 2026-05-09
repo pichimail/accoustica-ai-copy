@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -6,10 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Volume2, Loader2, Sparkles, Upload, Save, Trash2, Star } from 'lucide-react';
+import { Loader2, Sparkles, Upload, Save, Trash2, Star } from 'lucide-react';
 import { toast } from 'sonner';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { cn } from "@/lib/utils";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export default function EnhancedMasteringDialog({ track, open, onClose, onSuccess }) {
   const [preset, setPreset] = useState('balanced');

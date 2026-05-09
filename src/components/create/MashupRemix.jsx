@@ -3,8 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
-import {
-  Shuffle, Loader2, Play, Pause, Music, Sparkles,
+import { Loader2, Play, Pause, Music,
   ChevronDown, ChevronUp, Layers, Zap
 } from 'lucide-react';
 import { toast } from 'sonner';

@@ -51,7 +51,7 @@ export default function StudioGeneratePanel({
     <div className="flex flex-col h-full overflow-hidden" style={{ background: 'rgba(10,10,16,0.97)', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
       <div className="flex-shrink-0 px-4 pt-4 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <p className="text-xs font-extrabold tracking-widest uppercase mb-3" style={{ color: 'rgba(255,255,255,0.85)' }}>Generate</p>
-        <div role="tablist" aria-label="Generation mode" className="flex overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
+        <div role="tablist" aria-label="Generation mode" className="flex overflow-hidden border rounded-lg" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
           {TABS.map(t => (
             <button
               key={t}
@@ -136,7 +136,7 @@ export default function StudioGeneratePanel({
                     type="button"
                     aria-pressed={vocalGender === g}
                     onClick={() => onVocalGenderChange(g)}
-                    className="py-1.5 text-[10px] font-bold transition-all border capitalize focus:outline-none focus:ring-1 focus:ring-rose-400"
+                    className="py-1.5 rounded-lg text-[10px] font-bold transition-all border capitalize focus:outline-none focus:ring-1 focus:ring-rose-400"
                     style={vocalGender === g
                       ? { background: 'rgba(225,29,72,0.2)', borderColor: 'rgba(225,29,72,0.4)', color: '#fff' }
                       : { background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.4)' }
@@ -148,7 +148,7 @@ export default function StudioGeneratePanel({
               </div>
             </PanelSection>
 
-            <div className="overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+            <div className="overflow-hidden border rounded-lg" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
               <button
                 type="button"
                 aria-expanded={showMoreOptions}
@@ -201,7 +201,7 @@ export default function StudioGeneratePanel({
                     if (label === 'Vocal') onInstrumentalChange(false);
                     else if (label === 'No Vocal') onInstrumentalChange(true);
                   }}
-                  className="flex-1 flex flex-col items-center gap-1 py-2.5 border transition-all text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-rose-400"
+                  className="flex-1 flex flex-col items-center gap-1 py-2.5 border rounded-lg transition-all text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-rose-400"
                   style={active
                     ? { background: 'rgba(225,29,72,0.2)', borderColor: 'rgba(225,29,72,0.45)', color: '#fff' }
                     : { background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.35)' }
@@ -270,13 +270,13 @@ export default function StudioGeneratePanel({
                       type="button"
                       aria-pressed={selected}
                       onClick={() => onToggleMashupTrack?.(t.id)}
-                      className="w-full flex items-center gap-2 px-2.5 py-2 text-left transition-all focus:outline-none focus:ring-1 focus:ring-rose-400"
+                      className="w-full flex items-center gap-2 px-2.5 py-2 text-left rounded-lg transition-all focus:outline-none focus:ring-1 focus:ring-rose-400"
                       style={{
                         background: selected ? 'rgba(225,29,72,0.15)' : 'rgba(255,255,255,0.04)',
                         border: `1px solid ${selected ? 'rgba(225,29,72,0.35)' : 'rgba(255,255,255,0.07)'}`,
                       }}
                     >
-                      <div className="w-7 h-7 overflow-hidden flex-shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                      <div className="w-7 h-7 overflow-hidden rounded-lg flex-shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
                         {t.cover_image_url
                           ? <img src={t.cover_image_url} alt="" className="w-full h-full object-cover" />
                           : <Music className="h-3 w-3 m-auto" style={{ color: 'rgba(255,255,255,0.18)' }} />
@@ -314,7 +314,7 @@ export default function StudioGeneratePanel({
           onClick={onGenerate}
           disabled={isGenerating}
           aria-busy={isGenerating}
-          className={cn('w-full py-3 font-extrabold text-sm flex items-center justify-center gap-2 transition-all tracking-wide focus:outline-none focus:ring-2 focus:ring-rose-400',
+          className={cn('w-full py-3 rounded-lg font-extrabold text-sm flex items-center justify-center gap-2 transition-all tracking-wide focus:outline-none focus:ring-2 focus:ring-rose-400',
             isGenerating ? 'cursor-not-allowed' : 'active:scale-[0.99]')}
           style={isGenerating
             ? { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.28)' }
@@ -340,7 +340,7 @@ const fieldStyle = {
 };
 
 function fieldClass(extra = '') {
-  return cn('w-full px-3 py-2.5 text-xs placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-rose-400', extra);
+  return cn('w-full px-3 py-2.5 rounded-lg text-xs placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-rose-400', extra);
 }
 
 function PanelSection({ label, children }) {
@@ -352,7 +352,7 @@ function PanelSection({ label, children }) {
   );
 }
 
-function PanelSlider({ label, value, onChange, hideLabel }) {
+function PanelSlider({ label, value, onChange, hideLabel = false }) {
   return (
     <div>
       {!hideLabel && (
@@ -386,7 +386,7 @@ function VocalModeRow({ isInstrumental, onChange }) {
         type="button"
         aria-pressed={!isInstrumental}
         onClick={() => onChange(false)}
-        className="flex-1 py-2 border text-[10px] font-bold transition-all focus:outline-none focus:ring-1 focus:ring-rose-400"
+        className="flex-1 py-2 border rounded-lg text-[10px] font-bold transition-all focus:outline-none focus:ring-1 focus:ring-rose-400"
         style={!isInstrumental
           ? { background: 'rgba(225,29,72,0.2)', borderColor: 'rgba(225,29,72,0.4)', color: '#fff' }
           : { background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.35)' }
@@ -398,7 +398,7 @@ function VocalModeRow({ isInstrumental, onChange }) {
         type="button"
         aria-pressed={isInstrumental}
         onClick={() => onChange(true)}
-        className="flex-1 py-2 border text-[10px] font-bold transition-all focus:outline-none focus:ring-1 focus:ring-rose-400"
+        className="flex-1 py-2 border rounded-lg text-[10px] font-bold transition-all focus:outline-none focus:ring-1 focus:ring-rose-400"
         style={isInstrumental
           ? { background: 'rgba(225,29,72,0.2)', borderColor: 'rgba(225,29,72,0.4)', color: '#fff' }
           : { background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.35)' }
@@ -429,7 +429,7 @@ function StyleChipField({ value, onChange, activeChips, onToggleChip }) {
             type="button"
             aria-pressed={activeChips.includes(chip)}
             onMouseDown={() => onToggleChip(chip)}
-            className="px-2 py-0.5 text-[10px] font-semibold transition-all border focus:outline-none focus:ring-1 focus:ring-rose-400"
+            className="px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all border focus:outline-none focus:ring-1 focus:ring-rose-400"
             style={activeChips.includes(chip)
               ? { background: '#e11d48', color: '#fff', borderColor: '#e11d48' }
               : { background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.48)' }
@@ -451,7 +451,7 @@ function ChipRow({ values, onPick }) {
           key={value}
           type="button"
           onMouseDown={() => onPick(value)}
-          className="px-2 py-0.5 text-[10px] font-medium transition-all border focus:outline-none focus:ring-1 focus:ring-rose-400"
+          className="px-2 py-0.5 rounded-lg text-[10px] font-medium transition-all border focus:outline-none focus:ring-1 focus:ring-rose-400"
           style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.48)' }}
         >
           {value}

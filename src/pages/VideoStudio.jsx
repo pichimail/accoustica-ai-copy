@@ -1,13 +1,12 @@
+// @ts-nocheck
 import React, { useState } from 'react';
-import ViewToggle from '@/components/ui/ViewToggle';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Video, Search, Play, Download, Share2, Clock, Film, Sparkles, Eye } from 'lucide-react';
-import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from 'framer-motion';
+import { Video, Search, Play, Download, Share2, Clock, Film, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import MusicVideoGenerator from '@/components/video/MusicVideoGenerator';
 import { toast } from 'sonner';

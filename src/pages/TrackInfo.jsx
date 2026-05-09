@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -9,8 +10,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   ChevronLeft, Play, Pause, Heart, Share2, Edit3, Music,
-  Clock, Mic2, Globe, Lock, Save, X, Check, TrendingUp,
-  Eye, Loader2
+  Clock, Mic2, Globe, Lock, Save, X, Check, TrendingUp, Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

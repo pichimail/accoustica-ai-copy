@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Video, Loader2, Download, Share2, Play } from 'lucide-react';
+import { Video, Loader2, Download, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 

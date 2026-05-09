@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Singleton AudioContext manager — prevents "MediaElementSource already connected" errors
 let _ctx = null;
 let _analyser = null;

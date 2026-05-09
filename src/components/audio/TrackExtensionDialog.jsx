@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRight, Plus, Wand2, RefreshCw } from 'lucide-react';
+import { ArrowRight, RefreshCw } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';

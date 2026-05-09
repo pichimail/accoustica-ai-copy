@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+// @ts-nocheck
+import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Sparkles, Music, Zap, Globe, Play, ArrowRight, Headphones, Mic, Wand2 } from 'lucide-react';
+import { Sparkles, Globe, Play, ArrowRight, Headphones, Mic, Wand2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';

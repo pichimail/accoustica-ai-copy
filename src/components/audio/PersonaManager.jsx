@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';
-import { User, Plus, Trash2, Wand2, Upload, X } from 'lucide-react';
+import { User, Plus, Trash2, Wand2, X } from 'lucide-react';
 import BottomSheet from '@/components/mobile/BottomSheet';
 
 export default function PersonaManager({ open, onClose, user }) {

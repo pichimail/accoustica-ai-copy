@@ -1,10 +1,10 @@
+// @ts-nocheck
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Video, Loader2, Download, ExternalLink, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';

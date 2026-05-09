@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sparkles, Plus, GripVertical, X, Wand2 } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import { Sparkles, Plus, GripVertical, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 

@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, Volume1, SkipBack, SkipForward, Repeat, Repeat1, Shuffle, Maximize2 } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Volume1, SkipBack, SkipForward, Repeat, Repeat1, Maximize2 } from 'lucide-react';
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export default function AudioPlayer({ 
   src, 

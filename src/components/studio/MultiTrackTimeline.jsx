@@ -2,10 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, Trash2, Volume2, VolumeX, Play, Pause,
-  Sliders, ChevronLeft, ChevronRight, Upload, Mic
+  Plus, Trash2, Volume2, VolumeX,
+  Sliders, Upload
 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 const COLORS = [

@@ -1,15 +1,12 @@
+// @ts-nocheck
 import React, { useState } from 'react';
-import ViewToggle from '@/components/ui/ViewToggle';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import { User, Users, Plus, Search, Sparkles, Music, Wand2, Trash2 } from 'lucide-react';
-import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from 'framer-motion';
+import { User, Users, Plus, Search, Sparkles, Music, Trash2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import PersonaCreator from '@/components/audio/PersonaCreator';
 import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';

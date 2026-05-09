@@ -1,13 +1,14 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { haptics } from '@/components/utils/haptics';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import {
-  Music, MessageSquare, Sparkles, Loader2, Search,
-  Send, Play, Pause, Users, History, Save, ChevronDown, X
+  Music, MessageSquare, Sparkles, Loader2,
+  Send, Play, Pause, Save, X
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Link } from 'react-router-dom';

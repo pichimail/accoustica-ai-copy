@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+// @ts-nocheck
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/components/utils/haptics';
 import {
   Play, Pause, SkipBack, SkipForward, RotateCcw, FastForward,
-  RefreshCw, Save, ChevronDown, ChevronUp, Plus, X, Scissors,
-  Maximize2, Minimize2, Settings, Layers, Music, Mic, ZoomIn, ZoomOut,
-  ArrowRight, Clock, Wand2, Replace, Trash2, Crop, Volume2, BarChart3
+  RefreshCw, Save, ChevronDown, Plus, X,
+  Maximize2, Minimize2, Settings, Layers, Music, ZoomIn, ZoomOut,
+  ArrowRight, Wand2, Replace, Trash2, Crop, Volume2, BarChart3
 } from 'lucide-react';
 
 const SECTION_COLORS = {

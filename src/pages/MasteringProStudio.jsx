@@ -2,13 +2,12 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/components/utils/haptics';
 import {
   Volume2, Play, Pause, Sliders, Zap, Download, Music,
-  RefreshCw, Check, ChevronDown, ChevronUp, BarChart3,
-  Maximize2, Wand2, ArrowLeftRight, Search, Clock
+  RefreshCw, Check, BarChart3, Wand2, Search
 } from 'lucide-react';
 
 const EQ_BANDS = [

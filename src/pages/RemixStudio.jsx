@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/components/utils/haptics';
 import {
   Upload, Mic, Music, Disc, Wand2, Play, Pause, Download,
-  RefreshCw, Layers, Sliders, GitBranch, Sparkles, ChevronRight,
-  Volume2, Volume1, VolumeX, Check, Clock, AlertCircle, X, Settings
+  RefreshCw, Layers, GitBranch,
+  Volume2, VolumeX, Check, Clock
 } from 'lucide-react';
 
 const STEM_COLORS = {

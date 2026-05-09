@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useAudioPlayer } from './AudioPlayerContext';
+import { getTrackAudioSource, useAudioPlayer } from './AudioPlayerContext';
 import {
   Play, Pause, SkipBack, SkipForward,
   Volume2, VolumeX, Volume1, Heart
@@ -139,16 +139,16 @@ export default function GlobalAudioPlayer({ currentPageName }) {
   };
 
   const coverImg = currentTrack?.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop';
+  const audioSource = getTrackAudioSource(currentTrack);
 
   return (
     <>
-      {currentTrack && (
+      {currentTrack && audioSource && (
         <audio
-          key={currentTrack.id || currentTrack.audio_url || currentTrack.stream_audio_url}
+          key={currentTrack.id || audioSource}
           ref={audioRef}
-          src={currentTrack.audio_url || currentTrack.stream_audio_url}
+          src={audioSource}
           preload="auto"
-          crossOrigin="anonymous"
           onTimeUpdate={(e) => !isDragging && setCurrentTime(e.currentTarget.currentTime || 0)}
           onLoadedMetadata={(e) => {
             const nextDuration = e.currentTarget.duration;

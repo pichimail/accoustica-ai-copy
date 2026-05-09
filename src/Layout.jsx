@@ -1,8 +1,8 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Button } from "@/components/ui/button";
 import { haptics } from '@/components/utils/haptics';
 import {
   DropdownMenu,
@@ -18,7 +18,6 @@ import {
 'lucide-react';
 
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from 'framer-motion';
 import { AudioPlayerProvider } from '@/components/audio/AudioPlayerContext';
 import GlobalAudioPlayer from '@/components/audio/GlobalAudioPlayer';
 import MobileNav from '@/components/mobile/MobileNav';

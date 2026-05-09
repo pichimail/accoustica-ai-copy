@@ -7,9 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
-import { Plus, Music, Trash2, ListMusic } from 'lucide-react';
+import { Plus, Music, ListMusic } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from "@/lib/utils";
 
 export default function PlaylistManager({ track, open, onClose }) {
   const [creating, setCreating] = useState(false);

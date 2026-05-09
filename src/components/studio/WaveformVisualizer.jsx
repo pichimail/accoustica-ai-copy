@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { Upload, ZoomIn, ZoomOut, Scissors, X } from 'lucide-react';
+import { ZoomIn, ZoomOut, X } from 'lucide-react';
 
 /**
  * Interactive waveform with amplitude peaks, hover scrubbing,

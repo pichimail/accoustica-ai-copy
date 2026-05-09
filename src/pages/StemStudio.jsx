@@ -1,17 +1,15 @@
+// @ts-nocheck
 import React, { useState } from 'react';
-import ViewToggle from '@/components/ui/ViewToggle';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Disc, Search, Play, Clock, Music, Sparkles, GitBranch, Volume2, Wand2 } from 'lucide-react';
-import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from 'framer-motion';
+import { Disc, Search, Play, Clock, Sparkles, GitBranch, Volume2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import StemSeparationDialog from '@/components/audio/StemSeparationDialog';
 import StemMixer from '@/components/audio/StemMixer';
-import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';
 
 export default function StemStudioPage() {

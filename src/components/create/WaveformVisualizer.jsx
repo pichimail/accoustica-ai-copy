@@ -15,7 +15,9 @@ export default function WaveformVisualizer({ height = 56 }) {
     const setup = () => {
       if (audioCtxRef.current) return; // already set up
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const AudioContextClass = window.AudioContext || window['webkitAudioContext'];
+        if (!AudioContextClass) return;
+        const ctx = new AudioContextClass();
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 256;
         analyser.smoothingTimeConstant = 0.78;

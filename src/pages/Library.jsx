@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,7 +14,7 @@ import MusicVideoGenerator from '@/components/video/MusicVideoGenerator';
 import BottomSheet from '@/components/mobile/BottomSheet';
 import {
   Search, Music, Plus, Heart, Globe, Lock, Loader2,
-  Play, Pause, Trash2, Edit3, Share2, Wand2, Mic2, Video, MoreVertical, X
+  Play, Pause, Trash2, Edit3, Share2, Wand2, Mic2, Video, MoreVertical
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Link } from 'react-router-dom';

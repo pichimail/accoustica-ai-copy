@@ -1,7 +1,18 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
 
-const AudioPlayerContext = createContext();
+const AudioPlayerContext = createContext(null);
+
+export const getTrackAudioSource = (track) => (
+  track?.audio_url
+  || track?.stream_audio_url
+  || track?.audioUrl
+  || track?.streamAudioUrl
+  || track?.sourceAudioUrl
+  || track?.url
+  || ''
+);
 
 export const useAudioPlayer = () => {
   const context = useContext(AudioPlayerContext);
@@ -24,6 +35,7 @@ export function AudioPlayerProvider({ children }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [audioSettings, setAudioSettings] = useState(null);
   const audioRef = useRef(null);
+  const pendingPlayRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -47,32 +59,75 @@ export function AudioPlayerProvider({ children }) {
 
   // Play a specific track
   const playTrack = async (track, trackQueue = []) => {
+    const source = getTrackAudioSource(track);
+    if (!source) {
+      toast.error('This track does not have a playable audio URL yet');
+      return;
+    }
+
     if (currentTrack?.id === track.id && isPlaying) {
       // If clicking the same playing track, pause it
       pauseTrack();
       return;
     }
 
+    pendingPlayRef.current = track.id || source;
     setCurrentTrack(track);
+    setCurrentTime(0);
+    setDuration(Number(track.duration) || 0);
     
     if (trackQueue.length > 0) {
-      setQueue(trackQueue);
-      const index = trackQueue.findIndex(t => t.id === track.id);
+      const playableQueue = trackQueue.filter(item => getTrackAudioSource(item));
+      setQueue(playableQueue);
+      const index = playableQueue.findIndex(t => t.id === track.id);
       setQueueIndex(index >= 0 ? index : 0);
     }
 
-    // Wait for next tick to ensure audio ref is updated
-    setTimeout(async () => {
-      if (audioRef.current) {
+    const tryPlay = async (attempt = 0) => {
+      const audio = audioRef.current;
+      if (!audio) {
+        if (attempt < 8) window.setTimeout(() => tryPlay(attempt + 1), 60);
+        return;
+      }
+      try {
+        if (audio.src !== source) audio.src = source;
+        audio.volume = volume / 100;
+        audio.load();
+        await audio.play();
+        pendingPlayRef.current = null;
+        setIsPlaying(true);
+      } catch (error) {
+        if (attempt < 4) {
+          window.setTimeout(() => tryPlay(attempt + 1), 120);
+        } else {
+          pendingPlayRef.current = null;
+          setIsPlaying(false);
+          console.error('Playback error:', error);
+          toast.error('Playback failed for this audio URL');
+        }
+      }
+    };
+
+    window.setTimeout(() => tryPlay(), 0);
+  };
+
+  useEffect(() => {
+    const source = getTrackAudioSource(currentTrack);
+    if (!currentTrack || !source || !pendingPlayRef.current) return undefined;
+    const timer = window.setTimeout(async () => {
+      if (audioRef.current && pendingPlayRef.current) {
         try {
+          audioRef.current.volume = volume / 100;
           await audioRef.current.play();
+          pendingPlayRef.current = null;
           setIsPlaying(true);
         } catch (error) {
           console.error('Playback error:', error);
         }
       }
-    }, 100);
-  };
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [currentTrack, volume]);
 
   const pauseTrack = () => {
     if (audioRef.current) {

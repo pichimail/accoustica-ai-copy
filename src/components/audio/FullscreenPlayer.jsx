@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
+ 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -24,7 +24,9 @@ function BeatVisualizer({ audioRef, isPlaying }) {
     const setup = () => {
       try {
         if (!audioCtxRef.current) {
-          audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+          const AudioContextClass = window.AudioContext || window['webkitAudioContext'];
+          if (!AudioContextClass) return;
+          audioCtxRef.current = new AudioContextClass();
         }
         if (audioCtxRef.current.state === 'suspended') {
           audioCtxRef.current.resume();

@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause } from 'lucide-react';
-import { Slider } from "@/components/ui/slider";
 import { motion } from 'framer-motion';
 
 export default function MinimalWaveformPlayer({ src, className, minimal = false }) {
@@ -63,8 +62,9 @@ export default function MinimalWaveformPlayer({ src, className, minimal = false 
 
     try {
       if (!audioContextRef.current) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioContextRef.current = new AudioContext();
+        const AudioContextClass = window.AudioContext || window['webkitAudioContext'];
+        if (!AudioContextClass) return;
+        audioContextRef.current = new AudioContextClass();
         analyserRef.current = audioContextRef.current.createAnalyser();
         analyserRef.current.fftSize = 128;
 

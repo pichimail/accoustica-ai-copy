@@ -6,7 +6,7 @@ import { base44 } from '@/api/base44Client';
 import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';
-import { Image, RefreshCw, Check, Wand2 } from 'lucide-react';
+import { RefreshCw, Check, Wand2 } from 'lucide-react';
 import BottomSheet from '@/components/mobile/BottomSheet';
 import { cn } from '@/lib/utils';
 

@@ -29,8 +29,9 @@ export default function DynamicGradient() {
       const audioElement = document.querySelector('audio');
       if (audioElement && !audioContextRef.current) {
         try {
-          const AudioContext = window.AudioContext || window.webkitAudioContext;
-          audioContextRef.current = new AudioContext();
+          const AudioContextClass = window.AudioContext || window['webkitAudioContext'];
+          if (!AudioContextClass) return;
+          audioContextRef.current = new AudioContextClass();
           analyserRef.current = audioContextRef.current.createAnalyser();
           const source = audioContextRef.current.createMediaElementSource(audioElement);
           source.connect(analyserRef.current);

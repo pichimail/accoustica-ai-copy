@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { Music, Play, Pause, Loader2, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

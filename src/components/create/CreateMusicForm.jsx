@@ -5,13 +5,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Badge } from "@/components/ui/badge";
-import { Wand2, Music, ChevronDown, ChevronUp, Plus, X, Sparkles, Upload, Dices } from 'lucide-react';
+import { Wand2, Music, ChevronDown, ChevronUp, Plus, Dices } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import SongStructureBuilder from './SongStructureBuilder';
-import AudioUploader from './AudioUploader';
 import { haptics } from '@/components/utils/haptics';
 
 export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitReached, remainingGenerations, initialPrompt = '' }) {

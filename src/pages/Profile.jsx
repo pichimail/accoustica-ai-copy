@@ -12,12 +12,14 @@ import {
   Heart,
   LogOut,
   Music,
+  Image as ImageIcon,
   Save,
   Settings,
   Shield,
   SlidersHorizontal,
   Sparkles,
   User,
+  Upload,
   Volume2,
   Zap,
 } from 'lucide-react';
@@ -60,7 +62,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState('overview');
   const [saving, setSaving] = useState(false);
-  const [profileForm, setProfileForm] = useState({ full_name: '', avatar_url: '', bio: '', profile_visibility: 'private' });
+  const [profileForm, setProfileForm] = useState({ full_name: '', avatar_url: '', banner_url: '', bio: '', profile_visibility: 'private' });
   const [audioSettings, setAudioSettings] = useState(DEFAULT_AUDIO);
   const [uiPreferences, setUiPreferences] = useState(DEFAULT_UI);
   const { changeVolume } = useAudioPlayer();
@@ -71,6 +73,7 @@ export default function ProfilePage() {
       setProfileForm({
         full_name: currentUser.full_name || '',
         avatar_url: currentUser.avatar_url || '',
+        banner_url: currentUser.banner_url || '',
         bio: currentUser.bio || '',
         profile_visibility: currentUser.profile_visibility || 'private',
       });
@@ -123,6 +126,23 @@ export default function ProfilePage() {
   const avatarUrl = profileForm.avatar_url
     || user?.avatar_url
     || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profileForm.full_name || user?.email || 'User')}&backgroundColor=111827`;
+  const bannerUrl = profileForm.banner_url || user?.banner_url || tracks.find(track => track.cover_image_url)?.cover_image_url || '';
+
+  const uploadProfileAsset = async (file, field) => {
+    if (!file) return;
+    setSaving(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setProfileForm(prev => ({ ...prev, [field]: file_url }));
+      await base44.auth.updateMe({ [field]: file_url });
+      setUser(prev => ({ ...prev, [field]: file_url }));
+      toast.success(field === 'avatar_url' ? 'Profile image uploaded' : 'Banner uploaded');
+    } catch (error) {
+      toast.error(error.message || 'Upload failed');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const saveProfile = async () => {
     setSaving(true);
@@ -130,6 +150,7 @@ export default function ProfilePage() {
       const payload = {
         full_name: profileForm.full_name.trim() || user.email.split('@')[0],
         avatar_url: profileForm.avatar_url.trim(),
+        banner_url: profileForm.banner_url.trim(),
         bio: profileForm.bio.trim(),
         profile_visibility: profileForm.profile_visibility,
         audio_settings: JSON.stringify(audioSettings),
@@ -157,13 +178,24 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen pb-32" style={{ background: '#09090f', color: '#fff' }}>
-      <section className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-        <div className="max-w-6xl mx-auto px-4 md:px-8 pt-7 pb-5">
+    <main className="min-h-screen pb-32" style={{ background: '#050507', color: '#fff' }}>
+      <section className="relative border-b overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+        {bannerUrl && (
+          <img src={bannerUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" style={{ filter: 'saturate(1.25) contrast(1.12)' }} />
+        )}
+        <div className="absolute inset-0" style={{
+          background: 'linear-gradient(180deg, rgba(251,113,133,0.18) 0%, rgba(5,5,7,0.55) 38%, #050507 100%)',
+          backdropFilter: bannerUrl ? 'blur(2px)' : undefined,
+        }} />
+        <div className="relative w-full px-4 md:px-8 pt-24 md:pt-32 pb-6">
           <div className="flex flex-col md:flex-row md:items-end gap-5">
             <div className="flex items-center gap-4 min-w-0">
-              <div className="w-20 h-20 md:w-24 md:h-24 overflow-hidden border flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)' }}>
+              <div className="relative w-20 h-20 md:w-24 md:h-24 overflow-hidden border flex-shrink-0 rounded-lg" style={{ borderColor: 'rgba(255,255,255,0.16)', background: 'rgba(255,255,255,0.06)' }}>
                 <img src={avatarUrl} alt={profileForm.full_name || user.email} className="w-full h-full object-cover" />
+                <label className="absolute inset-x-0 bottom-0 py-1 flex items-center justify-center cursor-pointer" style={{ background: 'rgba(0,0,0,0.55)' }}>
+                  <Upload className="h-3.5 w-3.5" />
+                  <input type="file" accept="image/*" className="sr-only" onChange={event => uploadProfileAsset(event.target.files?.[0], 'avatar_url')} />
+                </label>
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -177,11 +209,19 @@ export default function ProfilePage() {
               </div>
             </div>
             <div className="md:ml-auto flex gap-2">
+              <label
+                className="px-4 py-2.5 text-sm font-bold flex items-center gap-2 border cursor-pointer focus-within:ring-2 focus-within:ring-rose-400 rounded-lg"
+                style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.78)' }}
+              >
+                <ImageIcon className="h-4 w-4" />
+                Banner
+                <input type="file" accept="image/*" className="sr-only" onChange={event => uploadProfileAsset(event.target.files?.[0], 'banner_url')} />
+              </label>
               <button
                 type="button"
                 onClick={saveProfile}
                 disabled={saving}
-                className="px-4 py-2.5 text-sm font-bold flex items-center gap-2 border focus:outline-none focus:ring-2 focus:ring-rose-400 disabled:opacity-50"
+                className="px-4 py-2.5 text-sm font-bold flex items-center gap-2 border focus:outline-none focus:ring-2 focus:ring-rose-400 disabled:opacity-50 rounded-lg"
                 style={{ background: '#e11d48', borderColor: '#e11d48', color: '#fff' }}
               >
                 {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white animate-spin" /> : <Save className="h-4 w-4" />}
@@ -190,7 +230,7 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={() => base44.auth.logout(createPageUrl('Home'))}
-                className="px-4 py-2.5 text-sm font-bold flex items-center gap-2 border focus:outline-none focus:ring-2 focus:ring-rose-400"
+                className="px-4 py-2.5 text-sm font-bold flex items-center gap-2 border focus:outline-none focus:ring-2 focus:ring-rose-400 rounded-lg"
                 style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.72)' }}
               >
                 <LogOut className="h-4 w-4" />
@@ -201,8 +241,8 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 md:px-8 py-5">
-        <div role="tablist" aria-label="Profile sections" className="grid grid-cols-4 border mb-5" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.025)' }}>
+      <section className="w-full px-4 md:px-8 py-5">
+        <div role="tablist" aria-label="Profile sections" className="grid grid-cols-4 border mb-5 rounded-lg overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.025)' }}>
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -229,6 +269,8 @@ export default function ProfilePage() {
               <div className="grid md:grid-cols-2 gap-3">
                 <Field label="Display Name" value={profileForm.full_name} onChange={value => setProfileForm(prev => ({ ...prev, full_name: value }))} />
                 <Field label="Avatar URL" value={profileForm.avatar_url} onChange={value => setProfileForm(prev => ({ ...prev, avatar_url: value }))} />
+                <Field label="Banner URL" value={profileForm.banner_url} onChange={value => setProfileForm(prev => ({ ...prev, banner_url: value }))} />
+                <SelectField label="Profile Visibility" value={profileForm.profile_visibility} onChange={value => setProfileForm(prev => ({ ...prev, profile_visibility: value }))} options={['private', 'followers', 'public']} />
                 <div className="md:col-span-2">
                   <Field label="Bio" value={profileForm.bio} onChange={value => setProfileForm(prev => ({ ...prev, bio: value }))} multiline />
                 </div>
@@ -305,7 +347,7 @@ export default function ProfilePage() {
 
 function Panel({ title, children }) {
   return (
-    <section className="border" style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#101016' }}>
+    <section className="border rounded-lg overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#101016' }}>
       <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
         <SlidersHorizontal className="h-4 w-4" style={{ color: '#fb7185' }} />
         <h2 className="text-sm font-extrabold uppercase tracking-wider">{title}</h2>
@@ -315,12 +357,12 @@ function Panel({ title, children }) {
   );
 }
 
-function Field({ label, value, onChange, multiline }) {
+function Field({ label, value, onChange, multiline = false }) {
   const shared = {
     value,
     onChange: event => onChange(event.target.value),
     'aria-label': label,
-    className: 'w-full px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-rose-400',
+    className: 'w-full px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-rose-400 rounded-lg',
     style: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' },
   };
   return (
@@ -339,7 +381,7 @@ function SelectField({ label, value, onChange, options }) {
         value={value}
         onChange={event => onChange(event.target.value)}
         aria-label={label}
-        className="w-full px-3 py-2.5 text-sm capitalize focus:outline-none focus:ring-1 focus:ring-rose-400"
+        className="w-full px-3 py-2.5 text-sm capitalize focus:outline-none focus:ring-1 focus:ring-rose-400 rounded-lg"
         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' }}
       >
         {options.map(option => <option key={option} value={option} style={{ background: '#111' }}>{option}</option>)}
@@ -391,8 +433,8 @@ function Usage({ label, value, max }) {
         <span style={{ color: 'rgba(255,255,255,0.58)' }}>{label}</span>
         <span className="font-bold tabular-nums">{value}/{max}</span>
       </div>
-      <div className="h-1.5" style={{ background: 'rgba(255,255,255,0.1)' }}>
-        <div className="h-full" style={{ width: `${pct}%`, background: '#e11d48' }} />
+      <div className="h-1.5 rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+        <div className="h-full rounded-lg" style={{ width: `${pct}%`, background: '#e11d48' }} />
       </div>
     </div>
   );
