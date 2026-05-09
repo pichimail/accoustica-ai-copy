@@ -1,8 +1,16 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const SUNO_API_BASE = 'https://api.kie.ai/api/v1';
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, content-type, x-base44-token',
+};
 
 Deno.serve(async (req) => {
+    if (req.method === 'OPTIONS') {
+        return new Response(null, { headers: corsHeaders });
+    }
     try {
         const base44 = createClientFromRequest(req);
         const user = await base44.auth.me();
@@ -129,12 +137,12 @@ Deno.serve(async (req) => {
             taskId: data.data.taskId,
             trackIds: tracks.map(t => t.id),
             track_count: tracks.length,
-        });
+        }, { headers: corsHeaders });
 
     } catch (error) {
         console.error('Error in generateMusic:', error);
         return Response.json({ 
             error: error.message || 'Failed to generate music'
-        }, { status: 500 });
+        }, { status: 500, headers: corsHeaders });
     }
 });
