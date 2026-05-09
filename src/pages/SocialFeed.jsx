@@ -117,7 +117,7 @@ export default function SocialFeedPage() {
               <h1 className="text-2xl md:text-3xl font-extrabold">Social Discovery</h1>
               
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 hidden">
               {[{ value: '-created_date', label: 'New' }, { value: '-plays', label: 'Hot' }].map((item) =>
               <button
                 key={item.value}
