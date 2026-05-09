@@ -9,14 +9,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { 
-        Sparkles, Music, Globe, User, LogOut,
-        Plus, Library, Crown, Home,
-        Disc, MessageCircle, PanelLeftClose, PanelLeftOpen, GitBranch, Volume2, Edit3
-      } from 'lucide-react';
-      
+  DropdownMenuTrigger } from
+"@/components/ui/dropdown-menu";
+import {
+  Sparkles, Music, Globe, User, LogOut,
+  Plus, Library, Crown, Home,
+  Disc, MessageCircle, PanelLeftClose, PanelLeftOpen, GitBranch, Volume2, Edit3 } from
+'lucide-react';
+
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from 'framer-motion';
 import { AudioPlayerProvider } from '@/components/audio/AudioPlayerContext';
@@ -48,21 +48,21 @@ export default function Layout({ children, currentPageName }) {
   };
 
   const navLinks = [
-    { name: 'Home',     icon: Home,        page: 'Home' },
-    { name: 'For You',  icon: Sparkles,    page: 'ForYou',              requireAuth: true },
-    { name: 'Create',   icon: Plus,        page: 'Create',              requireAuth: true },
-    { name: 'Library',  icon: Library,     page: 'Library',             requireAuth: true },
-    { name: 'Feed',     icon: MessageCircle, page: 'SocialFeed' },
-    { name: 'Discover', icon: Globe,       page: 'Discover' },
-    { name: 'Studio',   icon: Music,       page: 'CollaborativeStudio', requireAuth: true },
-    { name: 'Stems',    icon: Disc,        page: 'StemStudio',          requireAuth: true },
-    { name: 'Remix',    icon: GitBranch,   page: 'RemixStudio',         requireAuth: true },
-    { name: 'Master',   icon: Volume2,     page: 'MasteringProStudio',  requireAuth: true },
-    { name: 'Editor',   icon: Edit3,       page: 'SongEditor',          requireAuth: true },
-    { name: 'Profile',  icon: User,        page: 'Profile',             requireAuth: true },
-  ];
+  { name: 'Home', icon: Home, page: 'Home' },
+  { name: 'For You', icon: Sparkles, page: 'ForYou', requireAuth: true },
+  { name: 'Create', icon: Plus, page: 'Create', requireAuth: true },
+  { name: 'Library', icon: Library, page: 'Library', requireAuth: true },
+  { name: 'Feed', icon: MessageCircle, page: 'SocialFeed' },
+  { name: 'Discover', icon: Globe, page: 'Discover' },
+  { name: 'Studio', icon: Music, page: 'CollaborativeStudio', requireAuth: true },
+  { name: 'Stems', icon: Disc, page: 'StemStudio', requireAuth: true },
+  { name: 'Remix', icon: GitBranch, page: 'RemixStudio', requireAuth: true },
+  { name: 'Master', icon: Volume2, page: 'MasteringProStudio', requireAuth: true },
+  { name: 'Editor', icon: Edit3, page: 'SongEditor', requireAuth: true },
+  { name: 'Profile', icon: User, page: 'Profile', requireAuth: true }];
 
-  const filteredNavLinks = navLinks.filter(link => {
+
+  const filteredNavLinks = navLinks.filter((link) => {
     if (link.requireAuth && !user) return false;
     return true;
   });
@@ -82,22 +82,22 @@ export default function Layout({ children, currentPageName }) {
       {/* Ambient gradient — static, no performance cost */}
       {/* Mobile Top Bar */}
       <header className={cn(
-        "lg:hidden fixed top-0 left-0 right-0 z-50 safe-top",
-        currentPageName === 'Home' && "hidden"
-      )}
-        style={{ background: 'rgba(10,10,15,0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
-      >
-        <div className="flex items-center justify-between px-4 h-16">
+          "lg:hidden fixed top-0 left-0 right-0 z-50 safe-top",
+          currentPageName === 'Home' && "hidden"
+        )}
+        style={{ background: 'rgba(10,10,15,0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          
+        <div className="flex items-center justify-between px-4 h-16 opacity-100">
           <Link to={createPageUrl('Home')} className="flex items-center gap-2">
-            <img 
-              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6937c84c50aa245e9602d1ce/016bba8f4_accostica-logo-366x111.png" 
-              alt="Accoustica" 
-              className="h-8"
-            />
+            <img
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6937c84c50aa245e9602d1ce/016bba8f4_accostica-logo-366x111.png"
+                alt="Accoustica"
+                className="h-8" />
+              
           </Link>
 
           <div className="flex items-center gap-2">
-            {user && (
+            {user &&
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="w-8 h-8 rounded-full overflow-hidden border border-white/10">
@@ -116,14 +116,14 @@ export default function Layout({ children, currentPageName }) {
                       Profile
                     </Link>
                   </DropdownMenuItem>
-                  {user.role === 'admin' && (
-                    <DropdownMenuItem asChild className="text-green-400 focus:text-green-300 focus:bg-white/10">
+                  {user.role === 'admin' &&
+                  <DropdownMenuItem asChild className="text-green-400 focus:text-green-300 focus:bg-white/10">
                       <Link to={createPageUrl('AdminDashboard')}>
                         <Crown className="h-4 w-4 mr-2" />
                         Admin
                       </Link>
                     </DropdownMenuItem>
-                  )}
+                  }
                   <DropdownMenuSeparator className="bg-white/10" />
                   <DropdownMenuItem onClick={handleLogout} className="text-red-400 focus:text-red-300 focus:bg-red-500/10">
                     <LogOut className="h-4 w-4 mr-2" />
@@ -131,67 +131,67 @@ export default function Layout({ children, currentPageName }) {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            )}
+              }
           </div>
         </div>
       </header>
 
       {/* Desktop Sidebar */}
       <aside
-        className={cn(
-          "hidden lg:flex fixed left-0 top-0 h-screen z-40 transition-all duration-300",
-          sidebarOpen ? "w-64" : "w-20",
-          currentPageName === 'Home' && "hidden"
-        )}
-        style={{ background: 'rgba(10,10,15,0.97)', backdropFilter: 'blur(24px)', borderRight: '1px solid rgba(255,255,255,0.06)' }}
-      >
+          className={cn(
+            "hidden lg:flex fixed left-0 top-0 h-screen z-40 transition-all duration-300",
+            sidebarOpen ? "w-64" : "w-20",
+            currentPageName === 'Home' && "hidden"
+          )}
+          style={{ background: 'rgba(10,10,15,0.97)', backdropFilter: 'blur(24px)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+          
         <div className="flex flex-col w-full">
           {/* Logo & Toggle */}
           <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            {sidebarOpen ? (
+            {sidebarOpen ?
               <>
                 <Link to={createPageUrl('Home')} className="flex items-center gap-3">
                   <img
                     src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6937c84c50aa245e9602d1ce/016bba8f4_accostica-logo-366x111.png"
                     alt="Accoustica"
-                    className="h-9"
-                  />
+                    className="h-9" />
+                  
                 </Link>
                 <button onClick={() => setSidebarOpen(false)} className="text-white/30 hover:text-white transition-colors">
                   <PanelLeftClose className="h-5 w-5" />
                 </button>
-              </>
-            ) : (
+              </> :
+
               <button onClick={() => setSidebarOpen(true)} className="mx-auto text-white/30 hover:text-white transition-colors">
                 <PanelLeftOpen className="h-5 w-5" />
               </button>
-            )}
+              }
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-0.5">
             {filteredNavLinks.map((link) => {
-              const isActive = currentPageName === link.page;
-              return (
-                <Link key={link.page} to={createPageUrl(link.page)}>
+                const isActive = currentPageName === link.page;
+                return (
+                  <Link key={link.page} to={createPageUrl(link.page)}>
                   <button
-                    onClick={() => haptics.light()}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all",
-                      isActive ? "text-black font-semibold" : "text-white/50 hover:text-white hover:bg-white/5"
-                    )}
-                    style={isActive ? { background: '#22c55e', boxShadow: '0 0 16px rgba(34,197,94,0.35)' } : {}}
-                  >
+                      onClick={() => haptics.light()}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all",
+                        isActive ? "text-black font-semibold" : "text-white/50 hover:text-white hover:bg-white/5"
+                      )}
+                      style={isActive ? { background: '#22c55e', boxShadow: '0 0 16px rgba(34,197,94,0.35)' } : {}}>
+                      
                     <link.icon className="h-5 w-5 flex-shrink-0" />
                     {sidebarOpen && <span className="text-sm font-medium">{link.name}</span>}
                   </button>
-                </Link>
-              );
-            })}
+                </Link>);
+
+              })}
           </nav>
 
           {/* User Profile */}
-          {user && (
+          {user &&
             <div className="p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -202,12 +202,12 @@ export default function Layout({ children, currentPageName }) {
                     <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0">
                       <img src={avatarUrl} alt={user.full_name} className="w-full h-full object-cover" />
                     </div>
-                    {sidebarOpen && (
-                      <div className="flex-1 text-left overflow-hidden">
+                    {sidebarOpen &&
+                    <div className="flex-1 text-left overflow-hidden">
                         <p className="text-white text-sm font-semibold truncate">{user.full_name}</p>
                         <p className="text-white/40 text-xs truncate">{user.email}</p>
                       </div>
-                    )}
+                    }
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56" style={{ background: 'rgba(18,18,28,0.98)', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -217,14 +217,14 @@ export default function Layout({ children, currentPageName }) {
                       Profile
                     </Link>
                   </DropdownMenuItem>
-                  {user.role === 'admin' && (
-                    <DropdownMenuItem asChild className="text-green-400 focus:text-green-300 focus:bg-white/10">
+                  {user.role === 'admin' &&
+                  <DropdownMenuItem asChild className="text-green-400 focus:text-green-300 focus:bg-white/10">
                       <Link to={createPageUrl('AdminDashboard')}>
                         <Crown className="h-4 w-4 mr-2" />
                         Admin Dashboard
                       </Link>
                     </DropdownMenuItem>
-                  )}
+                  }
                   <DropdownMenuSeparator className="bg-white/10" />
                   <DropdownMenuItem onClick={handleLogout} className="text-red-400 focus:text-red-300 focus:bg-red-500/10">
                     <LogOut className="h-4 w-4 mr-2" />
@@ -233,16 +233,16 @@ export default function Layout({ children, currentPageName }) {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-          )}
+            }
         </div>
       </aside>
 
       {/* Main Content — extra bottom padding on mobile accounts for nav bar (56px) + player (60px) */}
       <main className={cn(
-        "flex-1 lg:transition-all lg:duration-300 relative z-10",
-        currentPageName === 'Home' ? "pt-0 pb-0 lg:pb-0" : "pt-14 pb-[160px] lg:pt-0 lg:pb-20",
-        showSidebar && (sidebarOpen ? "lg:ml-64" : "lg:ml-20")
-      )}>
+          "flex-1 lg:transition-all lg:duration-300 relative z-10",
+          currentPageName === 'Home' ? "pt-0 pb-0 lg:pb-0" : "pt-14 pb-[160px] lg:pt-0 lg:pb-20",
+          showSidebar && (sidebarOpen ? "lg:ml-64" : "lg:ml-20")
+        )}>
         {children}
       </main>
 
@@ -250,10 +250,10 @@ export default function Layout({ children, currentPageName }) {
       <GlobalAudioPlayer />
 
       {/* Mobile Bottom Navigation */}
-      {currentPageName !== 'Home' && (
+      {currentPageName !== 'Home' &&
         <MobileNav currentPageName={currentPageName} user={user} />
-      )}
+        }
     </div>
-    </AudioPlayerProvider>
-  );
+    </AudioPlayerProvider>);
+
 }
