@@ -1,0 +1,54 @@
+{
+  "name": "PresetPrompt",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Preset name"
+    },
+    "prompt": {
+      "type": "string",
+      "description": "The generation prompt text"
+    },
+    "styles": {
+      "type": "string",
+      "description": "Comma-separated style tags"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "simple",
+        "advanced",
+        "remix",
+        "mashup"
+      ],
+      "default": "simple",
+      "description": "Which generation mode this preset applies to"
+    },
+    "is_instrumental": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_community": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is a community-suggested preset"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Searchable tags"
+    },
+    "use_count": {
+      "type": "number",
+      "default": 0,
+      "description": "How many times used"
+    }
+  },
+  "required": [
+    "name",
+    "prompt"
+  ]
+}

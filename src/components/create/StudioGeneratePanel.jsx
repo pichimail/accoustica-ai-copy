@@ -1,8 +1,9 @@
-import React from 'react';
-import { Sparkles, Wand2, ChevronDown, ChevronUp, Loader2, Mic2, Music, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sparkles, Wand2, ChevronDown, ChevronUp, Loader2, Mic2, Music, Plus, BookOpen, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import VoiceClonePanel from './VoiceClonePanel';
+import PresetPromptsPanel from './PresetPromptsPanel';
 
 const TABS = ['simple', 'advanced', 'mashup', 'remix'];
 
@@ -36,8 +37,15 @@ export default function StudioGeneratePanel({
   onGenerate, isGenerating,
   tracks = [],
 }) {
+  const [showPresets, setShowPresets] = useState(false);
   const activeStyleChips = styles.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
   const readyTracks = tracks.filter(t => t.status === 'ready' && (t.audio_url || t.stream_audio_url));
+
+  const handleApplyPreset = ({ prompt, styles: presetStyles }) => {
+    onSimplePromptChange(prompt);
+    if (presetStyles) onStylesChange(presetStyles);
+    setShowPresets(false);
+  };
 
   const toggleStyleChip = (chip) => {
     const arr = styles.split(',').map(s => s.trim()).filter(Boolean);
@@ -48,9 +56,27 @@ export default function StudioGeneratePanel({
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: 'rgba(10,10,16,0.97)', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+    <div className="flex flex-col h-full overflow-hidden relative" style={{ background: 'rgba(10,10,16,0.97)', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
+      {showPresets && (
+        <div className="absolute inset-0 z-20">
+          <PresetPromptsPanel onApply={handleApplyPreset} onClose={() => setShowPresets(false)} />
+        </div>
+      )}
       <div className="flex-shrink-0 px-4 pt-4 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <p className="text-xs font-extrabold tracking-widest uppercase mb-3" style={{ color: 'rgba(255,255,255,0.85)' }}>Generate</p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-extrabold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.85)' }}>Generate</p>
+          <button
+            type="button"
+            onClick={() => setShowPresets(v => !v)}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all border"
+            style={showPresets
+              ? { background: 'rgba(225,29,72,0.2)', borderColor: 'rgba(225,29,72,0.4)', color: '#fff' }
+              : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)' }
+            }
+          >
+            <BookOpen className="h-3 w-3" /> Presets
+          </button>
+        </div>
         <div role="tablist" aria-label="Generation mode" className="flex overflow-hidden border rounded-lg" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
           {TABS.map(t => (
             <button

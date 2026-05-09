@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import StemSeparationDialog from '@/components/audio/StemSeparationDialog';
 import StemMixer from '@/components/audio/StemMixer';
+import StemWaveformPlayer from '@/components/audio/StemWaveformPlayer';
 import { haptics } from '@/components/utils/haptics';
 
 export default function StemStudioPage() {
@@ -31,7 +32,7 @@ export default function StemStudioPage() {
     queryFn: () => base44.entities.StemSeparation.list('-created_date'),
     refetchInterval: (data) => {
       const hasPending = Array.isArray(data) && data.some(s => s.status === 'pending' || s.status === 'processing');
-      return hasPending ? 2000 : false; // Poll every 2 seconds for faster updates
+      return hasPending ? 5000 : false; // Poll every 5s per kie.ai API recommendation
     },
   });
 
@@ -163,6 +164,17 @@ export default function StemStudioPage() {
                         {separation.keyboard_url && <Badge className="text-xs bg-green-500/20 text-green-300">Keys</Badge>}
                       </div>
 
+                      {/* Waveform preview for vocal or instrumental stem */}
+                      {(separation.vocal_url || separation.instrumental_url) && (
+                        <div className="mb-3">
+                          <StemWaveformPlayer
+                            audioUrl={separation.vocal_url || separation.instrumental_url}
+                            label={separation.vocal_url ? 'Vocals' : 'Instrumental'}
+                            color="#22d3ee"
+                          />
+                        </div>
+                      )}
+
                       <Button
                         onClick={() => handleOpenMixer(separation)}
                         className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white"
@@ -280,14 +292,23 @@ export default function StemStudioPage() {
                     </div>
                     <div className="p-4">
                       <h3 className="font-semibold text-white truncate">{track.title}</h3>
-                      <p className="text-sm text-slate-400 truncate">{track.style || 'Unknown Style'}</p>
+                      <p className="text-sm text-slate-400 truncate mb-3">{track.style || 'Unknown Style'}</p>
+                      {(track.audio_url || track.stream_audio_url) && (
+                        <div className="mb-3">
+                          <StemWaveformPlayer
+                            audioUrl={track.audio_url || track.stream_audio_url}
+                            label="Preview"
+                            color="#a78bfa"
+                          />
+                        </div>
+                      )}
                       <Button
                         onClick={() => {
                           haptics.medium();
                           setSelectedTrack(track);
                           setShowSeparationDialog(true);
                         }}
-                        className="w-full mt-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white"
+                        className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white"
                       >
                         <Disc className="h-4 w-4 mr-2" />
                         Separate Stems

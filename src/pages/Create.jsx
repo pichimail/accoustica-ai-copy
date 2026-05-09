@@ -89,7 +89,7 @@ export default function CreatePage() {
     enabled: !!user?.email,
     refetchInterval: (data) => {
       const arr = Array.isArray(data) ? data : [];
-      return arr.some(t => t.status === 'generating' || t.status === 'queued') ? 2500 : false;
+      return arr.some(t => t.status === 'generating' || t.status === 'queued') ? 5000 : false;
     },
   });
 
@@ -214,7 +214,8 @@ export default function CreatePage() {
             return;
           }
         }
-        if (attempts < 60) setTimeout(poll, 2500);
+        // Poll every 5s as recommended by kie.ai/suno API docs (max 60 attempts = 5 min)
+        if (attempts < 60) setTimeout(poll, 5000);
         else { setGeneratingTaskId(null); toast.error('Timed out'); }
       } catch { setGeneratingTaskId(null); }
     };
