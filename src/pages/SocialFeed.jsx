@@ -117,21 +117,21 @@ export default function SocialFeedPage() {
               <h1 className="text-2xl md:text-3xl font-extrabold">Social Discovery</h1>
               
             </div>
-            <div className="flex gap-2 hidden">
-              {[{ value: '-created_date', label: 'New' }, { value: '-plays', label: 'Hot' }].map((item) =>
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => setSort(item.value)}
-                className="px-4 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-rose-400"
-                style={sort === item.value ?
-                { background: '#22c55e', color: '#020204', borderRadius: 8, border: '1px solid #22c55e' } :
-                { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.75)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }}>
-                
-                  {item.label}
-                </button>
-              )}
-            </div>
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
           </div>
           <div className="relative mt-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'rgba(255,255,255,0.34)' }} />
