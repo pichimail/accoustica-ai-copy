@@ -1,8 +1,13 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Music, Play, Pause, Loader2, Search, SkipForward, Video, Layers, Info, MoreHorizontal } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import WaveformVisualizer from './WaveformVisualizer';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function StudioCenterPanel({ selectedTrack, tracks, currentTrack, isPlaying, onPlay, onSelect, isGenerating }) {
   const [topH, setTopH] = useState(220);
@@ -217,6 +222,12 @@ function CenterTrackRow({ track, index, isCurrent, isPlaying, onPlay, onSelect }
     ? `${Math.floor(track.duration / 60)}:${String(Math.floor(track.duration % 60)).padStart(2, '0')}`
     : '--:--';
   const artist = track.created_by?.split('@')[0] || 'You';
+  const actions = [
+    { icon: SkipForward, label: 'Remix', to: `/RemixStudio?trackId=${track.id}` },
+    { icon: Video, label: 'Video', to: `/VideoStudio?trackId=${track.id}` },
+    { icon: Layers, label: 'Stems', to: `/StemStudio?trackId=${track.id}` },
+    { icon: Info, label: 'Info', to: `/TrackInfo?id=${track.id}` },
+  ];
 
   return (
     <div
@@ -272,18 +283,13 @@ function CenterTrackRow({ track, index, isCurrent, isPlaying, onPlay, onSelect }
 
       {/* Action chips on hover */}
       <div className="hidden group-hover:flex items-center gap-1 flex-shrink-0">
-        {[
-          { icon: SkipForward, label: 'Remix' },
-          { icon: Video, label: 'Video' },
-          { icon: Layers, label: 'Stems' },
-          { icon: Info, label: 'Info' },
-        ].map(({ icon: Icon, label }) => (
-          <button key={label} title={label}
-            className="flex items-center gap-0.5 px-1.5 py-1 rounded-lg text-[10px] font-medium transition-colors hover:text-white/80"
+        {actions.map(({ icon: Icon, label, to }) => (
+          <Link key={label} to={to} onClick={e => e.stopPropagation()} title={label}
+            className="flex items-center gap-0.5 px-1.5 py-1 text-[10px] font-medium transition-colors hover:text-white/80 focus:outline-none focus:ring-1 focus:ring-rose-400"
             style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)' }}>
             <Icon className="h-3 w-3" />
             <span className="hidden xl:inline">{label}</span>
-          </button>
+          </Link>
         ))}
       </div>
 
@@ -293,9 +299,43 @@ function CenterTrackRow({ track, index, isCurrent, isPlaying, onPlay, onSelect }
           <Loader2 className="h-3 w-3 animate-spin" style={{ color: statusColor[track.status] }} />
         )}
         <span className="text-[11px] tabular-nums w-10 text-right" style={{ color: 'rgba(255,255,255,0.28)' }}>{dur}</span>
-        <button className="opacity-0 group-hover:opacity-100 transition-opacity">
-          <MoreHorizontal className="h-3.5 w-3.5" style={{ color: 'rgba(255,255,255,0.3)' }} />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Open actions for ${track.title}`}
+              onClick={e => e.stopPropagation()}
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-rose-400"
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" style={{ color: 'rgba(255,255,255,0.35)' }} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            onClick={e => e.stopPropagation()}
+            className="min-w-40 border-white/10 bg-[#101016] text-white shadow-2xl"
+          >
+            {actions.map(({ icon: Icon, label, to }) => (
+              <DropdownMenuItem key={label} asChild className="cursor-pointer focus:bg-white/10">
+                <Link to={to} className="flex items-center gap-2">
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </Link>
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuItem
+              disabled={!isReady}
+              onSelect={(event) => {
+                event.preventDefault();
+                onPlay();
+              }}
+              className="cursor-pointer focus:bg-white/10"
+            >
+              {isPlaying ? <Pause className="h-3.5 w-3.5 mr-2" /> : <Play className="h-3.5 w-3.5 mr-2" />}
+              {isPlaying ? 'Pause' : 'Play'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

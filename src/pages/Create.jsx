@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
-import { Share2, Maximize2, Minimize2, Settings2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Share2, Maximize2, Settings2 } from 'lucide-react';
 import StudioLibraryPanel from '@/components/create/StudioLibraryPanel';
 import StudioCenterPanel from '@/components/create/StudioCenterPanel';
 import StudioGeneratePanel from '@/components/create/StudioGeneratePanel';
@@ -28,20 +27,57 @@ export default function CreatePage() {
   const [negativeTag, setNegativeTag] = useState('');
   const [styleWeight, setStyleWeight] = useState(75);
   const [clarityWeight, setClarityWeight] = useState(60);
+  const [styleWeightTouched, setStyleWeightTouched] = useState(false);
+  const [weirdnessTouched, setWeirdnessTouched] = useState(false);
+  const [negativeTagTouched, setNegativeTagTouched] = useState(false);
   const [isInstrumental, setIsInstrumental] = useState(false);
   const [simplePrompt, setSimplePrompt] = useState('');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [remixSource, setRemixSource] = useState('');
   const [remixPrompt, setRemixPrompt] = useState('');
   const [remixInfluence, setRemixInfluence] = useState(55);
+  const [mashupTrackIds, setMashupTrackIds] = useState([]);
   const [selectedPersonaId, setSelectedPersonaId] = useState(null);
   const [generatingTaskId, setGeneratingTaskId] = useState(null);
+  const [libraryWidth, setLibraryWidth] = useState(256);
+  const [generateWidth, setGenerateWidth] = useState(320);
+  const desktopStudioRef = useRef(null);
 
   // ── Mobile panel state ──
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
   const queryClient = useQueryClient();
   const { playTrack, currentTrack, isPlaying } = useAudioPlayer();
+
+  const beginResize = useCallback((panel) => (event) => {
+    event.preventDefault();
+    const startX = event.touches ? event.touches[0].clientX : event.clientX;
+    const startLibrary = libraryWidth;
+    const startGenerate = generateWidth;
+    const containerWidth = desktopStudioRef.current?.offsetWidth || window.innerWidth;
+
+    const move = (moveEvent) => {
+      const clientX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const delta = clientX - startX;
+      if (panel === 'library') {
+        setLibraryWidth(Math.max(216, Math.min(390, startLibrary + delta)));
+      } else {
+        setGenerateWidth(Math.max(280, Math.min(Math.min(460, containerWidth - 520), startGenerate - delta)));
+      }
+    };
+
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      window.removeEventListener('touchmove', move);
+      window.removeEventListener('touchend', up);
+    };
+
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('touchend', up);
+  }, [generateWidth, libraryWidth]);
 
   // ── Queries ──
   const { data: allTracks = [], isLoading: tracksLoading } = useQuery({
@@ -73,6 +109,8 @@ export default function CreatePage() {
     let finalPrompt = simplePrompt.trim();
     if (isAdvanced && !lyrics.trim()) { toast.error('Please add lyrics'); return; }
     if (!isAdvanced && !isRemix && !isMashup && !finalPrompt) { toast.error('Please describe your music'); return; }
+    if (isRemix && !remixSource) { toast.error('Choose a source track to remix'); return; }
+    if (isMashup && mashupTrackIds.length !== 2) { toast.error('Choose exactly two ready tracks for a mashup'); return; }
 
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -84,18 +122,60 @@ export default function CreatePage() {
         last_active: new Date().toISOString(),
       });
 
-      const payload = {
-        mode: isInstrumental ? 'instrumental' : isAdvanced ? 'custom' : 'simple',
-        model: 'V5',
-        prompt: isAdvanced ? lyrics : finalPrompt,
-        style: styles || 'Pop',
-        title: title || finalPrompt.slice(0, 40) || 'Untitled',
-        customMode: isAdvanced,
-        instrumental: isInstrumental,
-        ...(selectedPersonaId && { personaId: selectedPersonaId }),
-      };
+      let response;
 
-      const response = await base44.functions.invoke('generateMusic', payload);
+      if (isMashup) {
+        const selected = allTracks.filter(track => mashupTrackIds.includes(track.id));
+        response = await base44.functions.invoke('generateMashup', {
+          trackIds: mashupTrackIds,
+          prompt: remixPrompt || `Blend ${selected.map(track => track.title).join(' and ')} into a coherent mashup`,
+          style: styles,
+          title: title || `Mashup: ${selected.map(track => track.title).join(' x ')}`,
+          model: 'V5',
+        });
+      } else if (isRemix) {
+        const source = allTracks.find(track => track.id === remixSource);
+        const sourceUrl = source?.audio_url || source?.stream_audio_url;
+        if (!sourceUrl) throw new Error('Selected source track has no playable audio URL yet');
+        response = await base44.functions.invoke('uploadAndCoverAudio', {
+          uploadUrl: sourceUrl,
+          prompt: remixPrompt || styles || `Remix ${source.title}`,
+          customMode: true,
+          instrumental: isInstrumental,
+          model: 'V5',
+          style: styles || source.style || 'AI remix',
+          title: title || `${source.title} Remix`,
+          audioWeight: remixInfluence,
+          ...(negativeTag.trim() && { negativeTags: negativeTag.trim() }),
+          ...(styleWeightTouched && { styleWeight }),
+          ...(weirdnessTouched && { weirdnessConstraint: clarityWeight }),
+          ...(vocalGender !== 'Auto' && { vocalGender }),
+          ...(selectedPersonaId && { personaId: selectedPersonaId }),
+        });
+      } else {
+        const payload = isAdvanced ? {
+          mode: 'custom',
+          model: 'V5',
+          prompt: isInstrumental ? '' : lyrics,
+          style: styles || 'Pop',
+          ...(title.trim() && { title: title.trim() }),
+          customMode: true,
+          instrumental: isInstrumental,
+          ...(negativeTagTouched && negativeTag.trim() && { negativeTags: negativeTag.trim() }),
+          ...(styleWeightTouched && { styleWeight }),
+          ...(weirdnessTouched && { weirdnessConstraint: clarityWeight }),
+          ...(vocalGender !== 'Auto' && { vocalGender }),
+          ...(selectedPersonaId && { personaId: selectedPersonaId }),
+        } : {
+          mode: 'simple',
+          model: 'V5',
+          prompt: finalPrompt,
+          customMode: false,
+          instrumental: false,
+        };
+
+        response = await base44.functions.invoke('generateMusic', payload);
+      }
       if (!response.data.success) throw new Error(response.data.error || 'Generation failed');
 
       setGeneratingTaskId(response.data.taskId);
@@ -105,6 +185,7 @@ export default function CreatePage() {
 
       // Reset form
       setSimplePrompt(''); setTitle(''); setLyrics('');
+      setMashupTrackIds([]);
       queryClient.invalidateQueries({ queryKey: ['studioTracks'] });
     } catch (err) {
       haptics.error();
@@ -149,10 +230,10 @@ export default function CreatePage() {
   return (
     <>
       {/* ════ DESKTOP: 3-panel Studio Layout ════ */}
-      <div className="hidden md:flex overflow-hidden" style={{ background: '#09090f', height: '100vh' }}>
+      <div ref={desktopStudioRef} className="hidden md:flex overflow-hidden" style={{ background: '#09090f', height: '100vh' }}>
 
         {/* LEFT — Library */}
-        <div className="w-56 lg:w-64 flex-shrink-0 h-full overflow-hidden">
+        <div className="flex-shrink-0 h-full overflow-hidden" style={{ width: libraryWidth }}>
           <StudioLibraryPanel
             tracks={filteredLibTracks}
             search={libSearch}
@@ -165,6 +246,8 @@ export default function CreatePage() {
             isLoading={tracksLoading}
           />
         </div>
+
+        <SplitterHandle label="Resize library" onPointerDown={beginResize('library')} />
 
         {/* CENTER — Split track detail + generations */}
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
@@ -200,23 +283,27 @@ export default function CreatePage() {
           </div>
         </div>
 
+        <SplitterHandle label="Resize generate panel" onPointerDown={beginResize('generate')} />
+
         {/* RIGHT — Generate */}
-        <div className="w-64 lg:w-72 xl:w-80 flex-shrink-0 h-full overflow-hidden">
+        <div className="flex-shrink-0 h-full overflow-hidden" style={{ width: generateWidth }}>
           <StudioGeneratePanel
             tab={tab} onTabChange={setTab}
             title={title} onTitleChange={setTitle}
             lyrics={lyrics} onLyricsChange={setLyrics}
             styles={styles} onStylesChange={setStyles}
             vocalGender={vocalGender} onVocalGenderChange={setVocalGender}
-            negativeTag={negativeTag} onNegativeTagChange={setNegativeTag}
-            styleWeight={styleWeight} onStyleWeightChange={setStyleWeight}
-            clarityWeight={clarityWeight} onClarityWeightChange={setClarityWeight}
+            negativeTag={negativeTag} onNegativeTagChange={(value) => { setNegativeTag(value); setNegativeTagTouched(true); }}
+            styleWeight={styleWeight} onStyleWeightChange={(value) => { setStyleWeight(value); setStyleWeightTouched(true); }}
+            clarityWeight={clarityWeight} onClarityWeightChange={(value) => { setClarityWeight(value); setWeirdnessTouched(true); }}
             isInstrumental={isInstrumental} onInstrumentalChange={setIsInstrumental}
             simplePrompt={simplePrompt} onSimplePromptChange={setSimplePrompt}
             showMoreOptions={showMoreOptions} onToggleMoreOptions={() => setShowMoreOptions(v => !v)}
             remixSource={remixSource} onRemixSourceChange={setRemixSource}
             remixPrompt={remixPrompt} onRemixPromptChange={setRemixPrompt}
             remixInfluence={remixInfluence} onRemixInfluenceChange={setRemixInfluence}
+            mashupTrackIds={mashupTrackIds}
+            onToggleMashupTrack={(id) => setMashupTrackIds((prev) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id].slice(-2))}
             selectedPersonaId={selectedPersonaId} onSelectPersona={setSelectedPersonaId}
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
@@ -232,7 +319,7 @@ export default function CreatePage() {
           <span className="text-base font-extrabold" style={{ color: '#fff' }}>Studio</span>
           <button
             onClick={() => setMobilePanelOpen(v => !v)}
-            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+            className="px-3 py-1.5 text-xs font-bold transition-all focus:outline-none focus:ring-1 focus:ring-rose-400"
             style={{ background: mobilePanelOpen ? 'rgba(225,29,72,0.25)' : 'rgba(255,255,255,0.06)', color: mobilePanelOpen ? '#f43f5e' : 'rgba(255,255,255,0.6)', border: `1px solid ${mobilePanelOpen ? 'rgba(225,29,72,0.35)' : 'rgba(255,255,255,0.08)'}` }}
           >
             {mobilePanelOpen ? 'Library' : 'Generate'}
@@ -248,15 +335,17 @@ export default function CreatePage() {
               lyrics={lyrics} onLyricsChange={setLyrics}
               styles={styles} onStylesChange={setStyles}
               vocalGender={vocalGender} onVocalGenderChange={setVocalGender}
-              negativeTag={negativeTag} onNegativeTagChange={setNegativeTag}
-              styleWeight={styleWeight} onStyleWeightChange={setStyleWeight}
-              clarityWeight={clarityWeight} onClarityWeightChange={setClarityWeight}
+              negativeTag={negativeTag} onNegativeTagChange={(value) => { setNegativeTag(value); setNegativeTagTouched(true); }}
+              styleWeight={styleWeight} onStyleWeightChange={(value) => { setStyleWeight(value); setStyleWeightTouched(true); }}
+              clarityWeight={clarityWeight} onClarityWeightChange={(value) => { setClarityWeight(value); setWeirdnessTouched(true); }}
               isInstrumental={isInstrumental} onInstrumentalChange={setIsInstrumental}
               simplePrompt={simplePrompt} onSimplePromptChange={setSimplePrompt}
               showMoreOptions={showMoreOptions} onToggleMoreOptions={() => setShowMoreOptions(v => !v)}
               remixSource={remixSource} onRemixSourceChange={setRemixSource}
               remixPrompt={remixPrompt} onRemixPromptChange={setRemixPrompt}
               remixInfluence={remixInfluence} onRemixInfluenceChange={setRemixInfluence}
+              mashupTrackIds={mashupTrackIds}
+              onToggleMashupTrack={(id) => setMashupTrackIds((prev) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id].slice(-2))}
               selectedPersonaId={selectedPersonaId} onSelectPersona={setSelectedPersonaId}
               onGenerate={handleGenerate}
               isGenerating={isGenerating}
@@ -298,12 +387,32 @@ export default function CreatePage() {
   );
 }
 
+function SplitterHandle({ label, onPointerDown }) {
+  return (
+    <div
+      role="separator"
+      aria-label={label}
+      aria-orientation="vertical"
+      tabIndex={0}
+      onMouseDown={onPointerDown}
+      onTouchStart={onPointerDown}
+      className="w-2 flex-shrink-0 cursor-col-resize bg-transparent hover:bg-white/5 focus:bg-white/10 focus:outline-none"
+      style={{
+        borderLeft: '1px solid rgba(255,255,255,0.05)',
+        borderRight: '1px solid rgba(255,255,255,0.04)',
+      }}
+    >
+      <div className="h-full w-px mx-auto" style={{ background: 'rgba(255,255,255,0.1)' }} />
+    </div>
+  );
+}
+
 /* ── Mobile-only sub-components ── */
 function MobileTrackDetail({ track, currentTrack, isPlaying, onPlay }) {
   const isActive = currentTrack?.id === track.id;
   return (
     <div className="flex items-center gap-3">
-      <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0" style={{ background: 'rgba(255,255,255,0.07)' }}>
+      <div className="w-12 h-12 overflow-hidden flex-shrink-0" style={{ background: 'rgba(255,255,255,0.07)' }}>
         {track.cover_image_url
           ? <img src={track.cover_image_url} alt={track.title} className="w-full h-full object-cover" />
           : <div className="w-full h-full flex items-center justify-center"><span className="text-lg">🎵</span></div>
@@ -315,7 +424,7 @@ function MobileTrackDetail({ track, currentTrack, isPlaying, onPlay }) {
       </div>
       {track.status === 'ready' && (
         <button onClick={onPlay}
-          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+          className="w-9 h-9 flex items-center justify-center flex-shrink-0 focus:outline-none focus:ring-1 focus:ring-rose-400"
           style={{ background: isActive && isPlaying ? 'rgba(225,29,72,0.25)' : 'rgba(255,255,255,0.08)' }}>
           <span className="text-white text-sm">{isActive && isPlaying ? '⏸' : '▶'}</span>
         </button>
@@ -335,7 +444,7 @@ function MobileTrackRow({ track, isCurrent, isPlaying, isSelected, onPlay, onSel
         background: isSelected ? 'rgba(225,29,72,0.07)' : 'transparent',
       }}
     >
-      <div className="relative w-10 h-10 rounded-xl overflow-hidden flex-shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
+      <div className="relative w-10 h-10 overflow-hidden flex-shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
         {track.cover_image_url
           ? <img src={track.cover_image_url} alt="" className="w-full h-full object-cover" />
           : <div className="w-full h-full flex items-center justify-center"><span className="text-sm">🎵</span></div>
@@ -363,7 +472,7 @@ function MobileTrackRow({ track, isCurrent, isPlaying, isSelected, onPlay, onSel
         <div className="w-1.5 h-1.5 rounded-full" style={{ background: statusColor[track.status] || '#555' }} />
         {track.status === 'ready' && (
           <button onClick={e => { e.stopPropagation(); onPlay(); }}
-            className="w-8 h-8 rounded-full flex items-center justify-center"
+            className="w-8 h-8 flex items-center justify-center focus:outline-none focus:ring-1 focus:ring-rose-400"
             style={{ background: 'rgba(255,255,255,0.07)' }}>
             <span className="text-white text-xs">▶</span>
           </button>

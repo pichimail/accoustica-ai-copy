@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
 
 const AudioPlayerContext = createContext();
 
@@ -21,7 +22,28 @@ export function AudioPlayerProvider({ children }) {
   const [repeatMode, setRepeatMode] = useState('off'); // off, all, one
   const [isShuffle, setIsShuffle] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [audioSettings, setAudioSettings] = useState(null);
   const audioRef = useRef(null);
+
+  useEffect(() => {
+    let mounted = true;
+    base44.auth.me()
+      .then((user) => {
+        if (!mounted || !user?.audio_settings) return;
+        const settings = typeof user.audio_settings === 'string'
+          ? JSON.parse(user.audio_settings)
+          : user.audio_settings;
+        setAudioSettings(settings);
+        if (typeof settings.defaultVolume === 'number') {
+          const nextVolume = Math.max(0, Math.min(100, settings.defaultVolume));
+          setVolume(nextVolume);
+          if (audioRef.current) audioRef.current.volume = nextVolume / 100;
+        }
+        if (settings.autoplayNext === true) setRepeatMode('all');
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, []);
 
   // Play a specific track
   const playTrack = async (track, trackQueue = []) => {
@@ -161,6 +183,7 @@ export function AudioPlayerProvider({ children }) {
     repeatMode,
     isShuffle,
     isFullscreen,
+    audioSettings,
     audioRef,
     
     // Actions

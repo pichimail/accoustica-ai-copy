@@ -1,25 +1,34 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
 const SUNO_API_BASE = 'https://api.kie.ai/api/v1';
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, content-type, x-base44-token',
+};
 
 Deno.serve(async (req) => {
+    if (req.method === 'OPTIONS') {
+        return new Response(null, { headers: corsHeaders });
+    }
+
     try {
         const base44 = createClientFromRequest(req);
         const user = await base44.auth.me();
 
         if (!user) {
-            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+            return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
         }
 
         const { taskId } = await req.json();
 
         if (!taskId) {
-            return Response.json({ error: 'taskId is required' }, { status: 400 });
+            return Response.json({ error: 'taskId is required' }, { status: 400, headers: corsHeaders });
         }
 
         const apiKey = Deno.env.get('SUNO_API_KEY');
         if (!apiKey) {
-            return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500 });
+            return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500, headers: corsHeaders });
         }
 
         // Check status from Suno API
@@ -40,7 +49,7 @@ Deno.serve(async (req) => {
             return Response.json({ 
                 error: data.msg || 'Failed to check status',
                 details: data
-            }, { status: 400 });
+            }, { status: 400, headers: corsHeaders });
         }
 
         const taskStatus = data.data.status;
@@ -94,12 +103,12 @@ Deno.serve(async (req) => {
             success: true,
             status: taskStatus,
             tracks: updatedTracks,
-        });
+        }, { headers: corsHeaders });
 
     } catch (error) {
         console.error('Error in checkMusicStatus:', error);
         return Response.json({ 
             error: error.message || 'Failed to check status'
-        }, { status: 500 });
+        }, { status: 500, headers: corsHeaders });
     }
 });
