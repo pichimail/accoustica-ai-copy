@@ -70,21 +70,21 @@ export default function ForYouPage() {
     <div className="min-h-screen bg-black pb-32 relative">
       <OledBackground intensity={0.6} />
       {/* Header */}
-      <div className="relative z-10 sticky top-0 bg-black/70 backdrop-blur-2xl border-b border-white/[0.06] px-4 pt-2 pb-4 hidden">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-white">For You</h1>
-            <p className="text-xs text-white/30 mt-0.5">Personalized for your taste</p>
-          </div>
-          <button
-            onClick={generateRecommendations}
-            disabled={isAnalyzing}
-            className="w-9 h-9 rounded-xl bg-violet-500/20 flex items-center justify-center text-violet-400">
-            
-            {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          </button>
-        </div>
-      </div>
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+      
 
       {isLoading ?
       <div className="relative z-10 flex justify-center py-20">
