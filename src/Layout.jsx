@@ -247,11 +247,11 @@ export default function Layout({ children, currentPageName }) {
       </main>
 
       {/* Global Audio Player */}
-      <GlobalAudioPlayer />
+      <GlobalAudioPlayer currentPageName={currentPageName} />
 
       {/* Mobile Bottom Navigation */}
       {currentPageName !== 'Home' &&
-        <MobileNav currentPageName={currentPageName} user={user} />
+        <MobileNav currentPageName={currentPageName} user={user} autoHide={currentPageName === 'Create'} />
         }
     </div>
     </AudioPlayerProvider>);

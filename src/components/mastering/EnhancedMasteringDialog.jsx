@@ -144,7 +144,27 @@ export default function EnhancedMasteringDialog({ track, open, onClose, onSucces
   const handleMaster = async () => {
     setProcessing(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 4000));
+      const response = await base44.functions.invoke('masterAudio', {
+        trackId: track.id,
+        audioUrl: track.audio_url || track.stream_audio_url,
+        targetLufs: loudness[0],
+        loudnessTarget: loudness[0],
+        eqPreset: eqAdjust[0] > 1 ? 'bright' : eqAdjust[0] < -1 ? 'warm' : 'balanced',
+        compressionLevel: compression[0] > 70 ? 'heavy' : compression[0] < 35 ? 'light' : 'medium',
+        compression: compression[0],
+        stereoWidth: stereoWidth[0],
+        bassBoost: bassBoost[0],
+        highBoost: highBoost[0],
+        eqBands: [
+          { freq: '100Hz', gain: bassBoost[0] },
+          { freq: '1kHz', gain: eqAdjust[0] },
+          { freq: '10kHz', gain: highBoost[0] },
+        ],
+      });
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || 'Mastering failed');
+      }
       
       const user = await base44.auth.me();
       await base44.entities.TrackVersion.create({
@@ -155,7 +175,9 @@ export default function EnhancedMasteringDialog({ track, open, onClose, onSucces
         edited_by: user.email,
       });
 
-      toast.success('Mastering applied!');
+      toast.success('Mastering applied!', {
+        description: response.data?.report || 'Mastering metadata updated.',
+      });
       onSuccess?.();
       onClose();
     } catch (error) {

@@ -19,16 +19,23 @@ export default function BottomSheet({
   }, [open]);
 
   return (
-    <Drawer.Root open={open} onOpenChange={onClose} snapPoints={snapPoints}>
+    <Drawer.Root open={open} onOpenChange={onClose} snapPoints={snapPoints} dismissible>
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" />
+        <Drawer.Overlay className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[110]" />
         <Drawer.Content 
           className={cn(
-            "fixed bottom-0 left-0 right-0 z-50 flex flex-col bg-slate-900 border-t border-slate-700 rounded-t-3xl",
+            "fixed bottom-0 left-0 right-0 z-[120] flex flex-col border-t rounded-t-3xl",
             "focus:outline-none",
             className
           )}
-          style={{ maxHeight: '90vh' }}
+          style={{
+            maxHeight: '90vh',
+            background: 'rgba(14,14,22,0.98)',
+            borderColor: 'rgba(255,255,255,0.1)',
+            backdropFilter: 'blur(30px)',
+            WebkitBackdropFilter: 'blur(30px)',
+            boxShadow: '0 -28px 80px rgba(0,0,0,0.55)',
+          }}
         >
           {/* Drag Handle */}
           <div className="w-full flex justify-center py-3">

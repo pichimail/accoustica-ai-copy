@@ -1,22 +1,44 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, content-type, x-base44-token',
+};
+
 /**
  * AI Mastering: Applies EQ, compression, and loudness normalization to an audio track.
  * Uses metadata-based AI suggestions (since direct DSP in Deno is limited).
  * For real mastering, integrate with Matchering / AudimeeAPI / similar services.
  */
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
-    const { audioUrl, trackId, eqPreset, compressionLevel, targetLufs } = await req.json();
+    const {
+      audioUrl,
+      trackId,
+      eqPreset = 'balanced',
+      compressionLevel,
+      targetLufs,
+      loudnessTarget,
+      stereoWidth = 100,
+      bassBoost = 0,
+      highBoost = 0,
+      compression = 50,
+      eqBands = [],
+    } = await req.json();
 
     if (!audioUrl && !trackId) {
-      return Response.json({ error: 'audioUrl or trackId required' }, { status: 400 });
+      return Response.json({ error: 'audioUrl or trackId required' }, { status: 400, headers: corsHeaders });
     }
 
     let resolvedUrl = audioUrl;
@@ -33,31 +55,38 @@ Deno.serve(async (req) => {
     }
 
     if (!resolvedUrl) {
-      return Response.json({ error: 'No audio URL found' }, { status: 400 });
+      return Response.json({ error: 'No audio URL found' }, { status: 400, headers: corsHeaders });
     }
+
+    const normalizedCompression =
+      compressionLevel || (compression >= 70 ? 'heavy' : compression <= 35 ? 'light' : 'medium');
+    const normalizedTarget = targetLufs ?? loudnessTarget ?? -14;
 
     // AI mastering analysis using LLM
     const masteringProfile = {
       eq: {
-        lowShelf: eqPreset === 'warm' ? '+2dB @ 100Hz' : eqPreset === 'bright' ? '+1dB @ 80Hz' : '0dB',
+        preset: eqPreset,
+        lowShelf: `${bassBoost > 0 ? '+' : ''}${bassBoost}dB @ 100Hz`,
         lowMid: '-1.5dB @ 300Hz (remove mud)',
         highMid: '+1dB @ 3kHz (presence)',
-        highShelf: eqPreset === 'bright' ? '+2dB @ 10kHz' : '+0.5dB @ 8kHz (air)',
+        highShelf: `${highBoost > 0 ? '+' : ''}${highBoost}dB @ 10kHz`,
+        curve: eqBands,
       },
       compression: {
-        ratio: compressionLevel === 'heavy' ? '4:1' : compressionLevel === 'light' ? '2:1' : '3:1',
+        ratio: normalizedCompression === 'heavy' ? '4:1' : normalizedCompression === 'light' ? '2:1' : '3:1',
         attack: '10ms',
         release: '120ms',
         threshold: '-18dBFS',
-        makeupGain: '+3dB',
+        amount: `${compression}%`,
+        makeupGain: `${Math.max(0, Math.round(compression / 25))}dB`,
       },
       loudnessNormalization: {
-        targetLUFS: targetLufs || -14,
+        targetLUFS: normalizedTarget,
         truePeakLimit: '-1dBTP',
         technique: 'ITU-R BS.1770-4 integrated loudness',
       },
       stereoEnhancement: {
-        midSide: 'subtle widening +15%',
+        midSide: `${stereoWidth}% width`,
         correlation: 'maintained > 0.6',
       },
     };
@@ -102,9 +131,9 @@ Provide a brief, professional mastering report (2-3 sentences) on what was done 
       recommendations: llmResult.recommendations || [],
       processedUrl: resolvedUrl, // In production, return the processed audio URL
       note: 'Mastering metadata applied. For full DSP processing, integrate with a dedicated audio processing service.',
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500, headers: corsHeaders });
   }
 });

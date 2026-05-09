@@ -160,9 +160,19 @@ export default function RemixStudioPage() {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setUploadedUrl(file_url);
-      toast.success('File uploaded! Ready to separate stems.');
+      const uploadedTrack = await base44.entities.Track.create({
+        title: file.name.replace(/\.[^/.]+$/, ''),
+        audio_url: file_url,
+        stream_audio_url: file_url,
+        status: 'ready',
+        style: 'Uploaded audio',
+        duration: 0,
+      });
+      setSelectedTrack(uploadedTrack);
+      setSeparation(null);
+      toast.success('File uploaded and loaded for remixing.');
     } catch (err) {
-      toast.error('Upload failed');
+      toast.error(err.message || 'Upload failed');
     } finally {
       setIsUploading(false);
     }
@@ -177,7 +187,8 @@ export default function RemixStudioPage() {
       const res = await base44.functions.invoke('separateVocals', {
         taskId: selectedTrack.task_id,
         audioId: selectedTrack.external_audio_id,
-        separationType: 'split_stem',
+        audioUrl: selectedTrack.audio_url || uploadedUrl,
+        type: 'split_stem',
         trackId,
       });
       if (res.data?.success) {
@@ -200,11 +211,15 @@ export default function RemixStudioPage() {
     try {
       const stemUrl = separation[`${stemKey}_url`];
       const res = await base44.functions.invoke('remixStem', {
+        stem_url: stemUrl,
         stemUrl,
         style: restyleStyle,
         section: restyleSection,
+        track_id: selectedTrack?.id,
         trackId: selectedTrack?.id,
+        stem_type: stemKey,
         stemType: stemKey,
+        prompt: `${restyleStyle}${restyleSection ? ` for ${restyleSection}` : ''}`,
       });
       if (res.data?.success) {
         toast.success(`${stemKey} restyle queued!`);

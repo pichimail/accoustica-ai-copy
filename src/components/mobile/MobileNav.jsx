@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Home, Sparkles, Plus, Library, Globe, Music, User, Disc, MoreHorizontal, X, MessageCircle } from 'lucide-react';
@@ -12,8 +12,11 @@ const MORE_ITEMS = [
   { name: 'Profile', icon: User,  page: 'Profile' },
 ];
 
-export default function MobileNav({ currentPageName, user }) {
+export default function MobileNav({ currentPageName, user, autoHide = false }) {
   const [showMore, setShowMore] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const lastScrollY = useRef(0);
+  const idleTimer = useRef(null);
 
   const primaryLinks = user
     ? [
@@ -33,18 +36,62 @@ export default function MobileNav({ currentPageName, user }) {
 
   const isMoreActive = MORE_ITEMS.some(i => i.page === currentPageName);
 
+  useEffect(() => {
+    if (!autoHide) {
+      setHidden(false);
+      return undefined;
+    }
+
+    const showTemporarily = () => {
+      setHidden(false);
+      window.clearTimeout(idleTimer.current);
+      idleTimer.current = window.setTimeout(() => setHidden(true), 1800);
+    };
+
+    const onScroll = () => {
+      const nextY = window.scrollY || 0;
+      setHidden(nextY > lastScrollY.current && nextY > 24);
+      lastScrollY.current = nextY;
+    };
+
+    const onFocusIn = (event) => {
+      const tag = event.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') setHidden(true);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('touchstart', showTemporarily, { passive: true });
+    window.addEventListener('mousemove', showTemporarily);
+    window.addEventListener('focusin', onFocusIn);
+    showTemporarily();
+
+    return () => {
+      window.clearTimeout(idleTimer.current);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('touchstart', showTemporarily);
+      window.removeEventListener('mousemove', showTemporarily);
+      window.removeEventListener('focusin', onFocusIn);
+    };
+  }, [autoHide]);
+
   return (
     <>
       {/* Bottom Nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40">
+      <nav
+        className={cn(
+          "lg:hidden fixed bottom-0 left-0 right-0 z-40 transition-transform duration-300",
+          hidden && "translate-y-full"
+        )}
+        aria-hidden={hidden}
+      >
         {/* Glass bar */}
         <div
-          className="mx-3 mb-3 rounded-2xl px-2 py-1"
+          className="px-2 py-1 safe-bottom"
           style={{
             background: 'rgba(18,18,28,0.92)',
             backdropFilter: 'blur(24px)',
             WebkitBackdropFilter: 'blur(24px)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            borderTop: '1px solid rgba(255,255,255,0.08)',
             boxShadow: '0 -4px 30px rgba(0,0,0,0.4)',
           }}
         >

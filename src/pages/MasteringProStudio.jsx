@@ -278,7 +278,8 @@ export default function MasteringProStudioPage() {
     try {
       const res = await base44.functions.invoke('masterAudio', {
         trackId: selectedTrack.id,
-        audioUrl: selectedTrack.audio_url,
+        audioUrl: selectedTrack.audio_url || selectedTrack.stream_audio_url,
+        targetLufs: loudness,
         loudnessTarget: loudness,
         stereoWidth,
         bassBoost,
@@ -287,7 +288,7 @@ export default function MasteringProStudioPage() {
         eqBands: eqBands.map(b => ({ freq: b.freq, gain: b.gain })),
       });
       if (res.data?.success) {
-        setMasteredUrl(res.data.masteredUrl || selectedTrack.audio_url);
+        setMasteredUrl(res.data.processedUrl || res.data.masteredUrl || selectedTrack.audio_url || selectedTrack.stream_audio_url);
         toast.success('Track mastered successfully!');
         haptics.success();
         // Update track tags

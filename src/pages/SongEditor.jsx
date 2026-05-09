@@ -9,7 +9,7 @@ import {
   Play, Pause, SkipBack, SkipForward, RotateCcw, FastForward,
   RefreshCw, Save, ChevronDown, ChevronUp, Plus, X, Scissors,
   Maximize2, Minimize2, Settings, Layers, Music, Mic, ZoomIn, ZoomOut,
-  ArrowRight, Clock, Wand2, Replace, Trash2, Crop
+  ArrowRight, Clock, Wand2, Replace, Trash2, Crop, Volume2, BarChart3
 } from 'lucide-react';
 
 const SECTION_COLORS = {
@@ -34,6 +34,7 @@ const EDIT_MODES = [
   { id: 'crop', label: 'CROP', icon: Crop },
   { id: 'remove', label: 'REMOVE', icon: Trash2 },
   { id: 'fadeout', label: 'FADE OUT', icon: Minimize2 },
+  { id: 'mastering', label: 'MASTERING', icon: Volume2 },
 ];
 
 function ColoredWaveform({ color, width = 200, height = 60, animated = false }) {
@@ -103,6 +104,12 @@ export default function SongEditorPage() {
   const [styles, setStyles] = useState('');
   const [excludeStyles, setExcludeStyles] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [masteredUrl, setMasteredUrl] = useState(null);
+  const [masterLoudness, setMasterLoudness] = useState(-14);
+  const [masterStereo, setMasterStereo] = useState(95);
+  const [masterBass, setMasterBass] = useState(1.5);
+  const [masterHighs, setMasterHighs] = useState(2);
+  const [masterCompression, setMasterCompression] = useState(62);
   const [showLearn, setShowLearn] = useState(true);
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const audioRef = useRef(null);
@@ -163,34 +170,75 @@ export default function SongEditorPage() {
 
   const handleGenerate = async (action) => {
     if (!selectedTrack) { toast.error('Select a track first'); return; }
-    if (!selectedSection) { toast.error('Select a section to edit'); return; }
+    if (action !== 'mastering' && !selectedSection) { toast.error('Select a section to edit'); return; }
     setIsGenerating(true);
     haptics.medium();
     try {
       if (action === 'replace') {
+        if (!selectedTrack.task_id || !selectedTrack.external_audio_id) {
+          throw new Error('This track is missing the Suno task/audio IDs required for section replacement.');
+        }
         const res = await base44.functions.invoke('replaceSection', {
-          trackId: selectedTrack.external_audio_id || selectedTrack.task_id,
+          taskId: selectedTrack.task_id,
+          audioId: selectedTrack.external_audio_id,
           prompt: lyrics,
-          style: styles,
-          startTime: selectionStart,
-          endTime: selectionEnd,
+          tags: styles,
+          title: selectedTrack.title,
+          infillStartS: selectionStart,
+          infillEndS: selectionEnd,
+          negativeTags: excludeStyles,
+          fullLyrics: selectedTrack.lyrics,
         });
         if (res.data?.success) {
           toast.success('Replacement generated! Check back shortly.');
           queryClient.invalidateQueries({ queryKey: ['editor-tracks'] });
         } else throw new Error(res.data?.error || 'Failed');
       } else if (action === 'extend') {
+        if (!selectedTrack.external_audio_id) {
+          throw new Error('This track is missing the audio ID required for extension.');
+        }
         const res = await base44.functions.invoke('extendMusic', {
-          taskId: selectedTrack.task_id,
           audioId: selectedTrack.external_audio_id,
           prompt: lyrics,
           style: styles,
-          continueAt: selectionStart,
+          title: selectedTrack.title,
+          continueAt: selectionEnd,
+          negativeTags: excludeStyles,
         });
         if (res.data?.success) {
           toast.success('Extension queued!');
           queryClient.invalidateQueries({ queryKey: ['editor-tracks'] });
         } else throw new Error(res.data?.error || 'Failed');
+      } else if (action === 'mastering') {
+        const res = await base44.functions.invoke('masterAudio', {
+          trackId: selectedTrack.id,
+          audioUrl: selectedTrack.audio_url || selectedTrack.stream_audio_url,
+          targetLufs: masterLoudness,
+          loudnessTarget: masterLoudness,
+          stereoWidth: masterStereo,
+          bassBoost: masterBass,
+          highBoost: masterHighs,
+          compression: masterCompression,
+          eqBands: [
+            { freq: '100Hz', gain: masterBass },
+            { freq: '4kHz', gain: masterHighs / 2 },
+            { freq: '10kHz', gain: masterHighs },
+          ],
+        });
+        if (res.data?.success) {
+          setMasteredUrl(res.data.processedUrl || selectedTrack.audio_url || selectedTrack.stream_audio_url);
+          toast.success('Mastering applied', { description: res.data.report || 'Before/after comparison is ready.' });
+          queryClient.invalidateQueries({ queryKey: ['editor-tracks'] });
+        } else throw new Error(res.data?.error || 'Mastering failed');
+      } else if (['crop', 'remove', 'fadeout'].includes(action)) {
+        await base44.entities.TrackVersion.create({
+          track_id: selectedTrack.id,
+          parent_track_id: selectedTrack.id,
+          changes_description: `${modeConfig[action].label}: ${formatTime(selectionStart)} to ${formatTime(selectionEnd)}`,
+          edit_type: action === 'remove' ? 'cut' : 'other',
+          edit_metadata: JSON.stringify({ action, selectionStart, selectionEnd }),
+        });
+        toast.success(`${modeConfig[action].label} edit saved to version history.`);
       }
     } catch (err) {
       toast.error(err.message || 'Operation failed');
@@ -205,6 +253,7 @@ export default function SongEditorPage() {
     crop: { label: 'Crop', color: '#f97316', hint: 'Drag the edges of the selection to pick a section of time to keep.' },
     remove: { label: 'Remove', color: '#ef4444', hint: 'Drag the edges of the selection to pick a section of time to delete.' },
     fadeout: { label: 'Fade Out', color: '#f97316', hint: 'Drag the start of the selection to pick a point to fade out from.' },
+    mastering: { label: 'Apply Mastering', color: '#8b5cf6', hint: 'Tune loudness, stereo width, compression, and EQ, then compare before and after.' },
   };
 
   return (
@@ -458,6 +507,78 @@ export default function SongEditorPage() {
                   />
                   {/* Playhead on minimap */}
                   <div className="absolute top-0 bottom-0 w-0.5" style={{ left: `${(currentTime/(totalDuration||1))*100}%`, background: '#f97316' }} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedTrack && editMode === 'mastering' && (
+            <div
+              className="flex-shrink-0 border-t p-3"
+              style={{ borderColor: 'rgba(255,255,255,0.07)', background: 'linear-gradient(180deg,#101018,#0f0f0f)' }}
+              aria-label="Mastering controls"
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-3">
+                <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-xs font-extrabold tracking-widest text-white/55 uppercase flex items-center gap-2">
+                      <BarChart3 className="h-3.5 w-3.5 text-violet-300" />
+                      Before / After Visualizer
+                    </h3>
+                    <span className="text-[10px] text-white/35">{masteredUrl ? 'Master ready' : 'Live preview'}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: 'Original', color: '#ec4899', boost: 0 },
+                      { label: 'Mastered', color: '#22c55e', boost: masteredUrl ? 10 : 4 },
+                    ].map((lane) => (
+                      <div key={lane.label} className="h-24 rounded-lg overflow-hidden relative" style={{ background: `${lane.color}10`, border: `1px solid ${lane.color}33` }}>
+                        <div className="absolute top-2 left-2 text-[10px] font-bold text-white/55">{lane.label}</div>
+                        <svg width="100%" height="100%" preserveAspectRatio="none" aria-hidden="true">
+                          {Array.from({ length: 90 }).map((_, i) => {
+                            const h = 14 + Math.abs(Math.sin(i * 0.28)) * 48 + (i % 7) * 2 + lane.boost;
+                            return (
+                              <rect
+                                key={i}
+                                x={`${i * 1.12}%`}
+                                y={`${50 - h / 2}%`}
+                                width="0.68%"
+                                height={`${h}%`}
+                                rx="2"
+                                fill={lane.color}
+                                opacity={0.28 + (i % 5) * 0.09}
+                              />
+                            );
+                          })}
+                        </svg>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  {[
+                    { label: 'Loudness LUFS', value: masterLoudness, set: setMasterLoudness, min: -24, max: -6, unit: 'dB' },
+                    { label: 'Stereo Width', value: masterStereo, set: setMasterStereo, min: 0, max: 150, unit: '%' },
+                    { label: 'Bass EQ', value: masterBass, set: setMasterBass, min: -6, max: 6, unit: 'dB' },
+                    { label: 'Air EQ', value: masterHighs, set: setMasterHighs, min: -6, max: 6, unit: 'dB' },
+                    { label: 'Compression', value: masterCompression, set: setMasterCompression, min: 0, max: 100, unit: '%' },
+                  ].map((ctrl) => (
+                    <label key={ctrl.label} className="grid grid-cols-[92px_1fr_50px] items-center gap-2 text-[10px] text-white/45">
+                      <span>{ctrl.label}</span>
+                      <input
+                        type="range"
+                        min={ctrl.min}
+                        max={ctrl.max}
+                        step={ctrl.unit === '%' ? 1 : 0.5}
+                        value={ctrl.value}
+                        onChange={(event) => ctrl.set(Number(event.target.value))}
+                        className="w-full accent-violet-400"
+                        aria-label={ctrl.label}
+                      />
+                      <span className="font-mono text-white/65 text-right">{ctrl.value}{ctrl.unit}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
             </div>

@@ -179,6 +179,7 @@ export function AudioPlayerProvider({ children }) {
     setIsFullscreen,
     setCurrentTime,
     setDuration,
+    setIsPlaying,
   };
 
   return (

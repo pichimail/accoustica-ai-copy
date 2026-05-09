@@ -10,6 +10,7 @@ import ShareTrackDialog from '@/components/collaboration/ShareTrackDialog';
 import EnhancedMasteringDialog from '@/components/mastering/EnhancedMasteringDialog';
 import StemSeparationDialog from '@/components/audio/StemSeparationDialog';
 import MusicVideoGenerator from '@/components/video/MusicVideoGenerator';
+import BottomSheet from '@/components/mobile/BottomSheet';
 import {
   Search, Music, Plus, Heart, Globe, Lock, Loader2,
   Play, Pause, Trash2, Edit3, Share2, Wand2, Mic2, Video, MoreVertical, X
@@ -155,7 +156,7 @@ export default function LibraryPage() {
       </div>
 
       {/* Track List */}
-      <div className="px-4 pt-4">
+      <div className="px-0 sm:px-4 pt-4">
         {isLoading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin" style={{ color: '#22c55e' }} />
@@ -168,7 +169,7 @@ export default function LibraryPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-0 sm:space-y-2">
             <AnimatePresence>
               {filtered.map((track, i) => (
                 <LibraryTrackRow
@@ -221,10 +222,13 @@ function LibraryTrackRow({ track, index, isCurrentlyPlaying, onPlay, onFavorite,
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.03 }}
-      className="flex items-center gap-3 rounded-2xl p-3"
+      className="flex items-center gap-3 rounded-none sm:rounded-2xl px-4 sm:px-3 py-3"
       style={{
-        background: isCurrentlyPlaying ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.04)',
-        border: isCurrentlyPlaying ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(255,255,255,0.06)',
+        background: isCurrentlyPlaying ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.025)',
+        borderTop: '0',
+        borderLeft: '0',
+        borderRight: '0',
+        borderBottom: isCurrentlyPlaying ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(255,255,255,0.08)',
       }}
     >
       {/* Art */}
@@ -294,7 +298,9 @@ function LibraryTrackRow({ track, index, isCurrentlyPlaying, onPlay, onFavorite,
 }
 
 function TrackActionsSheet({ track, onClose, onEdit, onShare, onMaster, onStems, onVideo, onTogglePublic, onDelete }) {
-  if (!track) return null;
+  if (!track) {
+    return <BottomSheet open={false} onClose={onClose} title={null} />;
+  }
 
   const actions = [
     { icon: Edit3,  label: 'Edit',   fn: () => onEdit(track) },
@@ -306,20 +312,9 @@ function TrackActionsSheet({ track, onClose, onEdit, onShare, onMaster, onStems,
   ];
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <motion.div
-        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-[51] rounded-t-3xl border-t border-white/10 pb-8"
-        style={{ background: 'rgba(14,14,22,0.98)', backdropFilter: 'blur(30px)' }}
-      >
-        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-3" />
-        <div className="px-4">
+    <BottomSheet open={!!track} onClose={onClose} title={null} snapPoints={[0.62]}>
+        {track && (
+        <div>
           {/* Track preview */}
           <div className="flex items-center gap-3 py-2 mb-3 border-b border-white/8">
             <div className="w-11 h-11 rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
@@ -361,7 +356,7 @@ function TrackActionsSheet({ track, onClose, onEdit, onShare, onMaster, onStems,
           </button>
           <button onClick={onClose} className="w-full py-3 text-white/40 text-sm">Cancel</button>
         </div>
-      </motion.div>
-    </AnimatePresence>
+        )}
+    </BottomSheet>
   );
 }

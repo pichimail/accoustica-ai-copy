@@ -1,32 +1,45 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
 const SUNO_API_BASE = 'https://api.kie.ai/api/v1';
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, content-type, x-base44-token',
+};
 
 Deno.serve(async (req) => {
+    if (req.method === 'OPTIONS') {
+        return new Response(null, { headers: corsHeaders });
+    }
+
     try {
         const base44 = createClientFromRequest(req);
         const user = await base44.auth.me();
 
         if (!user) {
-            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+            return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
         }
 
         const { 
             taskId, 
             audioId, 
             trackId,
-            type = 'separate_vocal' 
+            audioUrl,
+            separationType,
+            type = separationType || 'separate_vocal'
         } = await req.json();
 
         if (!taskId || !audioId || !trackId) {
             return Response.json({ 
-                error: 'taskId, audioId, and trackId are required' 
-            }, { status: 400 });
+                error: audioUrl
+                    ? 'Uploaded audio was saved, but this provider requires Suno taskId/audioId for stem separation. Generate or import a provider-backed track before separating stems.'
+                    : 'taskId, audioId, and trackId are required'
+            }, { status: 400, headers: corsHeaders });
         }
 
         const apiKey = Deno.env.get('SUNO_API_KEY');
         if (!apiKey) {
-            return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500 });
+            return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500, headers: corsHeaders });
         }
 
         const callbackUrl = `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/stemCallback`;
@@ -52,7 +65,7 @@ Deno.serve(async (req) => {
             return Response.json({ 
                 error: data.msg || 'Vocal separation failed',
                 details: data
-            }, { status: 400 });
+            }, { status: 400, headers: corsHeaders });
         }
 
         // Create StemSeparation record
@@ -67,12 +80,12 @@ Deno.serve(async (req) => {
             success: true,
             taskId: data.data.taskId,
             separationId: separation.id,
-        });
+        }, { headers: corsHeaders });
 
     } catch (error) {
         console.error('Error in separateVocals:', error);
         return Response.json({ 
             error: error.message || 'Failed to separate vocals'
-        }, { status: 500 });
+        }, { status: 500, headers: corsHeaders });
     }
 });

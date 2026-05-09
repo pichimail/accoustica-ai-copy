@@ -9,12 +9,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import FullscreenPlayer from './FullscreenPlayer';
 import { resumeAudioContext } from '@/lib/audioContext';
 
-export default function GlobalAudioPlayer() {
+export default function GlobalAudioPlayer({ currentPageName }) {
   const {
     currentTrack, isPlaying, currentTime, duration, volume,
     repeatMode, isShuffle, audioRef, togglePlayPause, playNext, playPrevious,
     seek, changeVolume, toggleRepeat, toggleShuffle, setIsFullscreen,
-    setCurrentTime, setDuration,
+    setCurrentTime, setDuration, setIsPlaying,
   } = useAudioPlayer();
 
   const progressBarRef = useRef(null);
@@ -29,7 +29,7 @@ export default function GlobalAudioPlayer() {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const updateTime = () => { if (!isDragging) setCurrentTime(audio.currentTime); };
+    const updateTime = () => { if (!isDragging) setCurrentTime(audio.currentTime || 0); };
     const updateDuration = () => {
       if (!isNaN(audio.duration) && isFinite(audio.duration)) setDuration(audio.duration);
     };
@@ -37,25 +37,36 @@ export default function GlobalAudioPlayer() {
       if (repeatMode === 'one') { audio.currentTime = 0; audio.play(); }
       else playNext();
     };
-    const onPlay = () => resumeAudioContext();
+    const onPlay = () => {
+      resumeAudioContext();
+      setIsPlaying(true);
+      updateDuration();
+    };
+    const onPause = () => setIsPlaying(false);
 
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateDuration);
+    audio.addEventListener('loadeddata', updateDuration);
     audio.addEventListener('durationchange', updateDuration);
     audio.addEventListener('canplay', updateDuration);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
     audio.volume = volume / 100;
+    updateDuration();
+    updateTime();
 
     return () => {
       audio.removeEventListener('timeupdate', updateTime);
       audio.removeEventListener('loadedmetadata', updateDuration);
+      audio.removeEventListener('loadeddata', updateDuration);
       audio.removeEventListener('durationchange', updateDuration);
       audio.removeEventListener('canplay', updateDuration);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
     };
-  }, [repeatMode, volume, isDragging, audioRef]);
+  }, [currentTrack?.id, currentTrack?.audio_url, currentTrack?.stream_audio_url, repeatMode, volume, isDragging, audioRef, setCurrentTime, setDuration, setIsPlaying]);
 
   const fmt = (s) => {
     if (!s || isNaN(s) || !isFinite(s)) return '0:00';
@@ -133,10 +144,16 @@ export default function GlobalAudioPlayer() {
     <>
       {currentTrack && (
         <audio
+          key={currentTrack.id || currentTrack.audio_url || currentTrack.stream_audio_url}
           ref={audioRef}
           src={currentTrack.audio_url || currentTrack.stream_audio_url}
           preload="auto"
           crossOrigin="anonymous"
+          onTimeUpdate={(e) => !isDragging && setCurrentTime(e.currentTarget.currentTime || 0)}
+          onLoadedMetadata={(e) => {
+            const nextDuration = e.currentTarget.duration;
+            if (!isNaN(nextDuration) && isFinite(nextDuration)) setDuration(nextDuration);
+          }}
         />
       )}
 
@@ -147,7 +164,12 @@ export default function GlobalAudioPlayer() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 120, opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-            className="fixed bottom-0 left-0 right-0 z-50 pb-[56px] lg:pb-0"
+            className={cn(
+              "fixed left-0 right-0 z-50 lg:bottom-0",
+              currentPageName === 'Create'
+                ? "bottom-0"
+                : "bottom-[calc(64px+env(safe-area-inset-bottom,0px))]"
+            )}
           >
             {/* ── MOBILE ── */}
             <div className="lg:hidden">

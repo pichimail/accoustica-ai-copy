@@ -106,14 +106,19 @@ export default function AdvancedMasteringStudio({ open, onClose, track, onSucces
     setIsProcessing(true);
     haptics.medium();
     try {
-      const response = await base44.functions.invoke('masterTrack', {
-        track_id: track.id,
-        audio_url: track.audio_url,
+      const response = await base44.functions.invoke('masterAudio', {
+        trackId: track.id,
+        audioUrl: track.audio_url || track.stream_audio_url,
+        targetLufs: loudness[0],
+        loudnessTarget: loudness[0],
         loudness: loudness[0],
         compression: compression[0],
         bass_boost: bassBoost[0],
+        bassBoost: bassBoost[0],
         high_boost: highBoost[0],
+        highBoost: highBoost[0],
         stereo_width: stereoWidth[0],
+        stereoWidth: stereoWidth[0],
         spectral_repair: spectralRepair[0],
         multiband_compression: multibandComp[0],
       });
@@ -121,7 +126,7 @@ export default function AdvancedMasteringStudio({ open, onClose, track, onSucces
       if (response.data.success) {
         toast.success('Track mastered successfully!');
         haptics.success();
-        onSuccess?.(response.data.mastered_url);
+        onSuccess?.(response.data.processedUrl || response.data.masteredUrl || track.audio_url);
         onClose();
       }
     } catch (error) {

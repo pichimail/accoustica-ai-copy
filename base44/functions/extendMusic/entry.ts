@@ -1,14 +1,23 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
 const SUNO_API_BASE = 'https://api.kie.ai/api/v1';
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, content-type, x-base44-token',
+};
 
 Deno.serve(async (req) => {
+    if (req.method === 'OPTIONS') {
+        return new Response(null, { headers: corsHeaders });
+    }
+
     try {
         const base44 = createClientFromRequest(req);
         const user = await base44.auth.me();
 
         if (!user) {
-            return Response.json({ error: 'Unauthorized' }, { status: 401 });
+            return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
         }
 
         const { 
@@ -28,12 +37,12 @@ Deno.serve(async (req) => {
         } = await req.json();
 
         if (!audioId) {
-            return Response.json({ error: 'audioId is required' }, { status: 400 });
+            return Response.json({ error: 'audioId is required' }, { status: 400, headers: corsHeaders });
         }
 
         const apiKey = Deno.env.get('SUNO_API_KEY');
         if (!apiKey) {
-            return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500 });
+            return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500, headers: corsHeaders });
         }
 
         const body = {
@@ -47,7 +56,7 @@ Deno.serve(async (req) => {
             if (!prompt || !style || !title || continueAt === undefined) {
                 return Response.json({ 
                     error: 'prompt, style, title, and continueAt are required when defaultParamFlag is true' 
-                }, { status: 400 });
+                }, { status: 400, headers: corsHeaders });
             }
             Object.assign(body, { prompt, style, title, continueAt });
         }
@@ -75,18 +84,18 @@ Deno.serve(async (req) => {
             return Response.json({ 
                 error: data.msg || 'Music extension failed',
                 details: data
-            }, { status: 400 });
+            }, { status: 400, headers: corsHeaders });
         }
 
         return Response.json({
             success: true,
             taskId: data.data.taskId,
-        });
+        }, { headers: corsHeaders });
 
     } catch (error) {
         console.error('Error in extendMusic:', error);
         return Response.json({ 
             error: error.message || 'Failed to extend music'
-        }, { status: 500 });
+        }, { status: 500, headers: corsHeaders });
     }
 });
