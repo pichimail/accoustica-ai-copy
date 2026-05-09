@@ -115,7 +115,7 @@ export default function SocialFeedPage() {
           <div className="flex flex-col md:flex-row md:items-end gap-4 md:justify-between">
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold">Social Discovery</h1>
-              <p className="text-sm mt-1 hidden" style={{ color: 'rgba(255,255,255,0.62)' }}>Public tracks, listener reactions, and creator conversations.</p>
+              
             </div>
             <div className="flex gap-2">
               {[{ value: '-created_date', label: 'New' }, { value: '-plays', label: 'Hot' }].map((item) =>
