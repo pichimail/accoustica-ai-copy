@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { getTrackAudioSource, useAudioPlayer } from './AudioPlayerContext';
 import {
   Play, Pause, SkipBack, SkipForward,
-  Volume2, VolumeX, Volume1, Heart
+  Volume2, VolumeX, Volume1, Heart,
+  Repeat, Repeat1, Shuffle, List, Maximize2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -140,6 +141,7 @@ export default function GlobalAudioPlayer({ currentPageName }) {
 
   const coverImg = currentTrack?.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop';
   const audioSource = getTrackAudioSource(currentTrack);
+  const [showQueue, setShowQueue] = useState(false);
 
   return (
     <>
@@ -243,50 +245,56 @@ export default function GlobalAudioPlayer({ currentPageName }) {
 
             {/* ── DESKTOP ── */}
             <div className="hidden lg:block bg-[#0d0d14]/98 backdrop-blur-2xl border-t border-white/[0.05]">
-              {/* Top seek bar */}
-              <div
-                ref={progressBarRef}
-                className="absolute top-0 left-0 right-0 h-[3px] cursor-pointer touch-none"
-                onMouseDown={(e) => startSeek(e, progressBarRef)}
-                onTouchStart={(e) => startSeek(e, progressBarRef)}
-              >
-                <div className="absolute inset-0 bg-white/10" />
-                <div
-                  className="absolute top-0 left-0 h-full transition-none"
-                  style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #22c55e, #86efac)' }}
-                />
-              </div>
+              <div className="flex items-center gap-4 px-5 py-2.5 max-w-[1800px] mx-auto">
 
-              <div className="flex items-center gap-4 px-6 py-3 max-w-[1800px] mx-auto">
-                {/* Left — track info */}
-                <div className="flex items-center gap-3 w-64 flex-shrink-0">
+                {/* Left — album art + track info */}
+                <div className="flex items-center gap-3 w-72 flex-shrink-0">
                   <div
                     className="relative w-12 h-12 rounded-xl overflow-hidden shadow-lg flex-shrink-0 cursor-pointer"
                     onClick={() => setIsFullscreen(true)}
                   >
                     <img src={coverImg} alt={currentTrack.title} className="w-full h-full object-cover" />
+                    {isPlaying && (
+                      <div className="absolute inset-0 flex items-end justify-center gap-[2px] bg-black/25 pb-1">
+                        {[0.7, 1, 0.5, 0.9].map((h, i) => (
+                          <span key={i} className="w-[2px] rounded-full bg-green-400"
+                            style={{ height: '45%', transformOrigin: 'bottom', animation: `beat-bar ${0.45 + h * 0.4}s ease-in-out infinite`, animationDelay: `${i * 0.1}s` }}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-white font-semibold text-sm truncate">{currentTrack.title}</p>
-                    <p className="text-white/45 text-xs truncate">{currentTrack.style || 'AI Generated'}</p>
+                    <p className="text-white/55 text-xs truncate">{currentTrack.style || 'AI Generated'}</p>
                   </div>
                   <button
                     onClick={() => setLiked(!liked)}
-                    className={cn('flex-shrink-0 transition-all', liked ? 'text-green-400' : 'text-white/30 hover:text-white/60')}
+                    className={cn('flex-shrink-0 transition-all w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10', liked ? 'text-green-400' : 'text-white/35 hover:text-white/65')}
+                    title="Like"
                   >
                     <Heart className="h-4 w-4" fill={liked ? 'currentColor' : 'none'} />
                   </button>
                 </div>
 
-                {/* Center — controls + inline seek */}
-                <div className="flex-1 flex flex-col items-center gap-2">
-                  <div className="flex items-center gap-3">
+                {/* Center — controls + waveform seek */}
+                <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
+                  {/* Transport controls */}
+                  <div className="flex items-center gap-2">
+                    {/* Shuffle */}
+                    <button
+                      onClick={toggleShuffle}
+                      title="Shuffle"
+                      className={cn('w-8 h-8 flex items-center justify-center rounded-full transition-all', isShuffle ? 'text-green-400' : 'text-white/35 hover:text-white/70')}
+                    >
+                      <Shuffle className="h-3.5 w-3.5" />
+                    </button>
                     <button onClick={playPrevious} className="w-9 h-9 flex items-center justify-center text-white/60 hover:text-white rounded-full hover:bg-white/10 transition-all">
                       <SkipBack className="h-4 w-4" />
                     </button>
                     <button
                       onClick={togglePlayPause}
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-black shadow-xl transition-transform hover:scale-105 active:scale-95 neon-green-glow"
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-black shadow-xl transition-transform hover:scale-105 active:scale-95 neon-green-glow"
                       style={{ background: '#22c55e' }}
                     >
                       {isPlaying ? <Pause className="h-5 w-5 fill-black" /> : <Play className="h-5 w-5 fill-black ml-0.5" />}
@@ -294,14 +302,22 @@ export default function GlobalAudioPlayer({ currentPageName }) {
                     <button onClick={playNext} className="w-9 h-9 flex items-center justify-center text-white/60 hover:text-white rounded-full hover:bg-white/10 transition-all">
                       <SkipForward className="h-4 w-4" />
                     </button>
+                    {/* Repeat */}
+                    <button
+                      onClick={toggleRepeat}
+                      title={repeatMode === 'off' ? 'Enable Repeat' : repeatMode === 'all' ? 'Repeat One' : 'Disable Repeat'}
+                      className={cn('w-8 h-8 flex items-center justify-center rounded-full transition-all', repeatMode !== 'off' ? 'text-green-400' : 'text-white/35 hover:text-white/70')}
+                    >
+                      {repeatMode === 'one' ? <Repeat1 className="h-3.5 w-3.5" /> : <Repeat className="h-3.5 w-3.5" />}
+                    </button>
                   </div>
 
-                  {/* Inline desktop seek bar */}
-                  <div className="w-full flex items-center gap-2 max-w-md">
-                    <span className="text-[11px] text-white/40 tabular-nums w-9 text-right">{fmt(displayTime)}</span>
+                  {/* Seek bar */}
+                  <div className="w-full flex items-center gap-2 max-w-lg">
+                    <span className="text-[11px] text-white/50 tabular-nums w-9 text-right">{fmt(displayTime)}</span>
                     <div
                       ref={progressBarRef}
-                      className="flex-1 h-1 relative rounded-full cursor-pointer touch-none group"
+                      className="flex-1 h-1.5 relative rounded-full cursor-pointer touch-none group"
                       onMouseDown={(e) => startSeek(e, progressBarRef)}
                       onTouchStart={(e) => startSeek(e, progressBarRef)}
                     >
@@ -315,21 +331,30 @@ export default function GlobalAudioPlayer({ currentPageName }) {
                         style={{ left: `calc(${pct}% - 6px)` }}
                       />
                     </div>
-                    <span className="text-[11px] text-white/40 tabular-nums w-9">{fmt(duration)}</span>
+                    <span className="text-[11px] text-white/50 tabular-nums w-9">{fmt(duration)}</span>
                   </div>
                 </div>
 
-                {/* Right — volume */}
-                <div className="flex items-center gap-2 w-48 flex-shrink-0 justify-end">
+                {/* Right — volume + extras */}
+                <div className="flex items-center gap-2 w-56 flex-shrink-0 justify-end">
+                  {/* Queue toggle */}
+                  <button
+                    onClick={() => setShowQueue(v => !v)}
+                    title="Queue"
+                    className={cn('w-8 h-8 flex items-center justify-center rounded-full transition-all', showQueue ? 'text-green-400 bg-green-400/10' : 'text-white/35 hover:text-white/70 hover:bg-white/10')}
+                  >
+                    <List className="h-4 w-4" />
+                  </button>
+
                   <button
                     onClick={() => changeVolume(volume === 0 ? 70 : 0)}
-                    className="text-white/40 hover:text-white transition-colors"
+                    className="text-white/45 hover:text-white transition-colors w-7 h-7 flex items-center justify-center"
                   >
                     {volume === 0 ? <VolumeX className="h-4 w-4" /> : volume < 50 ? <Volume1 className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                   </button>
                   <div
                     ref={volumeBarRef}
-                    className="flex-1 relative h-1.5 rounded-full cursor-pointer touch-none"
+                    className="w-24 relative h-1.5 rounded-full cursor-pointer touch-none group"
                     style={{ background: 'rgba(255,255,255,0.1)' }}
                     onMouseDown={startVolume}
                     onTouchStart={startVolume}
@@ -339,17 +364,16 @@ export default function GlobalAudioPlayer({ currentPageName }) {
                       style={{ width: `${volume}%`, background: 'linear-gradient(90deg, #22c55e, #86efac)' }}
                     />
                     <div
-                      className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow"
-                      style={{ left: `calc(${volume}% - 6px)` }}
+                      className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white shadow opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                      style={{ left: `calc(${volume}% - 5px)` }}
                     />
                   </div>
                   <button
                     onClick={() => setIsFullscreen(true)}
+                    title="Full screen player"
                     className="w-8 h-8 flex items-center justify-center rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-all"
                   >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                    </svg>
+                    <Maximize2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>

@@ -115,7 +115,7 @@ export default function SocialFeedPage() {
           <div className="flex flex-col md:flex-row md:items-end gap-4 md:justify-between">
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold">Social Discovery</h1>
-              <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.46)' }}>Public tracks, listener reactions, and creator conversations.</p>
+              <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.62)' }}>Public tracks, listener reactions, and creator conversations.</p>
             </div>
             <div className="flex gap-2">
               {[{ value: '-created_date', label: 'New' }, { value: '-plays', label: 'Hot' }].map(item => (
@@ -123,10 +123,10 @@ export default function SocialFeedPage() {
                   key={item.value}
                   type="button"
                   onClick={() => setSort(item.value)}
-                  className="px-4 py-2 border text-sm font-bold focus:outline-none focus:ring-2 focus:ring-rose-400"
+                  className="px-4 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-rose-400"
                   style={sort === item.value
-                    ? { background: '#22c55e', borderColor: '#22c55e', color: '#020204' }
-                    : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.62)' }}
+                    ? { background: '#22c55e', color: '#020204', borderRadius: 8, border: '1px solid #22c55e' }
+                    : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.75)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }}
                 >
                   {item.label}
                 </button>
@@ -140,7 +140,8 @@ export default function SocialFeedPage() {
               onChange={event => setSearch(event.target.value)}
               placeholder="Search tracks, styles, creators..."
               aria-label="Search public tracks"
-              className="w-full pl-10 pr-3 py-3 text-sm bg-white/[0.045] border border-white/10 text-white placeholder:text-white/25 focus:outline-none focus:ring-1 focus:ring-rose-400"
+              className="w-full pl-10 pr-3 py-3 text-sm bg-white/[0.06] border border-white/10 text-white placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-rose-400"
+              style={{ borderRadius: 8 }}
             />
           </div>
         </div>
@@ -202,11 +203,11 @@ function TrackMasonryCard({
   const tall = (track.title?.length || 0) % 3 === 0;
 
   return (
-    <article className="break-inside-avoid mb-3 border overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#09090f' }}>
-      <div className={`relative ${tall ? 'aspect-[4/5]' : 'aspect-square'} border-b`} style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)' }}>
+    <article className="break-inside-avoid mb-3 overflow-hidden" style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: '#09090f' }}>
+      <div className={`relative ${tall ? 'aspect-[4/5]' : 'aspect-square'} overflow-hidden`} style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)' }}>
         {cover ? <img src={cover} alt={track.title} className="h-full w-full object-cover" /> : null}
-        <button type="button" onClick={onPlay} className="absolute inset-0 flex items-center justify-center bg-black/18 hover:bg-black/42 transition-colors" aria-label={playing ? 'Pause track' : 'Play track'}>
-          <span className="h-14 w-14 flex items-center justify-center border" style={{ background: playing ? '#22c55e' : 'rgba(2,2,4,0.72)', borderColor: playing ? '#22c55e' : 'rgba(255,255,255,0.2)', color: playing ? '#020204' : '#fff' }}>
+        <button type="button" onClick={onPlay} className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/45 transition-colors" aria-label={playing ? 'Pause track' : 'Play track'}>
+          <span className="h-14 w-14 flex items-center justify-center" style={{ borderRadius: 8, background: playing ? '#22c55e' : 'rgba(2,2,4,0.75)', border: `1px solid ${playing ? '#22c55e' : 'rgba(255,255,255,0.22)'}`, color: playing ? '#020204' : '#fff' }}>
             {playing ? <Pause className="h-6 w-6 fill-current" /> : <Play className="h-6 w-6 fill-current ml-0.5" />}
           </span>
         </button>
@@ -221,7 +222,7 @@ function TrackMasonryCard({
         <p className="mt-2 text-xs" style={{ color: 'rgba(255,255,255,0.34)' }}>{track.created_by?.split('@')[0] || 'Accoustica'}</p>
       </div>
 
-      <div className="grid grid-cols-4 border-t border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+      <div className="grid grid-cols-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <ActionButton active={liked} onClick={onLike} label={likes.length || ''}><Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} /></ActionButton>
         <ActionButton active={openComments} onClick={onToggleComments} label={comments.length || ''}><MessageCircle className="h-4 w-4" /></ActionButton>
         <ActionButton onClick={onShare}><Share2 className="h-4 w-4" /></ActionButton>
@@ -233,7 +234,7 @@ function TrackMasonryCard({
 
       {openComments && (
         <div className="p-3 space-y-3">
-          <div className="max-h-48 overflow-y-auto divide-y divide-white/5 border" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+          <div className="max-h-48 overflow-y-auto divide-y divide-white/5 rounded-lg border" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
             {comments.length === 0 ? (
               <p className="text-xs text-center py-4" style={{ color: 'rgba(255,255,255,0.34)' }}>No comments yet</p>
             ) : comments.slice(0, 12).map(comment => (
@@ -250,9 +251,10 @@ function TrackMasonryCard({
               onKeyDown={event => event.key === 'Enter' && onComment()}
               placeholder="Add a comment..."
               aria-label={`Comment on ${track.title}`}
-              className="flex-1 px-3 py-2 text-sm bg-white/[0.04] border border-white/10 text-white placeholder:text-white/25 focus:outline-none focus:ring-1 focus:ring-rose-400"
+              className="flex-1 px-3 py-2 text-sm bg-white/[0.04] border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-rose-400"
+              style={{ borderRadius: 8 }}
             />
-            <button type="button" onClick={onComment} className="px-3 border" aria-label="Send comment" style={{ background: '#e11d48', borderColor: '#e11d48' }}>
+            <button type="button" onClick={onComment} className="px-3" aria-label="Send comment" style={{ background: '#e11d48', borderRadius: 8 }}>
               <Send className="h-4 w-4" />
             </button>
           </div>
@@ -267,15 +269,15 @@ function ActionButton({ active, onClick, label, children }) {
     <button
       type="button"
       onClick={onClick}
-      className="h-11 flex items-center justify-center gap-1 border-r text-sm font-bold focus:outline-none focus:ring-1 focus:ring-rose-400"
+      className="h-11 flex items-center justify-center gap-1 border-r text-sm font-bold focus:outline-none transition-colors"
       style={{
         borderColor: 'rgba(255,255,255,0.08)',
-        color: active ? '#fb7185' : 'rgba(255,255,255,0.48)',
+        color: active ? '#fb7185' : 'rgba(255,255,255,0.6)',
         background: active ? 'rgba(225,29,72,0.1)' : 'transparent',
       }}
     >
       {children}
-      {label && <span className="text-xs">{label}</span>}
+      {label ? <span className="text-xs">{label}</span> : null}
     </button>
   );
 }

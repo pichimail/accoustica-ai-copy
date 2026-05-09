@@ -26,34 +26,34 @@ export default function InsightsPage() {
     enabled: !!user?.email,
   });
 
-  const ownedIds = useMemo(() => new Set(tracks.map(track => track.id)), [tracks]);
-  const ownedPlays = useMemo(() => plays.filter(play => ownedIds.has(play.track_id)), [ownedIds, plays]);
+  const ownedIds = useMemo(() => new Set(tracks.map(t => t.id)), [tracks]);
+  const ownedPlays = useMemo(() => plays.filter(p => ownedIds.has(p.track_id)), [ownedIds, plays]);
 
   const metrics = useMemo(() => {
-    const ready = tracks.filter(track => track.status === 'ready');
-    const mastered = tracks.filter(track => track.mastered || track.tags?.includes('mastered'));
-    const modified = tracks.filter(track => track.modified || track.parent_track_id || track.modification_type);
-    const publicTracks = tracks.filter(track => track.is_public);
-    const totalPlays = tracks.reduce((sum, track) => sum + (track.plays || 0), 0);
+    const ready = tracks.filter(t => t.status === 'ready');
+    const mastered = tracks.filter(t => t.mastered || t.tags?.includes('mastered'));
+    const modified = tracks.filter(t => t.modified || t.parent_track_id || t.modification_type);
+    const publicTracks = tracks.filter(t => t.is_public);
+    const totalPlays = tracks.reduce((sum, t) => sum + (t.plays || 0), 0);
     return { ready: ready.length, mastered: mastered.length, modified: modified.length, publicTracks: publicTracks.length, totalPlays };
   }, [tracks]);
 
   const playsByDay = useMemo(() => {
-    const days = Array.from({ length: 14 }, (_, index) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (13 - index));
-      const key = date.toISOString().slice(0, 10);
-      return { key, label: date.toLocaleDateString('en-US', { weekday: 'short' }), value: 0 };
+    const days = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (13 - i));
+      const key = d.toISOString().slice(0, 10);
+      return { key, label: d.toLocaleDateString('en-US', { weekday: 'short' }), value: 0 };
     });
-    const map = new Map(days.map(day => [day.key, day]));
-    ownedPlays.forEach(play => {
-      const key = (play.played_at || play.created_date || '').slice(0, 10);
+    const map = new Map(days.map(d => [d.key, d]));
+    ownedPlays.forEach(p => {
+      const key = (p.played_at || p.created_date || '').slice(0, 10);
       if (map.has(key)) map.get(key).value += 1;
     });
     if (!ownedPlays.length) {
-      tracks.forEach(track => {
-        const key = (track.created_date || '').slice(0, 10);
-        if (map.has(key)) map.get(key).value += track.plays || 0;
+      tracks.forEach(t => {
+        const key = (t.created_date || '').slice(0, 10);
+        if (map.has(key)) map.get(key).value += t.plays || 0;
       });
     }
     return days;
@@ -61,11 +61,12 @@ export default function InsightsPage() {
 
   const genres = useMemo(() => {
     const counts = new Map();
-    tracks.forEach(track => {
-      const raw = track.style || track.tags || 'AI Generated';
+    tracks.forEach(t => {
+      const raw = t.style || t.tags || 'AI Generated';
+      // Only use first meaningful token (not long descriptions)
       raw.split(',').slice(0, 4).forEach(token => {
-        const genre = token.trim() || 'AI Generated';
-        counts.set(genre, (counts.get(genre) || 0) + (track.plays || 1));
+        const genre = token.trim().slice(0, 32) || 'AI Generated';
+        if (genre.length > 2) counts.set(genre, (counts.get(genre) || 0) + (t.plays || 1));
       });
     });
     return [...counts.entries()]
@@ -93,25 +94,27 @@ export default function InsightsPage() {
     return (
       <main className="min-h-screen flex items-center justify-center px-5 text-center" style={{ background: '#020204', color: '#fff' }}>
         <div className="max-w-md">
-          <BarChart3 className="h-12 w-12 mx-auto mb-4" style={{ color: 'rgba(255,255,255,0.22)' }} />
+          <BarChart3 className="h-12 w-12 mx-auto mb-4" style={{ color: 'rgba(255,255,255,0.3)' }} />
           <h1 className="text-2xl font-extrabold">Insights require sign in</h1>
-          <p className="mt-2 text-sm" style={{ color: 'rgba(255,255,255,0.52)' }}>Sign in to view plays, genre performance, and mastering analytics for your generated tracks.</p>
-          <button type="button" onClick={() => base44.auth.login()} className="mt-5 px-4 py-2 border text-sm font-bold" style={{ background: '#22c55e', borderColor: '#22c55e', color: '#020204' }}>Sign In</button>
+          <p className="mt-2 text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>Sign in to view plays, genre performance, and mastering analytics for your generated tracks.</p>
+          <button type="button" onClick={() => base44.auth.login()} className="mt-5 px-6 py-2.5 rounded-lg text-sm font-bold" style={{ background: '#22c55e', color: '#020204' }}>Sign In</button>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen pb-32" style={{ background: '#020204', color: '#fff' }}>
-      <header className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#07070b' }}>
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+    <main className="min-h-screen pb-32 w-full" style={{ background: '#020204', color: '#fff' }}>
+      {/* Header */}
+      <header className="border-b w-full" style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#07070b' }}>
+        <div className="w-full max-w-screen-2xl mx-auto px-4 md:px-8 py-5">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div>
               <p className="text-xs font-extrabold uppercase tracking-widest" style={{ color: '#fb7185' }}>Dashboard</p>
-              <h1 className="text-3xl md:text-5xl font-extrabold mt-1">Music Insights</h1>
+              <h1 className="text-2xl md:text-4xl font-extrabold mt-1">Music Insights</h1>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-px border min-w-full md:min-w-[520px]" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.08)' }}>
+            {/* Metrics row — scrollable on mobile */}
+            <div className="grid grid-cols-4 gap-px rounded-lg overflow-hidden border min-w-0 sm:min-w-[440px]" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.06)' }}>
               <Metric label="Tracks" value={tracks.length} icon={Music2} />
               <Metric label="Ready" value={metrics.ready} icon={Disc3} />
               <Metric label="Plays" value={metrics.totalPlays} icon={TrendingUp} />
@@ -121,7 +124,8 @@ export default function InsightsPage() {
         </div>
       </header>
 
-      <section className="max-w-7xl mx-auto px-4 md:px-8 py-6 grid xl:grid-cols-[1.35fr_0.65fr] gap-4">
+      {/* Content grid */}
+      <section className="w-full max-w-screen-2xl mx-auto px-3 md:px-8 py-5 grid grid-cols-1 xl:grid-cols-[1.4fr_0.6fr] gap-4">
         <Panel title="Plays Over Time" icon={BarChart3}>
           <PlayBars data={playsByDay} />
         </Panel>
@@ -141,51 +145,48 @@ export default function InsightsPage() {
 
 function Metric({ label, value, icon: Icon }) {
   return (
-    <div className="p-4" style={{ background: '#09090f' }}>
-      <Icon className="h-4 w-4 mb-3" style={{ color: '#22c55e' }} />
-      <p className="text-2xl font-extrabold tabular-nums">{value}</p>
-      <p className="text-[10px] uppercase tracking-wider mt-1" style={{ color: 'rgba(255,255,255,0.42)' }}>{label}</p>
+    <div className="p-3 md:p-4" style={{ background: '#09090f' }}>
+      <Icon className="h-3.5 w-3.5 mb-2" style={{ color: '#22c55e' }} />
+      <p className="text-xl font-extrabold tabular-nums">{value}</p>
+      <p className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>{label}</p>
     </div>
   );
 }
 
 function Panel({ title, icon: Icon, children }) {
   return (
-    <section className="border" style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#09090f' }}>
+    <section className="rounded-lg border overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.1)', background: '#09090f' }}>
       <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-        <Icon className="h-4 w-4" style={{ color: '#fb7185' }} />
-        <h2 className="text-sm font-extrabold uppercase tracking-wider">{title}</h2>
+        <Icon className="h-4 w-4 flex-shrink-0" style={{ color: '#fb7185' }} />
+        <h2 className="text-sm font-extrabold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.9)' }}>{title}</h2>
       </div>
-      <div className="p-4 md:p-5">{children}</div>
+      <div className="p-4 md:p-5 overflow-x-auto">{children}</div>
     </section>
   );
 }
 
 function PlayBars({ data }) {
-  const max = Math.max(1, ...data.map(item => item.value));
+  const max = Math.max(1, ...data.map(d => d.value));
   return (
-    <div className="h-80 flex items-end gap-2 md:gap-3 pt-6" style={{ perspective: '900px' }}>
-      {data.map((item, index) => {
-        const height = Math.max(8, (item.value / max) * 100);
+    <div className="h-56 md:h-72 flex items-end gap-1.5 md:gap-2 pt-6" style={{ minWidth: 0 }}>
+      {data.map((item, i) => {
+        const height = Math.max(6, (item.value / max) * 100);
         return (
-          <div key={item.key} className="flex-1 h-full flex flex-col justify-end items-center gap-2">
+          <div key={item.key} className="flex-1 h-full flex flex-col justify-end items-center gap-1" style={{ minWidth: 0 }}>
             <div className="relative w-full flex items-end justify-center h-full">
               <div
-                className="w-full max-w-10 border"
+                className="w-full rounded-t-sm"
                 style={{
                   height: `${height}%`,
-                  minHeight: 12,
+                  minHeight: 10,
                   background: 'linear-gradient(180deg, #22c55e, #0f766e)',
-                  borderColor: 'rgba(34,197,94,0.45)',
-                  boxShadow: `0 ${10 + index}px 34px rgba(34,197,94,0.22)`,
-                  transform: 'rotateX(14deg) rotateY(-8deg)',
-                  transformOrigin: 'bottom',
+                  boxShadow: '0 4px 16px rgba(34,197,94,0.2)',
                 }}
                 title={`${item.label}: ${item.value}`}
               />
-              <span className="absolute -top-5 text-xs font-bold tabular-nums" style={{ color: 'rgba(255,255,255,0.62)' }}>{item.value}</span>
+              <span className="absolute -top-5 text-[10px] font-bold tabular-nums" style={{ color: 'rgba(255,255,255,0.7)' }}>{item.value}</span>
             </div>
-            <span className="text-[10px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.36)' }}>{item.label}</span>
+            <span className="text-[9px] md:text-[10px] uppercase tracking-wider truncate w-full text-center" style={{ color: 'rgba(255,255,255,0.5)' }}>{item.label}</span>
           </div>
         );
       })}
@@ -194,17 +195,17 @@ function PlayBars({ data }) {
 }
 
 function GenreBars({ data }) {
-  const max = Math.max(1, ...data.map(item => item.value));
+  const max = Math.max(1, ...data.map(d => d.value));
   return (
     <div className="space-y-3">
       {data.length === 0 ? <Empty /> : data.map(item => (
         <div key={item.label}>
-          <div className="flex justify-between gap-3 text-sm mb-1">
-            <span className="font-semibold truncate">{item.label}</span>
-            <span className="tabular-nums" style={{ color: 'rgba(255,255,255,0.46)' }}>{item.value}</span>
+          <div className="flex justify-between gap-3 text-sm mb-1.5">
+            <span className="font-semibold truncate max-w-[70%]" style={{ color: 'rgba(255,255,255,0.9)' }}>{item.label}</span>
+            <span className="tabular-nums flex-shrink-0" style={{ color: 'rgba(255,255,255,0.6)' }}>{item.value}</span>
           </div>
-          <div className="h-3 border" style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#020204' }}>
-            <div className="h-full" style={{ width: `${(item.value / max) * 100}%`, background: 'linear-gradient(90deg, #fb7185, #a78bfa)' }} />
+          <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+            <div className="h-full rounded-full" style={{ width: `${(item.value / max) * 100}%`, background: 'linear-gradient(90deg, #fb7185, #a78bfa)' }} />
           </div>
         </div>
       ))}
@@ -214,18 +215,22 @@ function GenreBars({ data }) {
 
 function RadialBreakdown({ data, total }) {
   return (
-    <div className="grid grid-cols-2 gap-px border" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.08)' }}>
+    <div className="grid grid-cols-2 gap-3">
       {data.map(item => {
         const pct = Math.round((item.value / total) * 100);
+        const deg = pct * 3.6;
         return (
-          <div key={item.label} className="p-4 min-h-32" style={{ background: '#09090f' }}>
-            <div className="h-16 w-16 mb-4 border" style={{
-              borderColor: 'rgba(255,255,255,0.1)',
-              background: `conic-gradient(${item.color} ${pct * 3.6}deg, rgba(255,255,255,0.08) 0deg)`,
-              boxShadow: `0 0 30px ${item.color}33`,
-            }} />
-            <p className="text-xl font-extrabold">{pct}%</p>
-            <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.48)' }}>{item.label} ({item.value})</p>
+          <div key={item.label} className="rounded-lg p-3 md:p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="h-14 w-14 rounded-full mb-3 flex items-center justify-center" style={{
+              background: `conic-gradient(${item.color} ${deg}deg, rgba(255,255,255,0.06) 0deg)`,
+              boxShadow: `0 0 20px ${item.color}33`,
+            }}>
+              <div className="h-9 w-9 rounded-full flex items-center justify-center" style={{ background: '#09090f' }}>
+                <span className="text-xs font-extrabold" style={{ color: item.color }}>{pct}%</span>
+              </div>
+            </div>
+            <p className="text-base font-extrabold">{pct}%</p>
+            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.6)' }}>{item.label} <span style={{ color: 'rgba(255,255,255,0.4)' }}>({item.value})</span></p>
           </div>
         );
       })}
@@ -235,21 +240,21 @@ function RadialBreakdown({ data, total }) {
 
 function TrackBreakdown({ tracks }) {
   const rows = tracks
-    .filter(track => track.mastered || track.modified || track.parent_track_id || track.modification_type)
+    .filter(t => t.mastered || t.modified || t.parent_track_id || t.modification_type)
     .slice(0, 8);
   if (rows.length === 0) return <Empty />;
   return (
-    <div className="divide-y divide-white/5 border" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+    <div className="divide-y rounded-lg overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.07)', divideColor: 'rgba(255,255,255,0.05)' }}>
       {rows.map(track => (
         <div key={track.id} className="flex items-center gap-3 px-3 py-3">
-          <div className="h-10 w-10 flex-shrink-0 overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)' }}>
+          <div className="h-10 w-10 rounded-lg flex-shrink-0 overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)' }}>
             {track.cover_image_url ? <img src={track.cover_image_url} alt="" className="h-full w-full object-cover" /> : null}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold truncate">{track.title}</p>
-            <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.42)' }}>{track.mastered ? 'Mastered' : track.modification_type || 'Modified'}</p>
+            <p className="text-sm font-bold truncate" style={{ color: 'rgba(255,255,255,0.9)' }}>{track.title}</p>
+            <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>{track.mastered ? 'Mastered' : track.modification_type || 'Modified'}</p>
           </div>
-          <span className="text-xs tabular-nums" style={{ color: '#22c55e' }}>{track.plays || 0}</span>
+          <span className="text-xs tabular-nums font-bold" style={{ color: '#22c55e' }}>{track.plays || 0}</span>
         </div>
       ))}
     </div>
@@ -257,5 +262,5 @@ function TrackBreakdown({ tracks }) {
 }
 
 function Empty() {
-  return <p className="text-sm py-8 text-center" style={{ color: 'rgba(255,255,255,0.36)' }}>No data yet</p>;
+  return <p className="text-sm py-8 text-center" style={{ color: 'rgba(255,255,255,0.45)' }}>No data yet</p>;
 }

@@ -6,6 +6,7 @@ import { Calendar, Clock, Copy, Disc3, Globe, Pause, Play, Share2, Sparkles, Vol
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import { getPublicTrackUrl, getSeoDescription, getTrackPublicSlug } from '@/lib/trackSharing';
+import WaveformCanvas from '@/components/audio/WaveformCanvas';
 
 const FALLBACK_COVER = 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=1200&h=1200&fit=crop';
 
@@ -191,7 +192,7 @@ function EmbeddedPlayer({ track, coverImage, onFirstPlay }) {
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(track.duration || 0);
-  const progress = duration ? (currentTime / duration) * 100 : 0;
+  const audioSrc = track.audio_url || track.stream_audio_url;
 
   const toggle = async () => {
     if (!audioRef.current) return;
@@ -203,46 +204,63 @@ function EmbeddedPlayer({ track, coverImage, onFirstPlay }) {
     }
   };
 
+  const handleSeek = (time) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = time;
+    setCurrentTime(time);
+  };
+
+  const fmt = (s) => {
+    if (!Number.isFinite(Number(s)) || Number(s) <= 0) return '0:00';
+    const v = Number(s);
+    return `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}`;
+  };
+
   return (
-    <div className="border" style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.035)' }}>
+    <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.035)' }}>
       <audio
         ref={audioRef}
-        src={track.audio_url || track.stream_audio_url}
+        src={audioSrc}
         preload="metadata"
         crossOrigin="anonymous"
-        onTimeUpdate={event => setCurrentTime(event.currentTarget.currentTime)}
-        onLoadedMetadata={event => setDuration(event.currentTarget.duration || track.duration || 0)}
+        onTimeUpdate={e => setCurrentTime(e.currentTarget.currentTime)}
+        onLoadedMetadata={e => setDuration(e.currentTarget.duration || track.duration || 0)}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => setPlaying(false)}
       />
-      <div className="flex items-center gap-3 p-3">
-        <button type="button" onClick={toggle} className="h-12 w-12 flex items-center justify-center border flex-shrink-0" aria-label={playing ? 'Pause track' : 'Play track'} style={{ background: '#22c55e', borderColor: '#22c55e', color: '#020204' }}>
+
+      {/* Waveform */}
+      <div className="px-4 pt-4 pb-2">
+        <WaveformCanvas
+          audioRef={audioRef}
+          audioSrc={audioSrc}
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={handleSeek}
+          className="h-20 md:h-28"
+          accentColor="#22c55e"
+        />
+      </div>
+
+      {/* Controls row */}
+      <div className="flex items-center gap-3 px-4 pb-4">
+        <button
+          type="button"
+          onClick={toggle}
+          className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg"
+          aria-label={playing ? 'Pause track' : 'Play track'}
+          style={{ background: '#22c55e', color: '#020204' }}
+        >
           {playing ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current ml-0.5" />}
         </button>
-        <img src={coverImage} alt="" className="h-12 w-12 object-cover border hidden sm:block" style={{ borderColor: 'rgba(255,255,255,0.1)' }} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <p className="text-sm font-bold truncate">{track.title}</p>
-            <span className="text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.48)' }}>{formatDuration(currentTime)} / {formatDuration(duration)}</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={duration || 100}
-            step={0.1}
-            value={currentTime}
-            onChange={event => {
-              const next = Number(event.target.value);
-              audioRef.current.currentTime = next;
-              setCurrentTime(next);
-            }}
-            aria-label="Track seek bar"
-            className="w-full accent-green-500"
-            style={{ background: `linear-gradient(90deg, #22c55e ${progress}%, rgba(255,255,255,0.12) ${progress}%)` }}
-          />
+          <p className="text-sm font-bold truncate">{track.title}</p>
+          <span className="text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.55)' }}>
+            {fmt(currentTime)} / {fmt(duration)}
+          </span>
         </div>
-        <Volume2 className="h-4 w-4 hidden sm:block" style={{ color: 'rgba(255,255,255,0.36)' }} />
+        <Volume2 className="h-4 w-4 hidden sm:block flex-shrink-0" style={{ color: 'rgba(255,255,255,0.36)' }} />
       </div>
     </div>
   );

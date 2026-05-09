@@ -1,18 +1,78 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import MinimalWaveformPlayer from '@/components/audio/MinimalWaveformPlayer';
+import WaveformCanvas from '@/components/audio/WaveformCanvas';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   ArrowLeft, Clock, Calendar, Music, Eye, EyeOff, Share2, Download, 
-  Play, Check
+  Play, Pause, Check
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+
+function TrackWaveformPlayer({ track }) {
+  const audioRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(track.duration || 0);
+  const audioSrc = track.audio_url || track.stream_audio_url;
+
+  const toggle = async () => {
+    if (!audioRef.current) return;
+    if (playing) audioRef.current.pause();
+    else await audioRef.current.play();
+  };
+
+  const fmtTime = (s) => {
+    if (!Number.isFinite(Number(s)) || Number(s) <= 0) return '0:00';
+    const v = Number(s);
+    return `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="rounded-2xl overflow-hidden border border-white/10" style={{ background: 'rgba(255,255,255,0.04)' }}>
+      <div className="px-4 pt-4 pb-2">
+        <WaveformCanvas
+          audioRef={audioRef}
+          audioSrc={audioSrc}
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={(t) => { if (audioRef.current) { audioRef.current.currentTime = t; setCurrentTime(t); } }}
+          className="h-24 md:h-32"
+          accentColor="#a78bfa"
+        />
+      </div>
+      <div className="flex items-center gap-3 px-4 pb-4">
+        <button
+          onClick={toggle}
+          className="h-11 w-11 rounded-full flex items-center justify-center flex-shrink-0 shadow-md"
+          style={{ background: '#a78bfa', color: '#fff' }}
+          aria-label={playing ? 'Pause' : 'Play'}
+        >
+          {playing ? <Pause className="h-5 w-5 fill-white" /> : <Play className="h-5 w-5 fill-white ml-0.5" />}
+        </button>
+        <div className="flex-1 text-sm" style={{ color: 'rgba(255,255,255,0.55)' }}>
+          {fmtTime(currentTime)} / {fmtTime(duration)}
+        </div>
+      </div>
+      <audio
+        ref={audioRef}
+        src={audioSrc}
+        preload="metadata"
+        crossOrigin="anonymous"
+        onTimeUpdate={e => setCurrentTime(e.currentTarget.currentTime)}
+        onLoadedMetadata={e => setDuration(e.currentTarget.duration || track.duration || 0)}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+      />
+    </div>
+  );
+}
 
 export default function TrackViewPage() {
   const [copied, setCopied] = useState(false);
@@ -192,12 +252,9 @@ export default function TrackViewPage() {
             </div>
           </div>
 
-          {/* Minimal Player */}
+          {/* Waveform Player */}
           <div className="px-6 pb-6 md:px-8 md:pb-8">
-            <MinimalWaveformPlayer
-              src={track.audio_url || track.stream_audio_url}
-              className="w-full"
-            />
+            <TrackWaveformPlayer track={track} />
           </div>
 
           {/* Prompt Section */}
