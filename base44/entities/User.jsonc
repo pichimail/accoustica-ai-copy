@@ -1,0 +1,68 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "user"
+      ],
+      "default": "user"
+    },
+    "artist_name": {
+      "type": "string",
+      "description": "Public-facing artist name shown instead of display name"
+    },
+    "bio": {
+      "type": "string",
+      "description": "Short biography"
+    },
+    "avatar_url": {
+      "type": "string",
+      "description": "Profile picture URL"
+    },
+    "banner_url": {
+      "type": "string",
+      "description": "Profile banner image URL"
+    },
+    "profile_visibility": {
+      "type": "string",
+      "enum": [
+        "private",
+        "followers",
+        "public"
+      ],
+      "default": "private"
+    },
+    "hide_email": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, the email is not shown to other users"
+    },
+    "audio_settings": {
+      "type": "string",
+      "description": "JSON string of audio settings"
+    },
+    "ui_preferences": {
+      "type": "string",
+      "description": "JSON string of UI preferences"
+    },
+    "plan_id": {
+      "type": "string",
+      "description": "Subscribed plan ID"
+    },
+    "daily_usage": {
+      "type": "number",
+      "default": 0
+    },
+    "monthly_usage": {
+      "type": "number",
+      "default": 0
+    },
+    "last_usage_reset": {
+      "type": "string",
+      "description": "Date of last daily usage reset"
+    }
+  }
+}

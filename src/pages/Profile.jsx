@@ -22,6 +22,9 @@ import {
   Upload,
   Volume2,
   Zap,
+  Trash2,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 const TABS = [
@@ -62,7 +65,9 @@ export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState('overview');
   const [saving, setSaving] = useState(false);
-  const [profileForm, setProfileForm] = useState({ full_name: '', avatar_url: '', banner_url: '', bio: '', profile_visibility: 'private' });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
+  const [profileForm, setProfileForm] = useState({ full_name: '', artist_name: '', avatar_url: '', banner_url: '', bio: '', profile_visibility: 'private', hide_email: false });
   const [audioSettings, setAudioSettings] = useState(DEFAULT_AUDIO);
   const [uiPreferences, setUiPreferences] = useState(DEFAULT_UI);
   const { changeVolume } = useAudioPlayer();
@@ -72,10 +77,12 @@ export default function ProfilePage() {
       setUser(currentUser);
       setProfileForm({
         full_name: currentUser.full_name || '',
+        artist_name: currentUser.artist_name || '',
         avatar_url: currentUser.avatar_url || '',
         banner_url: currentUser.banner_url || '',
         bio: currentUser.bio || '',
         profile_visibility: currentUser.profile_visibility || 'private',
+        hide_email: currentUser.hide_email || false,
       });
       setAudioSettings(parseJson(currentUser.audio_settings, DEFAULT_AUDIO));
       setUiPreferences(parseJson(currentUser.ui_preferences, DEFAULT_UI));
@@ -149,10 +156,12 @@ export default function ProfilePage() {
     try {
       const payload = {
         full_name: profileForm.full_name.trim() || user.email.split('@')[0],
+        artist_name: profileForm.artist_name.trim(),
         avatar_url: profileForm.avatar_url.trim(),
         banner_url: profileForm.banner_url.trim(),
         bio: profileForm.bio.trim(),
         profile_visibility: profileForm.profile_visibility,
+        hide_email: profileForm.hide_email,
         audio_settings: JSON.stringify(audioSettings),
         ui_preferences: JSON.stringify(uiPreferences),
       };
@@ -166,6 +175,18 @@ export default function ProfilePage() {
       toast.error(error.message || 'Could not save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteInput !== 'DELETE') return;
+    try {
+      await base44.entities.Track.filter({ created_by: user.email }).then(async (tracks) => {
+        for (const t of tracks) await base44.entities.Track.delete(t.id);
+      });
+      await base44.auth.logout(createPageUrl('Home'));
+    } catch (error) {
+      toast.error('Could not delete account. Please contact support.');
     }
   };
 
@@ -199,12 +220,16 @@ export default function ProfilePage() {
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl md:text-3xl font-extrabold truncate">{profileForm.full_name || user.email.split('@')[0]}</h1>
+                  <h1 className="text-2xl md:text-3xl font-extrabold truncate">
+                    {profileForm.artist_name || profileForm.full_name || user.email.split('@')[0]}
+                  </h1>
                   <span className="px-2 py-0.5 text-[10px] font-bold uppercase border" style={{ borderColor: 'rgba(251,113,133,0.35)', color: '#fb7185', background: 'rgba(225,29,72,0.12)' }}>
                     {plan?.name || 'Free'}
                   </span>
                 </div>
-                <p className="text-sm truncate mt-1" style={{ color: 'rgba(255,255,255,0.45)' }}>{user.email}</p>
+                {!profileForm.hide_email && (
+                  <p className="text-sm truncate mt-1" style={{ color: 'rgba(255,255,255,0.45)' }}>{user.email}</p>
+                )}
                 {profileForm.bio && <p className="text-sm mt-2 max-w-2xl" style={{ color: 'rgba(255,255,255,0.64)' }}>{profileForm.bio}</p>}
               </div>
             </div>
@@ -268,9 +293,11 @@ export default function ProfilePage() {
             <Panel title="Profile">
               <div className="grid md:grid-cols-2 gap-3">
                 <Field label="Display Name" value={profileForm.full_name} onChange={value => setProfileForm(prev => ({ ...prev, full_name: value }))} />
+                <Field label="Artist Name" placeholder="Your public artist name" value={profileForm.artist_name} onChange={value => setProfileForm(prev => ({ ...prev, artist_name: value }))} />
                 <Field label="Avatar URL" value={profileForm.avatar_url} onChange={value => setProfileForm(prev => ({ ...prev, avatar_url: value }))} />
                 <Field label="Banner URL" value={profileForm.banner_url} onChange={value => setProfileForm(prev => ({ ...prev, banner_url: value }))} />
                 <SelectField label="Profile Visibility" value={profileForm.profile_visibility} onChange={value => setProfileForm(prev => ({ ...prev, profile_visibility: value }))} options={['private', 'followers', 'public']} />
+                <Toggle label="Hide Email from Others" checked={profileForm.hide_email} onChange={checked => setProfileForm(prev => ({ ...prev, hide_email: checked }))} />
                 <div className="md:col-span-2">
                   <Field label="Bio" value={profileForm.bio} onChange={value => setProfileForm(prev => ({ ...prev, bio: value }))} multiline />
                 </div>
@@ -325,6 +352,7 @@ export default function ProfilePage() {
             <Panel title="Privacy">
               <SelectField label="Profile Visibility" value={profileForm.profile_visibility} onChange={value => setProfileForm(prev => ({ ...prev, profile_visibility: value }))} options={['private', 'followers', 'public']} />
               <Toggle label="Public Library Publishing" checked={profileForm.profile_visibility === 'public'} onChange={checked => setProfileForm(prev => ({ ...prev, profile_visibility: checked ? 'public' : 'private' }))} />
+              <Toggle label="Hide Email from Other Users" checked={profileForm.hide_email} onChange={checked => setProfileForm(prev => ({ ...prev, hide_email: checked }))} />
               <div className="flex items-start gap-3 border-t pt-4 mt-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                 <Shield className="h-5 w-5 mt-0.5" style={{ color: '#fb7185' }} />
                 <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.52)' }}>
@@ -332,12 +360,69 @@ export default function ProfilePage() {
                 </p>
               </div>
             </Panel>
-            <Panel title="Interface">
-              <Toggle label="Compact Library Rows" checked={uiPreferences.compactLibrary} onChange={checked => setUiPreferences(prev => ({ ...prev, compactLibrary: checked }))} />
-              <Toggle label="High Contrast Waveforms" checked={uiPreferences.highContrastWaveforms} onChange={checked => setUiPreferences(prev => ({ ...prev, highContrastWaveforms: checked }))} />
-              <Toggle label="Reduced Motion" checked={uiPreferences.reducedMotion} onChange={checked => setUiPreferences(prev => ({ ...prev, reducedMotion: checked }))} />
-              <Toggle label="Mobile Bottom Sheets" checked={uiPreferences.mobileBottomSheets} onChange={checked => setUiPreferences(prev => ({ ...prev, mobileBottomSheets: checked }))} />
-            </Panel>
+            <div className="flex flex-col gap-5">
+              <Panel title="Interface">
+                <Toggle label="Compact Library Rows" checked={uiPreferences.compactLibrary} onChange={checked => setUiPreferences(prev => ({ ...prev, compactLibrary: checked }))} />
+                <Toggle label="High Contrast Waveforms" checked={uiPreferences.highContrastWaveforms} onChange={checked => setUiPreferences(prev => ({ ...prev, highContrastWaveforms: checked }))} />
+                <Toggle label="Reduced Motion" checked={uiPreferences.reducedMotion} onChange={checked => setUiPreferences(prev => ({ ...prev, reducedMotion: checked }))} />
+                <Toggle label="Mobile Bottom Sheets" checked={uiPreferences.mobileBottomSheets} onChange={checked => setUiPreferences(prev => ({ ...prev, mobileBottomSheets: checked }))} />
+              </Panel>
+
+              {/* Danger Zone */}
+              <section className="border rounded-lg overflow-hidden" style={{ borderColor: 'rgba(239,68,68,0.25)', background: '#101016' }}>
+                <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: 'rgba(239,68,68,0.2)' }}>
+                  <Trash2 className="h-4 w-4" style={{ color: '#ef4444' }} />
+                  <h2 className="text-sm font-extrabold uppercase tracking-wider" style={{ color: '#ef4444' }}>Danger Zone</h2>
+                </div>
+                <div className="p-4 space-y-3">
+                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.52)' }}>
+                    Permanently delete your account and all your tracks. This action cannot be undone.
+                  </p>
+                  {!showDeleteConfirm ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="px-4 py-2 text-sm font-bold rounded-lg border transition-colors"
+                      style={{ borderColor: 'rgba(239,68,68,0.4)', color: '#ef4444', background: 'rgba(239,68,68,0.08)' }}
+                    >
+                      Delete My Account
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold" style={{ color: '#ef4444' }}>
+                        Type <span className="font-extrabold">DELETE</span> to confirm:
+                      </p>
+                      <input
+                        value={deleteInput}
+                        onChange={e => setDeleteInput(e.target.value)}
+                        placeholder="DELETE"
+                        className="w-full px-3 py-2 text-sm rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500"
+                        style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.3)', color: '#fff' }}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleDeleteAccount}
+                          disabled={deleteInput !== 'DELETE'}
+                          className="px-4 py-2 text-sm font-bold rounded-lg disabled:opacity-40 transition-opacity"
+                          style={{ background: '#ef4444', color: '#fff' }}
+                        >
+                          Confirm Delete
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowDeleteConfirm(false); setDeleteInput(''); }}
+                          className="px-4 py-2 text-sm font-bold rounded-lg"
+                          style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)' }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
           </div>
         )}
       </section>
@@ -357,11 +442,12 @@ function Panel({ title, children }) {
   );
 }
 
-function Field({ label, value, onChange, multiline = false }) {
+function Field({ label, value, onChange, multiline = false, placeholder = '' }) {
   const shared = {
     value,
     onChange: event => onChange(event.target.value),
     'aria-label': label,
+    placeholder,
     className: 'w-full px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-rose-400 rounded-lg',
     style: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' },
   };

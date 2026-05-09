@@ -14,7 +14,7 @@ import {
 import {
   Sparkles, Music, Globe, User, LogOut,
   Plus, Library, Crown, Home,
-  Disc, MessageCircle, PanelLeftClose, PanelLeftOpen, GitBranch, Volume2, Edit3, BarChart3 } from
+  Disc, MessageCircle, PanelLeftClose, PanelLeftOpen, GitBranch, Volume2, Edit3, BarChart3, ArrowLeft } from
 'lucide-react';
 
 import { cn } from "@/lib/utils";
@@ -58,8 +58,7 @@ export default function Layout({ children, currentPageName }) {
   { name: 'Stems', icon: Disc, page: 'StemStudio', requireAuth: true },
   { name: 'Remix', icon: GitBranch, page: 'RemixStudio', requireAuth: true },
   { name: 'Master', icon: Volume2, page: 'MasteringProStudio', requireAuth: true },
-  { name: 'Editor', icon: Edit3, page: 'SongEditor', requireAuth: true },
-  { name: 'Profile', icon: User, page: 'Profile', requireAuth: true }];
+  { name: 'Editor', icon: Edit3, page: 'SongEditor', requireAuth: true }];
 
 
   const filteredNavLinks = navLinks.filter((link) => {
@@ -88,13 +87,17 @@ export default function Layout({ children, currentPageName }) {
         style={{ background: 'rgba(10,10,15,0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           
         <div className="flex items-center justify-between px-4 h-16 opacity-100">
-          <Link to={createPageUrl('Home')} className="flex items-center gap-2">
-            <img
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6937c84c50aa245e9602d1ce/016bba8f4_accostica-logo-366x111.png"
-                alt="Accoustica"
-                className="h-8" />
-              
-          </Link>
+          <div className="flex items-center gap-1">
+            <button onClick={() => window.history.back()} className="w-8 h-8 flex items-center justify-center rounded-lg text-white/35 hover:text-white/80 transition-colors" aria-label="Go back">
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <Link to={createPageUrl('Home')} className="flex items-center gap-2">
+              <img
+                  src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6937c84c50aa245e9602d1ce/016bba8f4_accostica-logo-366x111.png"
+                  alt="Accoustica"
+                  className="h-8" />
+            </Link>
+          </div>
 
           <div className="flex items-center gap-2">
             {user &&
@@ -150,13 +153,17 @@ export default function Layout({ children, currentPageName }) {
           <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             {sidebarOpen ?
               <>
-                <Link to={createPageUrl('Home')} className="flex items-center gap-3">
-                  <img
-                    src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6937c84c50aa245e9602d1ce/016bba8f4_accostica-logo-366x111.png"
-                    alt="Accoustica"
-                    className="h-9" />
-                  
-                </Link>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => window.history.back()} className="w-7 h-7 flex items-center justify-center rounded-lg text-white/25 hover:text-white/70 transition-colors flex-shrink-0" aria-label="Go back">
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                  <Link to={createPageUrl('Home')} className="flex items-center">
+                    <img
+                      src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6937c84c50aa245e9602d1ce/016bba8f4_accostica-logo-366x111.png"
+                      alt="Accoustica"
+                      className="h-9" />
+                  </Link>
+                </div>
                 <button onClick={() => setSidebarOpen(false)} className="text-white/30 hover:text-white transition-colors">
                   <PanelLeftClose className="h-5 w-5" />
                 </button>
