@@ -61,6 +61,7 @@ export default function StudioLibraryPanel({ tracks, search, onSearch, selectedT
 
 function LibraryItem({ track, isSelected, isPlaying, onClick, onPlay }) {
   const statusDot = { ready: '#22c55e', generating: '#a78bfa', queued: '#fbbf24', failed: '#f87171' };
+  const canPlay = !!(track?.stream_audio_url || track?.audio_url);
   return (
     <button
       onClick={onClick}
@@ -74,7 +75,7 @@ function LibraryItem({ track, isSelected, isPlaying, onClick, onPlay }) {
           ? <img src={track.cover_image_url} alt="" className="w-full h-full object-cover" />
           : <Music className="h-3.5 w-3.5 absolute inset-0 m-auto" style={{ color: 'rgba(255,255,255,0.15)' }} />
         }
-        {track.status === 'ready' && (
+        {canPlay && (
           <button onClick={onPlay}
             className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
             style={{ background: 'rgba(0,0,0,0.55)' }}>
@@ -101,7 +102,7 @@ function LibraryItem({ track, isSelected, isPlaying, onClick, onPlay }) {
           {track.created_by?.split('@')[0] || 'You'}
         </p>
       </div>
-      {track.status !== 'ready' && (
+      {!canPlay && (
         <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: statusDot[track.status] || '#555' }} />
       )}
     </button>

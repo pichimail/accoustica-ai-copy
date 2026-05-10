@@ -60,24 +60,35 @@ Deno.serve(async (req) => {
         // Update tracks based on status
         let updatedTracks = [];
         
-        if (taskStatus === 'SUCCESS' && data.data.response?.sunoData) {
-            const audioDataArray = data.data.response.sunoData;
-            
-            // Update each track with corresponding audio data
-            for (let i = 0; i < audioDataArray.length && i < tracks.length; i++) {
-                const audioData = audioDataArray[i];
+        const audioDataArray = data.data.response?.sunoData || [];
+        if (audioDataArray.length > 0) {
+            // Update each track with corresponding audio data.
+            // Mark each track ready as soon as it has a stream/audio URL so users can play while task is still running.
+            for (let i = 0; i < tracks.length; i++) {
                 const track = tracks[i];
-                
+                const audioData = audioDataArray[i];
+                if (!audioData) {
+                    const updatedTrack = await base44.asServiceRole.entities.Track.update(track.id, {
+                        status: taskStatus === 'SUCCESS' ? 'ready' : 'generating',
+                    });
+                    updatedTracks.push(updatedTrack);
+                    continue;
+                }
+
+                const streamUrl = audioData.streamAudioUrl || audioData.stream_audio_url || '';
+                const audioUrl = audioData.audioUrl || audioData.audio_url || '';
+                const hasPlayableAudio = !!(streamUrl || audioUrl);
+
                 const updatedTrack = await base44.asServiceRole.entities.Track.update(track.id, {
-                    status: 'ready',
-                    audio_url: audioData.audioUrl,
-                    stream_audio_url: audioData.streamAudioUrl,
-                    cover_image_url: audioData.imageUrl,
-                    duration: Math.round(audioData.duration || 0),
-                    model_version: audioData.modelName,
-                    tags: audioData.tags,
-                    external_audio_id: audioData.id,
-                    lyrics: audioData.prompt,
+                    status: hasPlayableAudio ? 'ready' : (taskStatus === 'SUCCESS' ? 'ready' : 'generating'),
+                    audio_url: audioUrl || track.audio_url,
+                    stream_audio_url: streamUrl || track.stream_audio_url,
+                    cover_image_url: audioData.imageUrl || audioData.image_url || track.cover_image_url,
+                    duration: Math.round(audioData.duration || track.duration || 0),
+                    model_version: audioData.modelName || audioData.model_name || track.model_version,
+                    tags: audioData.tags || track.tags,
+                    external_audio_id: audioData.id || track.external_audio_id,
+                    lyrics: audioData.prompt || track.lyrics,
                     title: audioData.title || track.title,
                 });
                 updatedTracks.push(updatedTrack);

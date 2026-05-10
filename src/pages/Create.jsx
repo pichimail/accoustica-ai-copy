@@ -223,9 +223,10 @@ export default function CreatePage() {
   };
 
   const handlePlay = (track) => {
-    if (track.status !== 'ready') return;
+    const playableUrl = track?.stream_audio_url || track?.audio_url;
+    if (!playableUrl) return;
     haptics.light();
-    playTrack(track, allTracks.filter(t => t.status === 'ready'));
+    playTrack(track, allTracks.filter(t => t.stream_audio_url || t.audio_url));
   };
 
   return (
@@ -411,6 +412,7 @@ function SplitterHandle({ label, onPointerDown }) {
 /* ── Mobile-only sub-components ── */
 function MobileTrackDetail({ track, currentTrack, isPlaying, onPlay }) {
   const isActive = currentTrack?.id === track.id;
+  const canPlay = !!(track?.stream_audio_url || track?.audio_url);
   return (
     <div className="flex items-center gap-3">
       <div className="w-12 h-12 overflow-hidden flex-shrink-0" style={{ background: 'rgba(255,255,255,0.07)' }}>
@@ -423,7 +425,7 @@ function MobileTrackDetail({ track, currentTrack, isPlaying, onPlay }) {
         <p className="text-sm font-bold truncate" style={{ color: '#fff' }}>{track.title}</p>
         <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{track.created_by?.split('@')[0] || 'You'}</p>
       </div>
-      {track.status === 'ready' && (
+      {canPlay && (
         <button onClick={onPlay}
           className="w-9 h-9 flex items-center justify-center flex-shrink-0 focus:outline-none focus:ring-1 focus:ring-rose-400"
           style={{ background: isActive && isPlaying ? 'rgba(225,29,72,0.25)' : 'rgba(255,255,255,0.08)' }}>
@@ -436,6 +438,7 @@ function MobileTrackDetail({ track, currentTrack, isPlaying, onPlay }) {
 
 function MobileTrackRow({ track, isCurrent, isPlaying, isSelected, onPlay, onSelect }) {
   const statusColor = { ready: '#22c55e', generating: '#a78bfa', queued: '#fbbf24', failed: '#f87171' };
+  const canPlay = !!(track?.stream_audio_url || track?.audio_url);
   return (
     <div
       onClick={onSelect}
@@ -471,7 +474,7 @@ function MobileTrackRow({ track, isCurrent, isPlaying, isSelected, onPlay, onSel
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
         <div className="w-1.5 h-1.5 rounded-full" style={{ background: statusColor[track.status] || '#555' }} />
-        {track.status === 'ready' && (
+        {canPlay && (
           <button onClick={e => { e.stopPropagation(); onPlay(); }}
             className="w-8 h-8 flex items-center justify-center focus:outline-none focus:ring-1 focus:ring-rose-400"
             style={{ background: 'rgba(255,255,255,0.07)' }}>

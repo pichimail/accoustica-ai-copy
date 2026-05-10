@@ -217,7 +217,7 @@ function TrackDetailView({ track, currentTrack, isPlaying, onPlay }) {
 }
 
 function CenterTrackRow({ track, index, isCurrent, isPlaying, onPlay, onSelect }) {
-  const isReady = track.status === 'ready';
+  const canPlay = !!(track?.stream_audio_url || track?.audio_url);
   const statusColor = { ready: '#22c55e', generating: '#a78bfa', queued: '#fbbf24', failed: '#f87171' };
   const dur = track.duration
     ? `${Math.floor(track.duration / 60)}:${String(Math.floor(track.duration % 60)).padStart(2, '0')}`
@@ -241,7 +241,7 @@ function CenterTrackRow({ track, index, isCurrent, isPlaying, onPlay, onSelect }
       {/* Play btn */}
       <button
         onClick={e => { e.stopPropagation(); onPlay(); }}
-        disabled={!isReady}
+        disabled={!canPlay}
         className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
         style={{ background: 'rgba(255,255,255,0.08)' }}
       >
@@ -299,6 +299,21 @@ function CenterTrackRow({ track, index, isCurrent, isPlaying, onPlay, onSelect }
         {(track.status === 'generating' || track.status === 'queued') && (
           <Loader2 className="h-3 w-3 animate-spin" style={{ color: statusColor[track.status] }} />
         )}
+        {(track.status === 'generating' || track.status === 'queued') && (
+          <div className="hidden md:flex items-end gap-[1px] h-4 mr-1" aria-label="Live generation waveform">
+            {[0.5, 0.95, 0.7, 0.35, 0.85, 0.55].map((h, i) => (
+              <span
+                key={i}
+                className="w-[2px] rounded-full"
+                style={{
+                  height: `${h * 12}px`,
+                  background: 'linear-gradient(180deg,#22d3ee,#a78bfa)',
+                  animation: `beat-bar ${0.42 + i * 0.1}s ease-in-out infinite alternate`,
+                }}
+              />
+            ))}
+          </div>
+        )}
         <span className="text-[11px] tabular-nums w-10 text-right" style={{ color: 'rgba(255,255,255,0.28)' }}>{dur}</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -325,7 +340,7 @@ function CenterTrackRow({ track, index, isCurrent, isPlaying, onPlay, onSelect }
               </DropdownMenuItem>
             ))}
             <DropdownMenuItem
-              disabled={!isReady}
+              disabled={!canPlay}
               onSelect={(event) => {
                 event.preventDefault();
                 onPlay();
