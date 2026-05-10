@@ -12,6 +12,10 @@ export default function VoiceClonePanel({ selectedPersonaId, onSelectPersona }) 
   const [personaName, setPersonaName] = useState('');
   const [personaDesc, setPersonaDesc] = useState('');
   const fileRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const streamRef = useRef(null);
+  const chunksRef = useRef([]);
+  const [isRecording, setIsRecording] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: personas = [] } = useQuery({
@@ -53,6 +57,72 @@ export default function VoiceClonePanel({ selectedPersonaId, onSelectPersona }) 
     } finally {
       setIsUploading(false);
       if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const stopStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const saveAudioBlobAsPersona = async (blob) => {
+    if (!personaName.trim()) {
+      toast.error('Enter a persona name first');
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const file = new File([blob], `${personaName.trim().replace(/\\s+/g, '_')}.webm`, { type: 'audio/webm' });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const newPersona = await base44.entities.Persona.create({
+        name: personaName.trim(),
+        description: personaDesc.trim() || `Custom voice: ${personaName}`,
+        persona_id: `record_${Date.now()}`,
+        audio_id: file_url,
+        task_id: 'recording',
+      });
+      queryClient.invalidateQueries({ queryKey: ['personas'] });
+      onSelectPersona(newPersona.id);
+      setPersonaName('');
+      setPersonaDesc('');
+      toast.success('Recorded voice persona saved!');
+    } catch (err) {
+      toast.error('Recording upload failed: ' + err.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const toggleRecording = async () => {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+
+      recorder.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        stopStream();
+        if (blob.size > 0) await saveAudioBlobAsPersona(blob);
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      toast.success('Recording started');
+    } catch (err) {
+      toast.error('Microphone access failed');
     }
   };
 
@@ -130,6 +200,15 @@ export default function VoiceClonePanel({ selectedPersonaId, onSelectPersona }) 
               >
                 {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                 {isUploading ? 'Uploading...' : 'Upload Vocal File'}
+              </button>
+              <button
+                onClick={toggleRecording}
+                disabled={isUploading || !personaName.trim()}
+                className="w-full mt-1.5 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-40"
+                style={{ background: isRecording ? 'rgba(220,38,38,0.25)' : 'rgba(59,130,246,0.2)', border: `1px solid ${isRecording ? 'rgba(220,38,38,0.4)' : 'rgba(59,130,246,0.35)'}`, color: isRecording ? '#fca5a5' : '#93c5fd' }}
+              >
+                <Mic2 className={cn('h-3.5 w-3.5', isRecording && 'animate-pulse')} />
+                {isRecording ? 'Stop & Save Recording' : 'Record Live Voice'}
               </button>
             </div>
           </motion.div>

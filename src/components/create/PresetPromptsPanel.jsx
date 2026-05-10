@@ -14,6 +14,11 @@ const COMMUNITY_PRESETS = [
   { name: 'Jazz Café Vibes', prompt: 'Smooth jazz for a late-night café, saxophone, brushed drums', styles: 'jazz, smooth, saxophone, lounge', tags: ['jazz', 'lounge', 'smooth'] },
   { name: 'House Party Anthem', prompt: 'High-energy dance track, four-on-the-floor, euphoric drops', styles: 'house, dance, electronic, club', tags: ['house', 'dance', 'club'] },
   { name: 'Peaceful Meditation', prompt: 'Soft healing meditation music, binaural, gentle drones', styles: 'ambient, meditation, healing, drone', tags: ['meditation', 'calm', 'healing'] },
+  { name: 'Hitchhiker Cosmic Folk', prompt: 'Surreal hitchhiker-style cosmic folk tale, witty narration, starlit harmonies, warm analog guitars', styles: 'hitchhiker-style cosmic folk, surreal, warm analog, witty', tags: ['hitchhiker', 'cosmic', 'folk'] },
+  { name: 'Hitchhiker Neon Lounge', prompt: 'Absurd galactic lounge groove with talk-sung hooks, neon bass, and playful interstellar textures', styles: 'hitchhiker-style galactic lounge, neon, quirky, synth', tags: ['hitchhiker', 'lounge', 'neon'] },
+  { name: 'Raaga Yaman Sitar Flow', prompt: 'Indian classical journey in Raaga Yaman, expressive sitar lead, tabla pulse, cinematic depth', styles: 'indian classical, sitar, raaga yaman, tabla, cinematic', tags: ['india', 'raaga', 'sitar'] },
+  { name: 'Raaga Bhairavi Devotional', prompt: 'Devotional Bhairavi mood with tanpura drone, bansuri responses, temple-bell accents and serene choir', styles: 'devotional, raaga bhairavi, tanpura, bansuri, spiritual', tags: ['devotional', 'bhairavi', 'indian'] },
+  { name: 'Telugu Golden Era Ballad', prompt: '1970s Telugu-inspired orchestral ballad with vintage keys, heartfelt melody and nostalgic romance', styles: 'telugu70s, retro, orchestral, melodic, nostalgic', tags: ['telugu', 'retro', 'classic'] },
 ];
 
 const fieldStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' };

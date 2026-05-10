@@ -38,6 +38,7 @@ export default function CreatePage() {
   const [remixInfluence, setRemixInfluence] = useState(55);
   const [mashupTrackIds, setMashupTrackIds] = useState([]);
   const [selectedPersonaId, setSelectedPersonaId] = useState(null);
+  const [strictVoiceClone, setStrictVoiceClone] = useState(false);
   const [generatingTaskId, setGeneratingTaskId] = useState(null);
   const [libraryWidth, setLibraryWidth] = useState(256);
   const [generateWidth, setGenerateWidth] = useState(320);
@@ -107,6 +108,9 @@ export default function CreatePage() {
     const isMashup = tab === 'mashup';
 
     let finalPrompt = simplePrompt.trim();
+    if (!isAdvanced && !isRemix && !isMashup && finalPrompt.length > 495) { toast.error('Simple prompt must be 495 chars or less'); return; }
+    if (isAdvanced && styles.length > 995) { toast.error('Styles must be 995 chars or less'); return; }
+    if (isAdvanced && lyrics.length > 4995) { toast.error('Lyrics must be 4995 chars or less'); return; }
     if (isAdvanced && !lyrics.trim()) { toast.error('Please add lyrics'); return; }
     if (!isAdvanced && !isRemix && !isMashup && !finalPrompt) { toast.error('Please describe your music'); return; }
     if (isRemix && !remixSource) { toast.error('Choose a source track to remix'); return; }
@@ -137,13 +141,14 @@ export default function CreatePage() {
         const source = allTracks.find(track => track.id === remixSource);
         const sourceUrl = source?.audio_url || source?.stream_audio_url;
         if (!sourceUrl) throw new Error('Selected source track has no playable audio URL yet');
+        const strictVoiceDirective = selectedPersonaId && strictVoiceClone ? ' strict voice clone, preserve identity timbre and articulation' : '';
         response = await base44.functions.invoke('uploadAndCoverAudio', {
           uploadUrl: sourceUrl,
           prompt: remixPrompt || styles || `Remix ${source.title}`,
           customMode: true,
           instrumental: isInstrumental,
           model: 'V5',
-          style: styles || source.style || 'AI remix',
+          style: `${styles || source.style || 'AI remix'}${strictVoiceDirective}`,
           title: title || `${source.title} Remix`,
           audioWeight: remixInfluence,
           ...(negativeTag.trim() && { negativeTags: negativeTag.trim() }),
@@ -153,11 +158,12 @@ export default function CreatePage() {
           ...(selectedPersonaId && { personaId: selectedPersonaId }),
         });
       } else {
+        const strictVoiceDirective = selectedPersonaId && strictVoiceClone ? ' strict voice clone, preserve identity timbre and articulation' : '';
         const payload = isAdvanced ? {
           mode: 'custom',
           model: 'V5',
           prompt: isInstrumental ? '' : lyrics,
-          style: styles || 'Pop',
+          style: `${styles || 'Pop'}${strictVoiceDirective}`,
           ...(title.trim() && { title: title.trim() }),
           customMode: true,
           instrumental: isInstrumental,
@@ -299,6 +305,7 @@ export default function CreatePage() {
             styleWeight={styleWeight} onStyleWeightChange={(value) => { setStyleWeight(value); setStyleWeightTouched(true); }}
             clarityWeight={clarityWeight} onClarityWeightChange={(value) => { setClarityWeight(value); setWeirdnessTouched(true); }}
             isInstrumental={isInstrumental} onInstrumentalChange={setIsInstrumental}
+            strictVoiceClone={strictVoiceClone} onStrictVoiceCloneChange={setStrictVoiceClone}
             simplePrompt={simplePrompt} onSimplePromptChange={setSimplePrompt}
             showMoreOptions={showMoreOptions} onToggleMoreOptions={() => setShowMoreOptions(v => !v)}
             remixSource={remixSource} onRemixSourceChange={setRemixSource}
@@ -341,6 +348,7 @@ export default function CreatePage() {
               styleWeight={styleWeight} onStyleWeightChange={(value) => { setStyleWeight(value); setStyleWeightTouched(true); }}
               clarityWeight={clarityWeight} onClarityWeightChange={(value) => { setClarityWeight(value); setWeirdnessTouched(true); }}
               isInstrumental={isInstrumental} onInstrumentalChange={setIsInstrumental}
+              strictVoiceClone={strictVoiceClone} onStrictVoiceCloneChange={setStrictVoiceClone}
               simplePrompt={simplePrompt} onSimplePromptChange={setSimplePrompt}
               showMoreOptions={showMoreOptions} onToggleMoreOptions={() => setShowMoreOptions(v => !v)}
               remixSource={remixSource} onRemixSourceChange={setRemixSource}
