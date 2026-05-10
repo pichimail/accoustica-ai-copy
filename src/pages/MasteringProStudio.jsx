@@ -74,7 +74,7 @@ function SpectrumVisualizer({ audioUrl, isPlaying, color = '#22c55e', label }) {
         width={300}
         height={80}
         className="w-full rounded-lg"
-        style={{ background: 'rgba(255,255,255,0.02)' }}
+        style={{ background: 'linear-gradient(180deg, rgba(0,212,255,0.14), rgba(255,77,157,0.04))', border: '1px solid rgba(255,255,255,0.15)' }}
         aria-label={`${label} spectrum visualizer`}
         role="img"
       />
@@ -122,7 +122,7 @@ function EQGraph({ bands, onBandChange }) {
         ref={svgRef}
         viewBox={`0 0 ${width} ${height}`}
         className="w-full rounded-lg cursor-crosshair"
-        style={{ background: 'rgba(255,255,255,0.03)', height: 100 }}
+        style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.65), rgba(18,27,42,0.45))', border: '1px solid rgba(255,255,255,0.15)', height: 100 }}
         aria-label="EQ curve editor"
         role="img"
       >
@@ -308,9 +308,9 @@ export default function MasteringProStudioPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#09090f' }} role="main" aria-label="Mastering Pro Studio">
+    <div className="min-h-screen flex flex-col" style={{ background: 'radial-gradient(circle at 15% 0%, #11142a 0%, #06070e 45%, #030303 100%)', filter: 'contrast(1.24)' }} role="main" aria-label="Mastering Pro Studio">
       {/* Header */}
-      <header className="sticky top-0 z-30 flex-shrink-0 flex items-center justify-between px-4 lg:px-6 py-3 border-b" style={{ background: 'rgba(9,9,15,0.97)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.07)' }}>
+      <header className="sticky top-0 z-30 flex-shrink-0 flex items-center justify-between px-4 lg:px-6 py-3 border-b" style={{ background: 'linear-gradient(135deg,rgba(5,5,10,0.97),rgba(12,18,38,0.95))', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.12)' }}>
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)' }}>
             <Volume2 className="h-5 w-5 text-white" />

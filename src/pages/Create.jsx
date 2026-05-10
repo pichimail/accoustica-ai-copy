@@ -231,7 +231,7 @@ export default function CreatePage() {
   return (
     <>
       {/* ════ DESKTOP: 3-panel Studio Layout ════ */}
-      <div ref={desktopStudioRef} className="hidden md:flex overflow-hidden" style={{ background: '#09090f', height: '100vh' }}>
+      <div ref={desktopStudioRef} className="hidden md:flex overflow-hidden" style={{ background: 'radial-gradient(circle at 20% 0%, #101325 0%, #050507 48%, #030303 100%)', height: '100vh', filter: 'contrast(1.24)' }}>
 
         {/* LEFT — Library */}
         <div className="flex-shrink-0 h-full overflow-hidden" style={{ width: libraryWidth }}>
@@ -253,7 +253,7 @@ export default function CreatePage() {
         {/* CENTER — Split track detail + generations */}
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
           {/* Studio header bar */}
-          <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(10,10,16,0.9)' }}>
+          <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'linear-gradient(135deg, rgba(5,5,10,0.95), rgba(9,16,30,0.9))' }}>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-extrabold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.35)' }}>⚙</span>
               <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.75)' }}>Studio Center</span>
@@ -314,7 +314,7 @@ export default function CreatePage() {
       </div>
 
       {/* ════ MOBILE: single column ════ */}
-      <div className="md:hidden flex flex-col min-h-screen pb-40" style={{ background: '#09090f' }}>
+      <div className="md:hidden flex flex-col min-h-screen pb-40" style={{ background: 'radial-gradient(circle at 20% 0%, #101325 0%, #050507 48%, #030303 100%)', filter: 'contrast(1.24)' }}>
         {/* Mobile header */}
         <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b" style={{ background: 'rgba(9,9,15,0.97)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.06)' }}>
           <span className="text-base font-extrabold" style={{ color: '#fff' }}>Studio</span>
