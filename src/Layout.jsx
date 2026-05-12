@@ -57,7 +57,8 @@ export default function Layout({ children, currentPageName }) {
   { name: 'Stems', icon: Disc, page: 'StemStudio', requireAuth: true },
   { name: 'Remix', icon: GitBranch, page: 'RemixStudio', requireAuth: true },
   { name: 'Master', icon: Volume2, page: 'MasteringProStudio', requireAuth: true },
-  { name: 'Editor', icon: Edit3, page: 'SongEditor', requireAuth: true }];
+  { name: 'Editor', icon: Edit3, page: 'SongEditor', requireAuth: true },
+];
 
 
   const filteredNavLinks = navLinks.filter((link) => {
@@ -87,7 +88,7 @@ export default function Layout({ children, currentPageName }) {
           
         <div className="flex items-center justify-between px-4 h-16 opacity-100">
           <div className="flex items-center gap-1">
-            <button onClick={() => window.history.back()} className="w-8 h-8 flex items-center justify-center rounded-lg text-white/35 hover:text-white/80 transition-colors" aria-label="Go back">
+            <button onClick={() => { if (window.history.length > 1) { window.history.back(); } else { window.location.href = '/'; } }} className="w-8 h-8 flex items-center justify-center rounded-lg text-white/35 hover:text-white/80 transition-colors" aria-label="Go back">
               <ArrowLeft className="h-4 w-4" />
             </button>
             <Link to={createPageUrl('Home')} className="flex items-center gap-2">
@@ -153,7 +154,7 @@ export default function Layout({ children, currentPageName }) {
             {sidebarOpen ?
               <>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => window.history.back()} className="w-7 h-7 flex items-center justify-center rounded-lg text-white/25 hover:text-white/70 transition-colors flex-shrink-0" aria-label="Go back">
+                  <button onClick={() => { if (window.history.length > 1) { window.history.back(); } else { window.location.href = '/'; } }} className="w-7 h-7 flex items-center justify-center rounded-lg text-white/25 hover:text-white/70 transition-colors flex-shrink-0" aria-label="Go back">
                     <ArrowLeft className="h-4 w-4" />
                   </button>
                   <Link to={createPageUrl('Home')} className="flex items-center">
@@ -252,7 +253,7 @@ export default function Layout({ children, currentPageName }) {
         {children}
       </main>
 
-      {/* Global Audio Player */}
+      {/* Global Audio Player — hide fully on mobile when on Create page */}
       {currentPageName === 'Create' ? (
         <div className="hidden lg:block">
           <GlobalAudioPlayer currentPageName={currentPageName} />
@@ -261,10 +262,10 @@ export default function Layout({ children, currentPageName }) {
         <GlobalAudioPlayer currentPageName={currentPageName} />
       )}
 
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile Bottom Navigation — hidden on Home and Create */}
       {currentPageName !== 'Home' && currentPageName !== 'Create' &&
-        <MobileNav currentPageName={currentPageName} user={user} autoHide={currentPageName === 'Create'} />
-        }
+        <MobileNav currentPageName={currentPageName} user={user} />
+      }
     </div>
     </AudioPlayerProvider>);
 

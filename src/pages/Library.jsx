@@ -11,6 +11,7 @@ import ShareTrackDialog from '@/components/collaboration/ShareTrackDialog';
 import EnhancedMasteringDialog from '@/components/mastering/EnhancedMasteringDialog';
 import StemSeparationDialog from '@/components/audio/StemSeparationDialog';
 import MusicVideoGenerator from '@/components/video/MusicVideoGenerator';
+import VideoExportDialog from '@/components/video/VideoExportDialog';
 import BottomSheet from '@/components/mobile/BottomSheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -21,7 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Search, Music, Plus, Heart, Globe, Lock, Loader2,
-  Play, Pause, Trash2, Edit3, Share2, Wand2, Mic2, Video, MoreVertical
+  Play, Pause, Trash2, Edit3, Share2, Wand2, Mic2, Video, MoreVertical, Film
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Link } from 'react-router-dom';
@@ -40,6 +41,7 @@ export default function LibraryPage() {
   const [masterTrack, setMasterTrack] = useState(null);
   const [stemTrack, setStemTrack] = useState(null);
   const [videoTrack, setVideoTrack] = useState(null);
+  const [exportVideoTrack, setExportVideoTrack] = useState(null);
   const [bottomSheetTrack, setBottomSheetTrack] = useState(null);
   const queryClient = useQueryClient();
   const { playTrack, currentTrack, isPlaying } = useAudioPlayer();
@@ -199,6 +201,7 @@ export default function LibraryPage() {
                   onMaster={() => { setMasterTrack(track); setBottomSheetTrack(null); }}
                   onStems={() => { setStemTrack(track); setBottomSheetTrack(null); }}
                   onVideo={() => { setVideoTrack(track); setBottomSheetTrack(null); }}
+                  onExportVideo={() => { setExportVideoTrack(track); setBottomSheetTrack(null); }}
                   onTogglePublic={() => handleTogglePublic(track)}
                   onDelete={() => handleDelete(track)}
                 />
@@ -218,6 +221,7 @@ export default function LibraryPage() {
           onMaster={(t) => { setMasterTrack(t); setBottomSheetTrack(null); }}
           onStems={(t) => { setStemTrack(t); setBottomSheetTrack(null); }}
           onVideo={(t) => { setVideoTrack(t); setBottomSheetTrack(null); }}
+          onExportVideo={(t) => { setExportVideoTrack(t); setBottomSheetTrack(null); }}
           onTogglePublic={handleTogglePublic}
           onDelete={handleDelete}
         />
@@ -228,6 +232,7 @@ export default function LibraryPage() {
       <EnhancedMasteringDialog track={masterTrack} open={!!masterTrack} onClose={() => setMasterTrack(null)} onSuccess={() => queryClient.invalidateQueries({ queryKey: ['myTracks'] })} />
       <StemSeparationDialog track={stemTrack} open={!!stemTrack} onClose={() => setStemTrack(null)} />
       <MusicVideoGenerator track={videoTrack} open={!!videoTrack} onClose={() => setVideoTrack(null)} />
+      <VideoExportDialog track={exportVideoTrack} open={!!exportVideoTrack} onClose={() => setExportVideoTrack(null)} />
     </div>
   );
 }
@@ -245,6 +250,7 @@ function LibraryTrackRow({
   onMaster,
   onStems,
   onVideo,
+  onExportVideo,
   onTogglePublic,
   onDelete,
 }) {
@@ -361,6 +367,7 @@ function LibraryTrackRow({
               <DropdownMenuItem onClick={onMaster}><Wand2 className="h-4 w-4 mr-2" />Master</DropdownMenuItem>
               <DropdownMenuItem onClick={onStems}><Mic2 className="h-4 w-4 mr-2" />Stems</DropdownMenuItem>
               <DropdownMenuItem onClick={onVideo}><Video className="h-4 w-4 mr-2" />Video</DropdownMenuItem>
+              <DropdownMenuItem onClick={onExportVideo}><Film className="h-4 w-4 mr-2" />Export MP4</DropdownMenuItem>
               <DropdownMenuItem onClick={onTogglePublic}>
                 {track.is_public ? <Lock className="h-4 w-4 mr-2" /> : <Globe className="h-4 w-4 mr-2" />}
                 {track.is_public ? 'Make Private' : 'Make Public'}
@@ -376,17 +383,18 @@ function LibraryTrackRow({
   );
 }
 
-function TrackActionsSheet({ track, onClose, onEdit, onShare, onMaster, onStems, onVideo, onTogglePublic, onDelete }) {
+function TrackActionsSheet({ track, onClose, onEdit, onShare, onMaster, onStems, onVideo, onExportVideo, onTogglePublic, onDelete }) {
   if (!track) {
     return <BottomSheet open={false} onClose={onClose} title={null} />;
   }
 
   const actions = [
-    { icon: Edit3,  label: 'Edit',   fn: () => onEdit(track) },
-    { icon: Share2, label: 'Share',  fn: () => onShare(track) },
-    { icon: Wand2,  label: 'Master', fn: () => onMaster(track) },
-    { icon: Mic2,   label: 'Stems',  fn: () => onStems(track) },
-    { icon: Video,  label: 'Video',  fn: () => onVideo(track) },
+    { icon: Edit3,  label: 'Edit',        fn: () => onEdit(track) },
+    { icon: Share2, label: 'Share',        fn: () => onShare(track) },
+    { icon: Wand2,  label: 'Master',       fn: () => onMaster(track) },
+    { icon: Mic2,   label: 'Stems',        fn: () => onStems(track) },
+    { icon: Video,  label: 'Video',        fn: () => onVideo(track) },
+    { icon: Film,   label: 'Export MP4',   fn: () => onExportVideo(track) },
     { icon: track.is_public ? Lock : Globe, label: track.is_public ? 'Make Private' : 'Make Public', fn: () => onTogglePublic(track) },
   ];
 

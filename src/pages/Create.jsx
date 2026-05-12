@@ -340,18 +340,31 @@ export default function CreatePage() {
       {/* ════ MOBILE: single column ════ */}
       <div className="md:hidden flex flex-col min-h-screen pb-40" style={{ background: 'radial-gradient(circle at 20% 0%, #101325 0%, #050507 48%, #030303 100%)', filter: 'contrast(1.24)' }}>
         {/* Mobile header */}
-        {!isGenerateOnlyMobile && (
-          <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b" style={{ background: 'rgba(9,9,15,0.97)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.06)' }}>
-            <span className="text-base font-extrabold" style={{ color: '#fff' }}>Studio</span>
+        <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b" style={{ background: 'rgba(9,9,15,0.97)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.06)' }}>
+          <div className="flex items-center gap-2">
+            {isGenerateOnlyMobile && (
+              <button
+                onClick={() => navigate(-1)}
+                className="w-8 h-8 flex items-center justify-center rounded-xl text-white/50 hover:text-white transition-colors"
+                aria-label="Go back"
+              >
+                <span className="text-base">←</span>
+              </button>
+            )}
+            <span className="text-base font-extrabold text-white">
+              {isGenerateOnlyMobile ? 'Create' : 'Studio'}
+            </span>
+          </div>
+          {!isGenerateOnlyMobile && (
             <button
               onClick={() => setMobilePanelOpen(v => !v)}
-              className="px-3 py-1.5 text-xs font-bold transition-all focus:outline-none focus:ring-1 focus:ring-rose-400"
+              className="px-3 py-1.5 text-xs font-bold rounded-lg transition-all focus:outline-none"
               style={{ background: mobilePanelOpen ? 'rgba(225,29,72,0.25)' : 'rgba(255,255,255,0.06)', color: mobilePanelOpen ? '#f43f5e' : 'rgba(255,255,255,0.6)', border: `1px solid ${mobilePanelOpen ? 'rgba(225,29,72,0.35)' : 'rgba(255,255,255,0.08)'}` }}
             >
               {mobilePanelOpen ? 'Library' : 'Generate'}
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {showGeneratePanelMobile ? (
           /* Generate panel */

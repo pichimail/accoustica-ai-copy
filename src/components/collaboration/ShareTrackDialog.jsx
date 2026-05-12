@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, Globe, Loader2, Send, Share2, Trash2 } from 'lucide-react';
+import { Copy, Globe, Loader2, Send, Share2, Trash2, MessageCircle, Facebook, Twitter } from 'lucide-react';
 import { toast } from 'sonner';
 import { getPublicTrackUrl, getSeoDescription, getTrackPublicSlug } from '@/lib/trackSharing';
 
@@ -149,7 +149,7 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
               style={{ background: '#e11d48', borderColor: '#e11d48' }}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
-              Copy Public Link
+              Copy Link
             </button>
             <button
               type="button"
@@ -161,6 +161,32 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
               <Share2 className="h-4 w-4" />
               Share
             </button>
+          </div>
+
+          {/* Social Platform Sharing */}
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>Share to Social</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: 'WhatsApp', color: '#25D366', icon: MessageCircle, fn: () => { const url = encodeURIComponent(publicUrl); const text = encodeURIComponent(`🎵 "${track.title}" — made with Accoustica AI`); window.open(`https://api.whatsapp.com/send?text=${text}%20${url}`, '_blank'); } },
+                { label: 'Facebook', color: '#1877F2', icon: Facebook, fn: () => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publicUrl)}`, '_blank') },
+                { label: 'Twitter/X', color: '#1D9BF0', icon: Twitter, fn: () => { const text = encodeURIComponent(`🎵 "${track.title}" — made with @AccousticaAI`); window.open(`https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(publicUrl)}`, '_blank'); } },
+                { label: 'TikTok', color: '#69C9D0', icon: Globe, fn: () => window.open('https://www.tiktok.com/upload', '_blank') },
+                { label: 'Instagram', color: '#E1306C', icon: Globe, fn: () => { navigator.clipboard.writeText(publicUrl); toast.info('Link copied — paste in Instagram bio or story'); } },
+                { label: 'YouTube', color: '#FF0000', icon: Globe, fn: () => window.open('https://studio.youtube.com/', '_blank') },
+              ].map(({ label, color, icon: Icon, fn }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={async () => { await ensurePublic(); fn(); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-white/10 text-white/70 hover:text-white transition-all"
+                  style={{ background: 'rgba(255,255,255,0.05)' }}
+                >
+                  <Icon className="h-3.5 w-3.5" style={{ color }} />
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="border-t pt-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>

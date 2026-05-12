@@ -85,12 +85,13 @@ export default function MobileNav({ currentPageName, user, autoHide = false }) {
         aria-hidden={hidden}
       >
         <div
-          className="px-2 py-2 safe-bottom"
+          className="px-3 py-2 safe-bottom"
           style={{
-            background: 'rgba(8,10,14,0.45)',
-            backdropFilter: 'blur(18px)',
-            WebkitBackdropFilter: 'blur(18px)',
-            borderTop: '1px solid rgba(255,255,255,0.14)',
+            background: 'rgba(6,8,12,0.72)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            borderTop: '1px solid rgba(255,255,255,0.07)',
+            boxShadow: '0 -4px 24px rgba(0,0,0,0.35)',
           }}
         >
           <div className="grid grid-cols-5">
@@ -171,8 +172,8 @@ export default function MobileNav({ currentPageName, user, autoHide = false }) {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-              className="lg:hidden fixed bottom-0 left-0 right-0 z-[91] rounded-t-3xl border-t border-white/10 pb-8"
-              style={{ background: 'rgba(14,14,22,0.96)', backdropFilter: 'blur(30px)' }}
+              className="lg:hidden fixed bottom-0 left-0 right-0 z-[91] rounded-t-3xl border-t pb-8"
+              style={{ background: 'rgba(8,10,14,0.96)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', borderColor: 'rgba(255,255,255,0.08)' }}
               role="dialog"
               aria-label="More navigation options"
               aria-modal="true"

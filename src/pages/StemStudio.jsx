@@ -5,12 +5,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Disc, Search, Play, Clock, Sparkles, GitBranch, Volume2 } from 'lucide-react';
+import { Disc, Search, Play, Clock, Sparkles, GitBranch, Volume2, Wand2, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import StemSeparationDialog from '@/components/audio/StemSeparationDialog';
 import StemMixer from '@/components/audio/StemMixer';
 import StemWaveformPlayer from '@/components/audio/StemWaveformPlayer';
+import EnhancedMasteringDialog from '@/components/mastering/EnhancedMasteringDialog';
 import { haptics } from '@/components/utils/haptics';
 
 export default function StemStudioPage() {
@@ -19,6 +20,7 @@ export default function StemStudioPage() {
   const [showSeparationDialog, setShowSeparationDialog] = useState(false);
   const [showMixer, setShowMixer] = useState(false);
   const [selectedStemSeparation, setSelectedStemSeparation] = useState(null);
+  const [masteringTrack, setMasteringTrack] = useState(null);
   const { playTrack } = useAudioPlayer();
   const queryClient = useQueryClient();
 
@@ -302,17 +304,27 @@ export default function StemStudioPage() {
                           />
                         </div>
                       )}
-                      <Button
-                        onClick={() => {
-                          haptics.medium();
-                          setSelectedTrack(track);
-                          setShowSeparationDialog(true);
-                        }}
-                        className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white"
-                      >
-                        <Disc className="h-4 w-4 mr-2" />
-                        Separate Stems
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => {
+                            haptics.medium();
+                            setSelectedTrack(track);
+                            setShowSeparationDialog(true);
+                          }}
+                          className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white"
+                        >
+                          <Disc className="h-4 w-4 mr-2" />
+                          Separate
+                        </Button>
+                        <Button
+                          onClick={() => { haptics.medium(); setMasteringTrack(track); }}
+                          variant="outline"
+                          className="border-violet-500/50 text-violet-300 hover:bg-violet-500/10"
+                        >
+                          <Wand2 className="h-4 w-4 mr-1" />
+                          Master
+                        </Button>
+                      </div>
                     </div>
                   </motion.div>
                 );
@@ -350,6 +362,14 @@ export default function StemStudioPage() {
           stemSeparation={selectedStemSeparation}
         />
       )}
+
+      {/* Mastering Dialog */}
+      <EnhancedMasteringDialog
+        track={masteringTrack}
+        open={!!masteringTrack}
+        onClose={() => setMasteringTrack(null)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['tracks'] })}
+      />
     </div>
   );
 }
