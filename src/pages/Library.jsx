@@ -65,7 +65,8 @@ export default function LibraryPage() {
 
   const filtered = tracks.filter(t => {
     const q = search.toLowerCase();
-    const matchSearch = !q || t.title?.toLowerCase().includes(q) || t.style?.toLowerCase().includes(q);
+    const creatorName = getCreatorName(t, user).toLowerCase();
+    const matchSearch = !q || t.title?.toLowerCase().includes(q) || creatorName.includes(q);
     const matchFilter =
       filter === 'All' ? true :
       filter === 'Ready' ? t.status === 'ready' :
@@ -187,6 +188,7 @@ export default function LibraryPage() {
                   key={track.id}
                   isMobile={isMobile}
                   track={track}
+                  user={user}
                   index={i}
                   isCurrentlyPlaying={currentTrack?.id === track.id && isPlaying}
                   onPlay={() => {
@@ -215,6 +217,7 @@ export default function LibraryPage() {
       {isMobile && (
         <TrackActionsSheet
           track={bottomSheetTrack}
+          user={user}
           onClose={() => setBottomSheetTrack(null)}
           onEdit={(t) => { setEditTrack(t); setBottomSheetTrack(null); }}
           onShare={(t) => { setShareTrack(t); setBottomSheetTrack(null); }}
@@ -237,8 +240,14 @@ export default function LibraryPage() {
   );
 }
 
+function getCreatorName(track, user) {
+  if (user?.email && track?.created_by === user.email && user?.full_name) return user.full_name;
+  return track?.created_by?.split('@')[0] || user?.full_name || 'You';
+}
+
 function LibraryTrackRow({
   track,
+  user,
   index,
   isCurrentlyPlaying,
   isMobile,
@@ -257,6 +266,7 @@ function LibraryTrackRow({
   const statusColors = { ready: '#22c55e', generating: '#c084fc', queued: '#facc15', failed: '#f87171' };
   const isReady = track.status === 'ready';
   const isActiveGeneration = track.status === 'generating' || track.status === 'queued';
+  const creatorName = getCreatorName(track, user);
 
   return (
     <motion.div
@@ -312,7 +322,7 @@ function LibraryTrackRow({
           </p>
         </Link>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-xs text-white/45 truncate">{track.style || 'AI Generated'}</span>
+          <span className="text-xs text-white/45 truncate">{creatorName}</span>
           {!isReady && (
             <span className="text-[10px] font-medium" style={{ color: statusColors[track.status] }}>{track.status}</span>
           )}
@@ -383,7 +393,7 @@ function LibraryTrackRow({
   );
 }
 
-function TrackActionsSheet({ track, onClose, onEdit, onShare, onMaster, onStems, onVideo, onExportVideo, onTogglePublic, onDelete }) {
+function TrackActionsSheet({ track, user, onClose, onEdit, onShare, onMaster, onStems, onVideo, onExportVideo, onTogglePublic, onDelete }) {
   if (!track) return null;
 
   const actions = [
@@ -411,7 +421,7 @@ function TrackActionsSheet({ track, onClose, onEdit, onShare, onMaster, onStems,
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-white truncate">{track.title}</p>
-              <p className="text-xs text-white/40">{track.style || 'AI Generated'}</p>
+              <p className="text-xs text-white/40">{getCreatorName(track, user)}</p>
             </div>
           </div>
 

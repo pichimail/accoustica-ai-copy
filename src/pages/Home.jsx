@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Sparkles, Globe, Play, ArrowRight, Headphones, Mic, Wand2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
@@ -10,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import FloatingAlbumArt from '@/components/home/FloatingAlbumArt';
 import DynamicGradient from '@/components/background/DynamicGradient';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
+import { useAuth } from '@/lib/AuthContext';
 
 const features = [
   {
@@ -45,6 +47,16 @@ const genres = [
 
 export default function HomePage() {
   const { playTrack } = useAudioPlayer();
+  const { isAuthenticated, navigateToLogin } = useAuth();
+  const navigate = useNavigate();
+
+  const handleStartCreating = () => {
+    if (isAuthenticated) {
+      navigate(createPageUrl('Create'));
+    } else {
+      navigateToLogin();
+    }
+  };
   
   // Fetch most played/liked tracks
   const { data: popularTracks = [] } = useQuery({
@@ -116,12 +128,10 @@ export default function HomePage() {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <Link to={createPageUrl('Create')}>
-              <Button size="lg" className="w-full sm:w-auto h-14 px-8 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white font-semibold text-lg rounded-xl">
+            <Button onClick={handleStartCreating} size="lg" className="w-full sm:w-auto h-14 px-8 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white font-semibold text-lg rounded-xl">
                 <Sparkles className="h-5 w-5 mr-2" />
                 Start Creating
-              </Button>
-            </Link>
+            </Button>
             <Link to={createPageUrl('Discover')}>
               <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 bg-white/5 border-slate-700 text-white hover:bg-white/10 font-semibold text-lg rounded-xl">
                 <Play className="h-5 w-5 mr-2" />
@@ -288,12 +298,10 @@ export default function HomePage() {
           <p className="text-slate-300 text-lg mb-8">
             Join thousands of creators making amazing music with AI
           </p>
-          <Link to={createPageUrl('Create')}>
-            <Button size="lg" className="h-14 px-10 bg-white text-slate-900 hover:bg-slate-100 font-semibold text-lg rounded-xl">
+          <Button onClick={handleStartCreating} size="lg" className="h-14 px-10 bg-white text-slate-900 hover:bg-slate-100 font-semibold text-lg rounded-xl">
               Get Started Free
               <ArrowRight className="h-5 w-5 ml-2" />
-            </Button>
-          </Link>
+          </Button>
         </motion.div>
       </section>
 

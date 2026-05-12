@@ -47,7 +47,7 @@ export default function Layout({ children, currentPageName }) {
   };
 
   const navLinks = [
-  { name: 'Home', icon: Home, page: 'Home' },
+  { name: 'Home', icon: Home, page: 'Home', hideWhenAuth: true },
   { name: 'For You', icon: Sparkles, page: 'ForYou', requireAuth: true },
   { name: 'Create', icon: Plus, page: 'Create', requireAuth: true },
   { name: 'Library', icon: Library, page: 'Library', requireAuth: true },
@@ -61,6 +61,7 @@ export default function Layout({ children, currentPageName }) {
 
 
   const filteredNavLinks = navLinks.filter((link) => {
+    if (link.hideWhenAuth && user) return false;
     if (link.requireAuth && !user) return false;
     return true;
   });
