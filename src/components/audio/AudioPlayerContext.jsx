@@ -91,6 +91,7 @@ export function AudioPlayerProvider({ children }) {
   const [repeatMode, setRepeatMode] = useState('off');
   const [isShuffle, setIsShuffle] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [playerVisible, setPlayerVisible] = useState(true);
   const [audioSettings, setAudioSettings] = useState(null);
   const audioRef = useRef(null);
   const pendingPlayRef = useRef(null);
@@ -129,6 +130,7 @@ export function AudioPlayerProvider({ children }) {
     }
 
     pendingPlayRef.current = track.id || sourceCandidates[0];
+    setPlayerVisible(true);
     setCurrentTrack({ ...track, __resolvedAudioSource: sourceCandidates[0] });
     setCurrentTime(0);
     setDuration(Number(track.duration) || 0);
@@ -262,12 +264,12 @@ export function AudioPlayerProvider({ children }) {
 
   const value = {
     currentTrack, isPlaying, currentTime, duration, volume,
-    queue, queueIndex, repeatMode, isShuffle, isFullscreen,
+    queue, queueIndex, repeatMode, isShuffle, isFullscreen, playerVisible,
     audioSettings, audioRef,
     playTrack, pauseTrack, togglePlayPause, playNext, playPrevious,
     seek, changeVolume, toggleRepeat, toggleShuffle,
     addToQueue, removeFromQueue, clearQueue,
-    setIsFullscreen, setCurrentTime, setDuration, setIsPlaying,
+    setIsFullscreen, setPlayerVisible, setCurrentTime, setDuration, setIsPlaying,
   };
 
   return (

@@ -254,7 +254,7 @@ export default function CreatePage() {
   return (
     <>
       {/* ════ DESKTOP: 3-panel Studio Layout ════ */}
-      <div ref={desktopStudioRef} className="hidden md:flex overflow-hidden" style={{ background: 'radial-gradient(circle at 20% 0%, #101325 0%, #050507 48%, #030303 100%)', height: '100vh', filter: 'contrast(1.24)' }}>
+      <div ref={desktopStudioRef} className="hidden md:flex overflow-hidden" style={{ background: 'radial-gradient(circle at 20% 0%, #101325 0%, #050507 48%, #030303 100%)', height: 'var(--content-available-height, 100vh)', filter: 'contrast(1.24)' }}>
 
         {/* LEFT — Library */}
         <div className="flex-shrink-0 h-full overflow-hidden" style={{ width: libraryWidth }}>
@@ -338,7 +338,7 @@ export default function CreatePage() {
       </div>
 
       {/* ════ MOBILE: single column ════ */}
-      <div className="md:hidden flex flex-col min-h-screen pb-40" style={{ background: 'radial-gradient(circle at 20% 0%, #101325 0%, #050507 48%, #030303 100%)', filter: 'contrast(1.24)' }}>
+      <div className="md:hidden flex flex-col" style={{ background: 'radial-gradient(circle at 20% 0%, #101325 0%, #050507 48%, #030303 100%)', minHeight: 'var(--content-available-height, 100vh)', filter: 'contrast(1.24)' }}>
         {/* Mobile header */}
         <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b" style={{ background: 'rgba(9,9,15,0.97)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.06)' }}>
           <div className="flex items-center gap-2">

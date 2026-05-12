@@ -18,7 +18,7 @@ import {
 'lucide-react';
 
 import { cn } from "@/lib/utils";
-import { AudioPlayerProvider } from '@/components/audio/AudioPlayerContext';
+import { AudioPlayerProvider, useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import GlobalAudioPlayer from '@/components/audio/GlobalAudioPlayer';
 import MobileNav from '@/components/mobile/MobileNav';
 
@@ -76,7 +76,7 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <AudioPlayerProvider>
-    <div className="min-h-screen flex flex-col" style={{ background: '#0a0a0f' }}>
+    <div className="h-screen overflow-hidden flex flex-col" style={{ background: '#0a0a0f' }}>
       {/* Ambient gradient — static, no performance cost */}
       {/* Mobile Top Bar */}
       <header className={cn(
@@ -145,7 +145,7 @@ export default function Layout({ children, currentPageName }) {
             sidebarOpen ? "w-64" : "w-20",
             currentPageName === 'Home' && "hidden"
           )}
-          style={{ background: 'rgba(10,10,15,0.97)', backdropFilter: 'blur(24px)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+          style={{ background: 'rgba(10,10,15,0.97)', backdropFilter: 'blur(24px)', borderRight: '1px solid rgba(255,255,255,0.06)', paddingBottom: 'var(--player-reserve, 0px)' }}>
           
         <div className="flex flex-col w-full">
           {/* Logo & Toggle */}
@@ -245,13 +245,13 @@ export default function Layout({ children, currentPageName }) {
       </aside>
 
       {/* Main Content */}
-      <main className={cn(
-          "flex-1 lg:transition-all lg:duration-300 relative z-10",
-          currentPageName === 'Home' ? "pt-0 pb-0 lg:pb-0" : "pt-14 pb-[168px] lg:pt-0 lg:pb-20",
-          showSidebar && (sidebarOpen ? "lg:ml-64" : "lg:ml-20")
-        )}>
+      <ReservedMain
+        currentPageName={currentPageName}
+        showSidebar={showSidebar}
+        sidebarOpen={sidebarOpen}
+      >
         {children}
-      </main>
+      </ReservedMain>
 
       {/* Global Audio Player — always rendered so audioRef stays mounted */}
       <GlobalAudioPlayer currentPageName={currentPageName} />
@@ -263,4 +263,47 @@ export default function Layout({ children, currentPageName }) {
     </div>
     </AudioPlayerProvider>);
 
+}
+
+function ReservedMain({ children, currentPageName, showSidebar, sidebarOpen }) {
+  const { currentTrack, playerVisible } = useAudioPlayer();
+  const hasVisiblePlayer = !!currentTrack && playerVisible;
+  const hasMobileNav = currentPageName !== 'Home' && currentPageName !== 'Create';
+  const playerReserve = hasVisiblePlayer ? '86px' : '0px';
+  const mobileNavReserve = hasMobileNav ? '72px' : '0px';
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--player-reserve', playerReserve);
+    root.style.setProperty('--mobile-nav-reserve', mobileNavReserve);
+    root.style.setProperty(
+      '--content-available-height',
+      'calc(100vh - var(--player-reserve) - var(--mobile-nav-reserve) - env(safe-area-inset-bottom, 0px))'
+    );
+    return () => {
+      root.style.removeProperty('--player-reserve');
+      root.style.removeProperty('--mobile-nav-reserve');
+      root.style.removeProperty('--content-available-height');
+    };
+  }, [playerReserve, mobileNavReserve]);
+
+  return (
+    <main
+      className={cn(
+        "app-shell-main flex-1 min-h-0 overflow-y-auto lg:transition-all lg:duration-300 relative z-10",
+        currentPageName === 'Home' ? "pt-0" : "pt-14 lg:pt-0",
+        showSidebar && (sidebarOpen ? "lg:ml-64" : "lg:ml-20")
+      )}
+      style={{
+        '--player-reserve': playerReserve,
+        '--mobile-nav-reserve': mobileNavReserve,
+        '--content-available-height': 'calc(100vh - var(--player-reserve) - var(--mobile-nav-reserve) - env(safe-area-inset-bottom, 0px))',
+        paddingBottom: currentPageName === 'Home'
+          ? 'calc(var(--player-reserve) + env(safe-area-inset-bottom, 0px))'
+          : 'calc(var(--player-reserve) + var(--mobile-nav-reserve) + env(safe-area-inset-bottom, 0px))',
+      }}
+    >
+      {children}
+    </main>
+  );
 }

@@ -394,7 +394,7 @@ export default function StudioGeneratePanel({
         )}
       </div>
 
-      <div className="flex-shrink-0 md:static sticky bottom-0 z-10 px-4 pb-4 pt-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(10,10,16,0.98)', backdropFilter: 'blur(8px)' }}>
+      <div className="flex-shrink-0 md:static sticky z-10 px-4 pb-4 pt-3 border-t" style={{ bottom: 'var(--player-reserve, 0px)', borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(10,10,16,0.98)', backdropFilter: 'blur(8px)' }}>
         <button type="button" onClick={onGenerate} disabled={isGenerating} aria-busy={isGenerating}
           className={cn('w-full py-3 rounded-lg font-extrabold text-sm flex items-center justify-center gap-2 transition-all tracking-wide focus:outline-none focus:ring-2 focus:ring-rose-400', isGenerating ? 'cursor-not-allowed' : 'active:scale-[0.99]')}
           style={isGenerating ? { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.28)' } : { background: 'linear-gradient(135deg, #e11d48, #be123c)', boxShadow: '0 0 24px rgba(225,29,72,0.42)', color: '#fff' }}>

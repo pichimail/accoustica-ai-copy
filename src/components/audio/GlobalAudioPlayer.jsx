@@ -15,7 +15,7 @@ export default function GlobalAudioPlayer({ currentPageName }) {
     currentTrack, isPlaying, currentTime, duration, volume,
     repeatMode, isShuffle, audioRef, togglePlayPause, playNext, playPrevious,
     seek, changeVolume, toggleRepeat, toggleShuffle, setIsFullscreen,
-    setCurrentTime, setDuration, setIsPlaying,
+    playerVisible, setPlayerVisible, setCurrentTime, setDuration, setIsPlaying,
   } = useAudioPlayer();
 
   const progressBarRef = useRef(null);
@@ -25,7 +25,6 @@ export default function GlobalAudioPlayer({ currentPageName }) {
   const [dragTime, setDragTime] = useState(0);
   const [liked, setLiked] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
-  const [playerVisible, setPlayerVisible] = useState(true);
 
   // ── AUDIO ELEMENT: always mounted, src managed imperatively ──────────
   // We render a single persistent <audio> ref, never remount it.
@@ -143,11 +142,6 @@ export default function GlobalAudioPlayer({ currentPageName }) {
   };
 
   const coverImg = currentTrack?.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop';
-
-  // Height of player bar for pushing content up
-  // mobile: ~68px + safe-area, desktop: ~70px
-  const PLAYER_HEIGHT_MOBILE = 68;
-  const PLAYER_HEIGHT_DESKTOP = 70;
 
   return (
     <>

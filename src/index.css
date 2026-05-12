@@ -25,6 +25,12 @@ button, a, [role="button"] {
   touch-action: manipulation;
 }
 
+@media (min-width: 1024px) {
+  .app-shell-main {
+    --mobile-nav-reserve: 0px !important;
+  }
+}
+
 
 /* :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
