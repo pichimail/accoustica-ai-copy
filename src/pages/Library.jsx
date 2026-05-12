@@ -384,9 +384,7 @@ function LibraryTrackRow({
 }
 
 function TrackActionsSheet({ track, onClose, onEdit, onShare, onMaster, onStems, onVideo, onExportVideo, onTogglePublic, onDelete }) {
-  if (!track) {
-    return <BottomSheet open={false} onClose={onClose} title={null} />;
-  }
+  if (!track) return null;
 
   const actions = [
     { icon: Edit3,  label: 'Edit',        fn: () => onEdit(track) },
@@ -399,7 +397,7 @@ function TrackActionsSheet({ track, onClose, onEdit, onShare, onMaster, onStems,
   ];
 
   return (
-    <BottomSheet open={!!track} onClose={onClose} title={null} snapPoints={[0.62]}>
+    <BottomSheet open={!!track} onClose={onClose} title={null}>
         {track && (
         <div>
           {/* Track preview */}

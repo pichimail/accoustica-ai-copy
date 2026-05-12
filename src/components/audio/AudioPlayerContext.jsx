@@ -22,6 +22,7 @@ const buildAudioCandidates = (track) => {
     track?.url,
   ].map(normalizeAudioUrl).filter(Boolean);
 
+  // Also add http<->https variants for each url
   const expanded = [...raw];
   for (const candidate of raw) {
     if (candidate.startsWith('http://')) {
@@ -45,6 +46,32 @@ export const getTrackAudioSource = (track) => (
   || ''
 );
 
+// Fetch fresh audio URLs from the API when stored URLs expire
+const refreshTrackUrls = async (track) => {
+  if (!track?.task_id) return null;
+  try {
+    const res = await base44.functions.invoke('getMusicDetails', { taskId: track.task_id });
+    const sunoTracks = res?.data?.tracks || [];
+    // Match by external_audio_id or position
+    let match = sunoTracks.find(t => t.id === track.external_audio_id);
+    if (!match && sunoTracks.length > 0) match = sunoTracks[0];
+    if (match) {
+      const freshUrl = match.stream_audio_url || match.audio_url || match.audioUrl || match.streamAudioUrl;
+      if (freshUrl) {
+        // Persist the fresh URL back to the database so future plays work
+        await base44.entities.Track.update(track.id, {
+          audio_url: match.audio_url || match.audioUrl || freshUrl,
+          stream_audio_url: match.stream_audio_url || match.streamAudioUrl || freshUrl,
+        });
+        return freshUrl;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to refresh track URLs:', e);
+  }
+  return null;
+};
+
 export const useAudioPlayer = () => {
   const context = useContext(AudioPlayerContext);
   if (!context) {
@@ -61,7 +88,7 @@ export function AudioPlayerProvider({ children }) {
   const [volume, setVolume] = useState(70);
   const [queue, setQueue] = useState([]);
   const [queueIndex, setQueueIndex] = useState(0);
-  const [repeatMode, setRepeatMode] = useState('off'); // off, all, one
+  const [repeatMode, setRepeatMode] = useState('off');
   const [isShuffle, setIsShuffle] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [audioSettings, setAudioSettings] = useState(null);
@@ -88,7 +115,7 @@ export function AudioPlayerProvider({ children }) {
     return () => { mounted = false; };
   }, []);
 
-  // Play a specific track
+  // Play a specific track — with automatic URL refresh fallback
   const playTrack = async (track, trackQueue = []) => {
     const sourceCandidates = buildAudioCandidates(track);
     if (sourceCandidates.length === 0) {
@@ -97,7 +124,6 @@ export function AudioPlayerProvider({ children }) {
     }
 
     if (currentTrack?.id === track.id && isPlaying) {
-      // If clicking the same playing track, pause it
       pauseTrack();
       return;
     }
@@ -106,7 +132,7 @@ export function AudioPlayerProvider({ children }) {
     setCurrentTrack({ ...track, __resolvedAudioSource: sourceCandidates[0] });
     setCurrentTime(0);
     setDuration(Number(track.duration) || 0);
-    
+
     if (trackQueue.length > 0) {
       const playableQueue = trackQueue.filter(item => getTrackAudioSource(item));
       setQueue(playableQueue);
@@ -120,47 +146,49 @@ export function AudioPlayerProvider({ children }) {
         if (attempt < 8) window.setTimeout(() => tryPlay(attempt + 1), 60);
         return;
       }
+
       try {
         const candidate = sourceCandidates[Math.min(attempt, sourceCandidates.length - 1)];
-        if (audio.src !== candidate) audio.src = candidate;
+        if (audio.src !== candidate) {
+          audio.src = candidate;
+          audio.load();
+        }
         audio.volume = volume / 100;
-        audio.load();
         await audio.play();
         pendingPlayRef.current = null;
         setCurrentTrack((prev) => prev ? { ...prev, __resolvedAudioSource: candidate } : prev);
         setIsPlaying(true);
       } catch (error) {
         if (attempt < sourceCandidates.length - 1) {
+          // Try next candidate URL
           window.setTimeout(() => tryPlay(attempt + 1), 120);
         } else {
+          // All stored URLs failed — fetch fresh URLs from API
+          console.warn('All stored URLs failed, fetching fresh URLs...');
+          const freshUrl = await refreshTrackUrls(track);
+          if (freshUrl) {
+            try {
+              audio.src = freshUrl;
+              audio.load();
+              audio.volume = volume / 100;
+              await audio.play();
+              pendingPlayRef.current = null;
+              setCurrentTrack((prev) => prev ? { ...prev, __resolvedAudioSource: freshUrl, audio_url: freshUrl, stream_audio_url: freshUrl } : prev);
+              setIsPlaying(true);
+              return;
+            } catch (e2) {
+              console.error('Fresh URL also failed:', e2);
+            }
+          }
           pendingPlayRef.current = null;
           setIsPlaying(false);
-          console.error('Playback error:', error);
-          toast.error('Playback failed: track URL is unreachable');
+          toast.error('Playback failed — track URL may have expired. Refresh to retry.');
         }
       }
     };
 
     window.setTimeout(() => tryPlay(), 0);
   };
-
-  useEffect(() => {
-    const source = getTrackAudioSource(currentTrack);
-    if (!currentTrack || !source || !pendingPlayRef.current) return undefined;
-    const timer = window.setTimeout(async () => {
-      if (audioRef.current && pendingPlayRef.current) {
-        try {
-          audioRef.current.volume = volume / 100;
-          await audioRef.current.play();
-          pendingPlayRef.current = null;
-          setIsPlaying(true);
-        } catch (error) {
-          console.error('Playback error:', error);
-        }
-      }
-    }, 80);
-    return () => window.clearTimeout(timer);
-  }, [currentTrack, volume]);
 
   const pauseTrack = () => {
     if (audioRef.current) {
@@ -171,7 +199,6 @@ export function AudioPlayerProvider({ children }) {
 
   const togglePlayPause = async () => {
     if (!audioRef.current) return;
-    
     if (isPlaying) {
       pauseTrack();
     } else {
@@ -186,34 +213,20 @@ export function AudioPlayerProvider({ children }) {
 
   const playNext = () => {
     if (queue.length === 0) return;
-    
     let nextIndex = queueIndex + 1;
     if (nextIndex >= queue.length) {
-      if (repeatMode === 'all') {
-        nextIndex = 0;
-      } else {
-        return;
-      }
+      if (repeatMode === 'all') nextIndex = 0;
+      else return;
     }
-    
     setQueueIndex(nextIndex);
     playTrack(queue[nextIndex], queue);
   };
 
   const playPrevious = () => {
     if (queue.length === 0) return;
-    
-    // If more than 3 seconds in, restart current track
-    if (currentTime > 3) {
-      seek(0);
-      return;
-    }
-    
+    if (currentTime > 3) { seek(0); return; }
     let prevIndex = queueIndex - 1;
-    if (prevIndex < 0) {
-      prevIndex = queue.length - 1;
-    }
-    
+    if (prevIndex < 0) prevIndex = queue.length - 1;
     setQueueIndex(prevIndex);
     playTrack(queue[prevIndex], queue);
   };
@@ -227,9 +240,7 @@ export function AudioPlayerProvider({ children }) {
 
   const changeVolume = (newVolume) => {
     setVolume(newVolume);
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume / 100;
-    }
+    if (audioRef.current) audioRef.current.volume = newVolume / 100;
   };
 
   const toggleRepeat = () => {
@@ -238,59 +249,26 @@ export function AudioPlayerProvider({ children }) {
     setRepeatMode(modes[(currentIndex + 1) % modes.length]);
   };
 
-  const toggleShuffle = () => {
-    setIsShuffle(!isShuffle);
-  };
+  const toggleShuffle = () => setIsShuffle(!isShuffle);
 
-  const addToQueue = (track) => {
-    setQueue([...queue, track]);
-  };
+  const addToQueue = (track) => setQueue([...queue, track]);
 
   const removeFromQueue = (index) => {
     const newQueue = queue.filter((_, i) => i !== index);
     setQueue(newQueue);
-    if (queueIndex >= index && queueIndex > 0) {
-      setQueueIndex(queueIndex - 1);
-    }
+    if (queueIndex >= index && queueIndex > 0) setQueueIndex(queueIndex - 1);
   };
 
-  const clearQueue = () => {
-    setQueue([]);
-    setQueueIndex(0);
-  };
+  const clearQueue = () => { setQueue([]); setQueueIndex(0); };
 
   const value = {
-    // State
-    currentTrack,
-    isPlaying,
-    currentTime,
-    duration,
-    volume,
-    queue,
-    queueIndex,
-    repeatMode,
-    isShuffle,
-    isFullscreen,
-    audioSettings,
-    audioRef,
-    
-    // Actions
-    playTrack,
-    pauseTrack,
-    togglePlayPause,
-    playNext,
-    playPrevious,
-    seek,
-    changeVolume,
-    toggleRepeat,
-    toggleShuffle,
-    addToQueue,
-    removeFromQueue,
-    clearQueue,
-    setIsFullscreen,
-    setCurrentTime,
-    setDuration,
-    setIsPlaying,
+    currentTrack, isPlaying, currentTime, duration, volume,
+    queue, queueIndex, repeatMode, isShuffle, isFullscreen,
+    audioSettings, audioRef,
+    playTrack, pauseTrack, togglePlayPause, playNext, playPrevious,
+    seek, changeVolume, toggleRepeat, toggleShuffle,
+    addToQueue, removeFromQueue, clearQueue,
+    setIsFullscreen, setCurrentTime, setDuration, setIsPlaying,
   };
 
   return (
