@@ -374,9 +374,9 @@ export default function FullscreenPlayer() {
               exit={{ opacity: 0 }}
               className="h-full flex items-center justify-center hidden">
               
-                  <div className="w-full aspect-video max-h-full rounded-2xl overflow-hidden hidden"
+                  <div className="w-full aspect-video max-h-full rounded-2xl overflow-hidden"
               style={{ boxShadow: '0 20px 60px rgba(192,132,252,0.2)' }}>
-                    <img src={coverImg} alt={currentTrack.title} className="w-full h-full object-cover hidden" />
+                    <img src={coverImg} alt={currentTrack.title} className="w-full h-full object-cover" />
                   </div>
                 </motion.div>
             }
