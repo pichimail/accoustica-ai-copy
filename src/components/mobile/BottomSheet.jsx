@@ -19,7 +19,15 @@ export default function BottomSheet({
   }, [open]);
 
   return (
-    <Drawer.Root open={open} onOpenChange={onClose} snapPoints={snapPoints} dismissible>
+    <Drawer.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        // Controlled usage: only propagate explicit close events.
+        if (!nextOpen) onClose(false);
+      }}
+      snapPoints={snapPoints}
+      dismissible
+    >
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[110]" />
         <Drawer.Content 

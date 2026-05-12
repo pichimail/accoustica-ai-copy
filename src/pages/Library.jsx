@@ -12,6 +12,13 @@ import EnhancedMasteringDialog from '@/components/mastering/EnhancedMasteringDia
 import StemSeparationDialog from '@/components/audio/StemSeparationDialog';
 import MusicVideoGenerator from '@/components/video/MusicVideoGenerator';
 import BottomSheet from '@/components/mobile/BottomSheet';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Search, Music, Plus, Heart, Globe, Lock, Loader2,
   Play, Pause, Trash2, Edit3, Share2, Wand2, Mic2, Video, MoreVertical
@@ -23,6 +30,7 @@ import { createPageUrl } from '@/utils';
 const FILTERS = ['All', 'Ready', 'Favorites', 'Public', 'Instrumental'];
 
 export default function LibraryPage() {
+  const isMobile = useIsMobile();
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
@@ -175,6 +183,7 @@ export default function LibraryPage() {
               {filtered.map((track, i) => (
                 <LibraryTrackRow
                   key={track.id}
+                  isMobile={isMobile}
                   track={track}
                   index={i}
                   isCurrentlyPlaying={currentTrack?.id === track.id && isPlaying}
@@ -185,6 +194,13 @@ export default function LibraryPage() {
                   }}
                   onFavorite={() => handleToggleFavorite(track)}
                   onMore={() => { haptics.light(); setBottomSheetTrack(track); }}
+                  onEdit={() => { setEditTrack(track); setBottomSheetTrack(null); }}
+                  onShare={() => { setShareTrack(track); setBottomSheetTrack(null); }}
+                  onMaster={() => { setMasterTrack(track); setBottomSheetTrack(null); }}
+                  onStems={() => { setStemTrack(track); setBottomSheetTrack(null); }}
+                  onVideo={() => { setVideoTrack(track); setBottomSheetTrack(null); }}
+                  onTogglePublic={() => handleTogglePublic(track)}
+                  onDelete={() => handleDelete(track)}
                 />
               ))}
             </AnimatePresence>
@@ -192,18 +208,20 @@ export default function LibraryPage() {
         )}
       </div>
 
-      {/* Bottom Sheet */}
-      <TrackActionsSheet
-        track={bottomSheetTrack}
-        onClose={() => setBottomSheetTrack(null)}
-        onEdit={(t) => { setEditTrack(t); setBottomSheetTrack(null); }}
-        onShare={(t) => { setShareTrack(t); setBottomSheetTrack(null); }}
-        onMaster={(t) => { setMasterTrack(t); setBottomSheetTrack(null); }}
-        onStems={(t) => { setStemTrack(t); setBottomSheetTrack(null); }}
-        onVideo={(t) => { setVideoTrack(t); setBottomSheetTrack(null); }}
-        onTogglePublic={handleTogglePublic}
-        onDelete={handleDelete}
-      />
+      {/* Mobile Bottom Sheet */}
+      {isMobile && (
+        <TrackActionsSheet
+          track={bottomSheetTrack}
+          onClose={() => setBottomSheetTrack(null)}
+          onEdit={(t) => { setEditTrack(t); setBottomSheetTrack(null); }}
+          onShare={(t) => { setShareTrack(t); setBottomSheetTrack(null); }}
+          onMaster={(t) => { setMasterTrack(t); setBottomSheetTrack(null); }}
+          onStems={(t) => { setStemTrack(t); setBottomSheetTrack(null); }}
+          onVideo={(t) => { setVideoTrack(t); setBottomSheetTrack(null); }}
+          onTogglePublic={handleTogglePublic}
+          onDelete={handleDelete}
+        />
+      )}
 
       <TrackEditDialog track={editTrack} open={!!editTrack} onClose={() => setEditTrack(null)} onSuccess={() => queryClient.invalidateQueries({ queryKey: ['myTracks'] })} />
       <ShareTrackDialog track={shareTrack} open={!!shareTrack} onClose={() => setShareTrack(null)} />
@@ -214,7 +232,22 @@ export default function LibraryPage() {
   );
 }
 
-function LibraryTrackRow({ track, index, isCurrentlyPlaying, onPlay, onFavorite, onMore }) {
+function LibraryTrackRow({
+  track,
+  index,
+  isCurrentlyPlaying,
+  isMobile,
+  onPlay,
+  onFavorite,
+  onMore,
+  onEdit,
+  onShare,
+  onMaster,
+  onStems,
+  onVideo,
+  onTogglePublic,
+  onDelete,
+}) {
   const statusColors = { ready: '#22c55e', generating: '#c084fc', queued: '#facc15', failed: '#f87171' };
   const isReady = track.status === 'ready';
   const isActiveGeneration = track.status === 'generating' || track.status === 'queued';
@@ -311,9 +344,33 @@ function LibraryTrackRow({ track, index, isCurrentlyPlaying, onPlay, onFavorite,
         <button onClick={onFavorite} className="p-2 rounded-xl hover:bg-white/5 transition-colors">
           <Heart className={cn('h-4 w-4', track.is_favorite ? 'fill-current' : '')} style={{ color: track.is_favorite ? '#f472b6' : 'rgba(255,255,255,0.3)' }} />
         </button>
-        <button onClick={onMore} className="p-2 rounded-xl hover:bg-white/5 transition-colors">
-          <MoreVertical className="h-4 w-4 text-white/30" />
-        </button>
+        {isMobile ? (
+          <button onClick={onMore} className="p-2 rounded-xl hover:bg-white/5 transition-colors">
+            <MoreVertical className="h-4 w-4 text-white/30" />
+          </button>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="p-2 rounded-xl hover:bg-white/5 transition-colors focus:outline-none focus:ring-1 focus:ring-rose-400">
+                <MoreVertical className="h-4 w-4 text-white/30" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44 bg-[#101016] border-white/10 text-white">
+              <DropdownMenuItem onClick={onEdit}><Edit3 className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>
+              <DropdownMenuItem onClick={onShare}><Share2 className="h-4 w-4 mr-2" />Share</DropdownMenuItem>
+              <DropdownMenuItem onClick={onMaster}><Wand2 className="h-4 w-4 mr-2" />Master</DropdownMenuItem>
+              <DropdownMenuItem onClick={onStems}><Mic2 className="h-4 w-4 mr-2" />Stems</DropdownMenuItem>
+              <DropdownMenuItem onClick={onVideo}><Video className="h-4 w-4 mr-2" />Video</DropdownMenuItem>
+              <DropdownMenuItem onClick={onTogglePublic}>
+                {track.is_public ? <Lock className="h-4 w-4 mr-2" /> : <Globe className="h-4 w-4 mr-2" />}
+                {track.is_public ? 'Make Private' : 'Make Public'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onDelete} className="text-red-400 focus:text-red-300">
+                <Trash2 className="h-4 w-4 mr-2" />Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </motion.div>
   );
