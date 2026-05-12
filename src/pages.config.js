@@ -9,7 +9,6 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminUsers from './pages/AdminUsers';
 import AdminPlans from './pages/AdminPlans';
 import AdminTracks from './pages/AdminTracks';
-import CollaborativeStudio from './pages/CollaborativeStudio';
 import MasteringStudio from './pages/MasteringStudio';
 import VideoStudio from './pages/VideoStudio';
 import PersonasHub from './pages/PersonasHub';
@@ -38,7 +37,6 @@ export const PAGES = {
     "AdminUsers": AdminUsers,
     "AdminPlans": AdminPlans,
     "AdminTracks": AdminTracks,
-    "CollaborativeStudio": CollaborativeStudio,
     "MasteringStudio": MasteringStudio,
     "VideoStudio": VideoStudio,
     "PersonasHub": PersonasHub,

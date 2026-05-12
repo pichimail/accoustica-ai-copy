@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger } from
 "@/components/ui/dropdown-menu";
 import {
-  Sparkles, Music, Globe, User, LogOut,
+  Sparkles, Globe, User, LogOut,
   Plus, Library, Crown, Home,
   Disc, MessageCircle, PanelLeftClose, PanelLeftOpen, GitBranch, Volume2, Edit3, BarChart3, ArrowLeft } from
 'lucide-react';
@@ -54,7 +54,6 @@ export default function Layout({ children, currentPageName }) {
   { name: 'Insights', icon: BarChart3, page: 'Insights', requireAuth: true },
   { name: 'Feed', icon: MessageCircle, page: 'SocialFeed' },
   { name: 'Discover', icon: Globe, page: 'Discover' },
-  { name: 'Studio', icon: Music, page: 'CollaborativeStudio', requireAuth: true },
   { name: 'Stems', icon: Disc, page: 'StemStudio', requireAuth: true },
   { name: 'Remix', icon: GitBranch, page: 'RemixStudio', requireAuth: true },
   { name: 'Master', icon: Volume2, page: 'MasteringProStudio', requireAuth: true },
@@ -254,10 +253,16 @@ export default function Layout({ children, currentPageName }) {
       </main>
 
       {/* Global Audio Player */}
-      <GlobalAudioPlayer currentPageName={currentPageName} />
+      {currentPageName === 'Create' ? (
+        <div className="hidden lg:block">
+          <GlobalAudioPlayer currentPageName={currentPageName} />
+        </div>
+      ) : (
+        <GlobalAudioPlayer currentPageName={currentPageName} />
+      )}
 
       {/* Mobile Bottom Navigation */}
-      {currentPageName !== 'Home' &&
+      {currentPageName !== 'Home' && currentPageName !== 'Create' &&
         <MobileNav currentPageName={currentPageName} user={user} autoHide={currentPageName === 'Create'} />
         }
     </div>

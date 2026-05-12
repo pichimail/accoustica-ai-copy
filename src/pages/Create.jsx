@@ -3,13 +3,18 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
+import { useLocation } from 'react-router-dom';
 import { Share2, Maximize2, Settings2 } from 'lucide-react';
 import StudioLibraryPanel from '@/components/create/StudioLibraryPanel';
 import StudioCenterPanel from '@/components/create/StudioCenterPanel';
 import StudioGeneratePanel from '@/components/create/StudioGeneratePanel';
 import { haptics } from '@/components/utils/haptics';
+import { getTrackAudioSource } from '@/components/audio/AudioPlayerContext';
 
 export default function CreatePage() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search || '');
+  const isGenerateOnlyMobile = params.get('panel') === 'generate';
   // ── User & plan ──
   const [user, setUser] = useState(null);
   useEffect(() => { base44.auth.me().then(setUser); }, []);
@@ -49,6 +54,12 @@ export default function CreatePage() {
 
   const queryClient = useQueryClient();
   const { playTrack, currentTrack, isPlaying } = useAudioPlayer();
+
+  useEffect(() => {
+    if (isGenerateOnlyMobile) setMobilePanelOpen(true);
+  }, [isGenerateOnlyMobile]);
+
+  const showGeneratePanelMobile = isGenerateOnlyMobile || mobilePanelOpen;
 
   const beginResize = useCallback((panel) => (event) => {
     event.preventDefault();
@@ -229,10 +240,10 @@ export default function CreatePage() {
   };
 
   const handlePlay = (track) => {
-    const playableUrl = track?.stream_audio_url || track?.audio_url;
+    const playableUrl = getTrackAudioSource(track);
     if (!playableUrl) return;
     haptics.light();
-    playTrack(track, allTracks.filter(t => t.stream_audio_url || t.audio_url));
+    playTrack(track, allTracks.filter(t => !!getTrackAudioSource(t)));
   };
 
   return (
@@ -324,18 +335,20 @@ export default function CreatePage() {
       {/* ════ MOBILE: single column ════ */}
       <div className="md:hidden flex flex-col min-h-screen pb-40" style={{ background: 'radial-gradient(circle at 20% 0%, #101325 0%, #050507 48%, #030303 100%)', filter: 'contrast(1.24)' }}>
         {/* Mobile header */}
-        <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b" style={{ background: 'rgba(9,9,15,0.97)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.06)' }}>
-          <span className="text-base font-extrabold" style={{ color: '#fff' }}>Studio</span>
-          <button
-            onClick={() => setMobilePanelOpen(v => !v)}
-            className="px-3 py-1.5 text-xs font-bold transition-all focus:outline-none focus:ring-1 focus:ring-rose-400"
-            style={{ background: mobilePanelOpen ? 'rgba(225,29,72,0.25)' : 'rgba(255,255,255,0.06)', color: mobilePanelOpen ? '#f43f5e' : 'rgba(255,255,255,0.6)', border: `1px solid ${mobilePanelOpen ? 'rgba(225,29,72,0.35)' : 'rgba(255,255,255,0.08)'}` }}
-          >
-            {mobilePanelOpen ? 'Library' : 'Generate'}
-          </button>
-        </div>
+        {!isGenerateOnlyMobile && (
+          <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b" style={{ background: 'rgba(9,9,15,0.97)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <span className="text-base font-extrabold" style={{ color: '#fff' }}>Studio</span>
+            <button
+              onClick={() => setMobilePanelOpen(v => !v)}
+              className="px-3 py-1.5 text-xs font-bold transition-all focus:outline-none focus:ring-1 focus:ring-rose-400"
+              style={{ background: mobilePanelOpen ? 'rgba(225,29,72,0.25)' : 'rgba(255,255,255,0.06)', color: mobilePanelOpen ? '#f43f5e' : 'rgba(255,255,255,0.6)', border: `1px solid ${mobilePanelOpen ? 'rgba(225,29,72,0.35)' : 'rgba(255,255,255,0.08)'}` }}
+            >
+              {mobilePanelOpen ? 'Library' : 'Generate'}
+            </button>
+          </div>
+        )}
 
-        {mobilePanelOpen ? (
+        {showGeneratePanelMobile ? (
           /* Generate panel */
           <div className="flex-1">
             <StudioGeneratePanel

@@ -116,16 +116,20 @@ export default function StudioGeneratePanel({
   };
 
   const generateSimplePrompt = async () => {
+    const currentPrompt = simplePrompt.trim();
+    const shouldEnhance = currentPrompt.length > 0;
     setGeneratingSimplePrompt(true);
     try {
       const response = await base44.integrations.Core.InvokeLLM({
-        prompt: 'Create one vivid music-generation prompt under 495 characters. Blend one unexpected hook, clear mood, instrumentation, and section flow cues. No markdown.',
+        prompt: shouldEnhance
+          ? `Enhance this music-generation prompt while preserving the user's intent. Make it more specific with mood, arrangement, instrumentation, and sonic texture. Keep it under ${SIMPLE_PROMPT_MAX} characters. Return plain text only.\n\nPrompt: ${currentPrompt}`
+          : `Create one vivid music-generation prompt under ${SIMPLE_PROMPT_MAX} characters. Blend one unexpected hook, clear mood, instrumentation, and section flow cues. No markdown.`,
         add_context_from_internet: false,
       });
       onSimplePromptChange(String(response || '').slice(0, SIMPLE_PROMPT_MAX));
-      toast.success('Random prompt generated');
+      toast.success(shouldEnhance ? 'Prompt enhanced' : 'Random prompt generated');
     } catch {
-      toast.error('Failed to generate prompt');
+      toast.error(shouldEnhance ? 'Failed to enhance prompt' : 'Failed to generate prompt');
     } finally {
       setGeneratingSimplePrompt(false);
     }
@@ -226,7 +230,12 @@ export default function StudioGeneratePanel({
                   className={fieldClass('resize-none leading-relaxed pr-10')}
                   style={fieldStyle}
                 />
-                <button type="button" onClick={generateSimplePrompt} className="absolute top-2 right-2 p-1 hover:bg-white/10" aria-label="Generate random prompt">
+                <button
+                  type="button"
+                  onClick={generateSimplePrompt}
+                  className="absolute top-2 right-2 p-1 hover:bg-white/10"
+                  aria-label={simplePrompt.trim() ? 'Enhance prompt' : 'Generate random prompt'}
+                >
                   {generatingSimplePrompt ? <Loader2 className="h-3.5 w-3.5 animate-spin text-white/45" /> : <Wand2 className="h-3.5 w-3.5 text-white/45" />}
                 </button>
               </div>
@@ -385,7 +394,7 @@ export default function StudioGeneratePanel({
         )}
       </div>
 
-      <div className="flex-shrink-0 px-4 pb-4 pt-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+      <div className="flex-shrink-0 md:static sticky bottom-0 z-10 px-4 pb-4 pt-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(10,10,16,0.98)', backdropFilter: 'blur(8px)' }}>
         <button type="button" onClick={onGenerate} disabled={isGenerating} aria-busy={isGenerating}
           className={cn('w-full py-3 rounded-lg font-extrabold text-sm flex items-center justify-center gap-2 transition-all tracking-wide focus:outline-none focus:ring-2 focus:ring-rose-400', isGenerating ? 'cursor-not-allowed' : 'active:scale-[0.99]')}
           style={isGenerating ? { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.28)' } : { background: 'linear-gradient(135deg, #e11d48, #be123c)', boxShadow: '0 0 24px rgba(225,29,72,0.42)', color: '#fff' }}>

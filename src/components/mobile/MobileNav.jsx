@@ -1,16 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Home, Sparkles, Plus, Library, Globe, Music, User, Disc, MoreHorizontal, X, MessageCircle, BarChart3 } from 'lucide-react';
+import { Home, Sparkles, Plus, Library, Globe, User, Disc, MoreHorizontal, X, MessageCircle, BarChart3 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { haptics } from '@/components/utils/haptics';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MORE_ITEMS = [
   { name: 'Insights', icon: BarChart3, page: 'Insights' },
-  { name: 'Studio',  icon: Music, page: 'CollaborativeStudio' },
-  { name: 'Stems',   icon: Disc,  page: 'StemStudio' },
-  { name: 'Profile', icon: User,  page: 'Profile' },
+  { name: 'Stems', icon: Disc, page: 'StemStudio' },
+  { name: 'Profile', icon: User, page: 'Profile' },
 ];
 
 export default function MobileNav({ currentPageName, user, autoHide = false }) {
@@ -21,21 +20,21 @@ export default function MobileNav({ currentPageName, user, autoHide = false }) {
 
   const primaryLinks = user
     ? [
-        { name: 'For You',  icon: Sparkles,       page: 'ForYou' },
-        { name: 'Feed',     icon: MessageCircle,  page: 'SocialFeed' },
-        { name: 'Create',   icon: Plus,           page: 'Create',  isCreate: true },
-        { name: 'Library',  icon: Library,        page: 'Library' },
-        { name: 'More',     icon: MoreHorizontal, page: null,      isMore: true },
+        { name: 'For You', icon: Sparkles, page: 'ForYou' },
+        { name: 'Feed', icon: MessageCircle, page: 'SocialFeed' },
+        { name: 'Create', icon: Plus, page: 'Create', isCreate: true },
+        { name: 'Library', icon: Library, page: 'Library' },
+        { name: 'More', icon: MoreHorizontal, page: null, isMore: true },
       ]
     : [
-        { name: 'Home',     icon: Home,           page: 'Home' },
-        { name: 'Discover', icon: Globe,          page: 'Discover' },
-        { name: 'Create',   icon: Plus,           page: 'Create',  isCreate: true },
-        { name: 'Feed',     icon: MessageCircle,  page: 'SocialFeed' },
-        { name: 'More',     icon: MoreHorizontal, page: null,      isMore: true },
+        { name: 'Home', icon: Home, page: 'Home' },
+        { name: 'Discover', icon: Globe, page: 'Discover' },
+        { name: 'Create', icon: Plus, page: 'Create', isCreate: true },
+        { name: 'Feed', icon: MessageCircle, page: 'SocialFeed' },
+        { name: 'More', icon: MoreHorizontal, page: null, isMore: true },
       ];
 
-  const isMoreActive = MORE_ITEMS.some(i => i.page === currentPageName);
+  const isMoreActive = MORE_ITEMS.some((i) => i.page === currentPageName);
 
   useEffect(() => {
     if (!autoHide) {
@@ -75,39 +74,39 @@ export default function MobileNav({ currentPageName, user, autoHide = false }) {
     };
   }, [autoHide]);
 
+  const baseItemClasses =
+    'w-full min-h-11 flex flex-col items-center justify-center gap-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400/70';
+
   return (
     <>
-      {/* Bottom Nav */}
       <nav
-        className={cn(
-          "lg:hidden fixed bottom-0 left-0 right-0 z-40 transition-transform duration-300",
-          hidden && "translate-y-full"
-        )}
+        className={cn('lg:hidden fixed bottom-0 left-0 right-0 z-40 transition-transform duration-300', hidden && 'translate-y-full')}
+        aria-label="Mobile navigation"
         aria-hidden={hidden}
       >
-        {/* Glass bar */}
         <div
-          className="px-2 py-1 safe-bottom"
+          className="px-2 py-2 safe-bottom"
           style={{
-            background: 'rgba(18,18,28,0.92)',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
-            borderTop: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 -4px 30px rgba(0,0,0,0.4)',
+            background: 'rgba(8,10,14,0.45)',
+            backdropFilter: 'blur(18px)',
+            WebkitBackdropFilter: 'blur(18px)',
+            borderTop: '1px solid rgba(255,255,255,0.14)',
           }}
         >
           <div className="grid grid-cols-5">
             {primaryLinks.map((link) => {
               if (link.isCreate) {
                 return (
-                  <Link key="create" to={createPageUrl('Create')} className="flex justify-center items-center py-2">
-                    <button
-                      onClick={() => haptics.medium()}
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-black font-bold shadow-xl active:scale-90 transition-transform"
-                      style={{ background: '#22c55e', boxShadow: '0 0 20px rgba(34,197,94,0.5)' }}
-                    >
-                      <Plus className="h-6 w-6" strokeWidth={2.5} />
-                    </button>
+                  <Link
+                    key="create"
+                    to={`${createPageUrl('Create')}?panel=generate`}
+                    onClick={() => haptics.medium()}
+                    aria-label="Go to Create"
+                    className="flex justify-center items-center min-h-11"
+                  >
+                    <span className="w-12 h-12 rounded-full flex items-center justify-center text-black font-bold active:scale-95 transition-transform" style={{ background: '#22c55e' }}>
+                      <Plus className="h-6 w-6" strokeWidth={2.5} aria-hidden="true" />
+                    </span>
                   </Link>
                 );
               }
@@ -116,41 +115,40 @@ export default function MobileNav({ currentPageName, user, autoHide = false }) {
                 return (
                   <button
                     key="more"
-                    onClick={() => { haptics.light(); setShowMore(true); }}
-                    className={cn(
-                      'flex flex-col items-center justify-center gap-1 py-3 transition-all',
-                      isMoreActive ? 'text-white' : 'text-white/35'
-                    )}
+                    onClick={() => {
+                      haptics.light();
+                      setShowMore(true);
+                    }}
+                    aria-label="Open more navigation options"
+                    className={cn(baseItemClasses, isMoreActive ? 'text-white' : 'text-white/75')}
                   >
-                    <MoreHorizontal className="h-5 w-5" />
-                    <span className="text-[10px] font-medium">More</span>
+                    <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+                    <span className="text-[10px] font-semibold">More</span>
                   </button>
                 );
               }
 
               const isActive = currentPageName === link.page;
               return (
-                <Link key={link.page} to={createPageUrl(link.page)}>
-                  <button
-                    onClick={() => haptics.light()}
-                    className="w-full flex flex-col items-center justify-center gap-1 py-3 transition-all"
-                  >
-                    {/* Active pill indicator */}
-                    {isActive ? (
-                      <div
-                        className="px-3 py-1.5 rounded-full flex items-center gap-1.5"
-                        style={{ background: 'rgba(34,197,94,0.15)' }}
-                      >
-                        <link.icon className="h-4 w-4 text-green-400" />
-                        <span className="text-[10px] font-semibold text-green-400">{link.name}</span>
-                      </div>
-                    ) : (
-                      <>
-                        <link.icon className="h-5 w-5 text-white/40" />
-                        <span className="text-[10px] font-medium text-white/35">{link.name}</span>
-                      </>
-                    )}
-                  </button>
+                <Link
+                  key={link.page}
+                  to={createPageUrl(link.page)}
+                  onClick={() => haptics.light()}
+                  aria-label={`Go to ${link.name}`}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={cn(baseItemClasses, isActive ? 'text-white' : 'text-white/75')}
+                >
+                  {isActive ? (
+                    <div className="px-3 py-1.5 rounded-full flex items-center gap-1.5" style={{ background: 'rgba(34,197,94,0.2)' }}>
+                      <link.icon className="h-4 w-4 text-green-300" aria-hidden="true" />
+                      <span className="text-[10px] font-semibold text-green-200">{link.name}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <link.icon className="h-5 w-5 text-white/80" aria-hidden="true" />
+                      <span className="text-[10px] font-medium text-white/85">{link.name}</span>
+                    </>
+                  )}
                 </Link>
               );
             })}
@@ -158,7 +156,6 @@ export default function MobileNav({ currentPageName, user, autoHide = false }) {
         </div>
       </nav>
 
-      {/* More Sheet */}
       <AnimatePresence>
         {showMore && (
           <>
@@ -175,7 +172,10 @@ export default function MobileNav({ currentPageName, user, autoHide = false }) {
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               className="lg:hidden fixed bottom-0 left-0 right-0 z-[91] rounded-t-3xl border-t border-white/10 pb-8"
-              style={{ background: 'rgba(14,14,22,0.98)', backdropFilter: 'blur(30px)' }}
+              style={{ background: 'rgba(14,14,22,0.96)', backdropFilter: 'blur(30px)' }}
+              role="dialog"
+              aria-label="More navigation options"
+              aria-modal="true"
             >
               <div className="flex justify-center pt-3 pb-1">
                 <div className="w-10 h-1 rounded-full bg-white/20" />
@@ -183,24 +183,29 @@ export default function MobileNav({ currentPageName, user, autoHide = false }) {
               <div className="px-5 pt-2 pb-2">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-white font-bold text-lg">More</h3>
-                  <button onClick={() => setShowMore(false)} className="text-white/40 hover:text-white p-2">
-                    <X className="h-5 w-5" />
+                  <button
+                    onClick={() => setShowMore(false)}
+                    aria-label="Close more options"
+                    className="text-white/70 hover:text-white p-2 min-h-11 min-w-11 flex items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400/70"
+                  >
+                    <X className="h-5 w-5" aria-hidden="true" />
                   </button>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   {MORE_ITEMS.map((item) => {
                     const isActive = currentPageName === item.page;
                     return (
-                      <Link key={item.page} to={createPageUrl(item.page)} onClick={() => { setShowMore(false); haptics.light(); }}>
-                        <div className={cn(
-                          'flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all',
-                          isActive
-                            ? 'border-green-500/40 text-green-400'
-                            : 'bg-white/5 border-white/10 text-white/60 active:bg-white/10'
-                        )}
-                        style={isActive ? { background: 'rgba(34,197,94,0.1)' } : {}}
+                      <Link key={item.page} to={createPageUrl(item.page)} onClick={() => { setShowMore(false); haptics.light(); }} aria-label={`Go to ${item.name}`}>
+                        <div
+                          className={cn(
+                            'flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all min-h-20 justify-center',
+                            isActive
+                              ? 'border-green-500/40 text-green-400'
+                              : 'bg-white/5 border-white/10 text-white/80 active:bg-white/10'
+                          )}
+                          style={isActive ? { background: 'rgba(34,197,94,0.1)' } : {}}
                         >
-                          <item.icon className="h-6 w-6" />
+                          <item.icon className="h-6 w-6" aria-hidden="true" />
                           <span className="text-xs font-medium text-center">{item.name}</span>
                         </div>
                       </Link>

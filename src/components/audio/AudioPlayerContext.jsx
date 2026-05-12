@@ -4,11 +4,42 @@ import { toast } from 'sonner';
 
 const AudioPlayerContext = createContext(null);
 
+const normalizeAudioUrl = (value) => {
+  const url = String(value || '').trim();
+  if (!url) return '';
+  if (url.startsWith('//')) return `https:${url}`;
+  return url;
+};
+
+const buildAudioCandidates = (track) => {
+  const raw = [
+    track?.__resolvedAudioSource,
+    track?.stream_audio_url,
+    track?.audio_url,
+    track?.streamAudioUrl,
+    track?.audioUrl,
+    track?.sourceAudioUrl,
+    track?.url,
+  ].map(normalizeAudioUrl).filter(Boolean);
+
+  const expanded = [...raw];
+  for (const candidate of raw) {
+    if (candidate.startsWith('http://')) {
+      expanded.push(`https://${candidate.slice(7)}`);
+    } else if (candidate.startsWith('https://')) {
+      expanded.push(`http://${candidate.slice(8)}`);
+    }
+  }
+
+  return Array.from(new Set(expanded));
+};
+
 export const getTrackAudioSource = (track) => (
-  track?.audio_url
+  track?.__resolvedAudioSource
   || track?.stream_audio_url
-  || track?.audioUrl
+  || track?.audio_url
   || track?.streamAudioUrl
+  || track?.audioUrl
   || track?.sourceAudioUrl
   || track?.url
   || ''
@@ -59,8 +90,8 @@ export function AudioPlayerProvider({ children }) {
 
   // Play a specific track
   const playTrack = async (track, trackQueue = []) => {
-    const source = getTrackAudioSource(track);
-    if (!source) {
+    const sourceCandidates = buildAudioCandidates(track);
+    if (sourceCandidates.length === 0) {
       toast.error('This track does not have a playable audio URL yet');
       return;
     }
@@ -71,8 +102,8 @@ export function AudioPlayerProvider({ children }) {
       return;
     }
 
-    pendingPlayRef.current = track.id || source;
-    setCurrentTrack(track);
+    pendingPlayRef.current = track.id || sourceCandidates[0];
+    setCurrentTrack({ ...track, __resolvedAudioSource: sourceCandidates[0] });
     setCurrentTime(0);
     setDuration(Number(track.duration) || 0);
     
@@ -90,20 +121,22 @@ export function AudioPlayerProvider({ children }) {
         return;
       }
       try {
-        if (audio.src !== source) audio.src = source;
+        const candidate = sourceCandidates[Math.min(attempt, sourceCandidates.length - 1)];
+        if (audio.src !== candidate) audio.src = candidate;
         audio.volume = volume / 100;
         audio.load();
         await audio.play();
         pendingPlayRef.current = null;
+        setCurrentTrack((prev) => prev ? { ...prev, __resolvedAudioSource: candidate } : prev);
         setIsPlaying(true);
       } catch (error) {
-        if (attempt < 4) {
+        if (attempt < sourceCandidates.length - 1) {
           window.setTimeout(() => tryPlay(attempt + 1), 120);
         } else {
           pendingPlayRef.current = null;
           setIsPlaying(false);
           console.error('Playback error:', error);
-          toast.error('Playback failed for this audio URL');
+          toast.error('Playback failed: track URL is unreachable');
         }
       }
     };
