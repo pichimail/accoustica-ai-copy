@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronDown, Play, Pause, SkipBack, SkipForward,
   Repeat, Repeat1, Shuffle, Volume2, VolumeX, Volume1,
-  Heart, MicVocal, ListMusic } from
-'lucide-react';
+  Heart, ListMusic } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudioPlayer } from './AudioPlayerContext';
+import LyricsView from './LyricsView';
 
 // ── BEAT VISUALIZER CANVAS ─────────────────────────────────────────
 function BeatVisualizer({ audioRef, isPlaying }) {
@@ -133,12 +132,10 @@ export default function FullscreenPlayer() {
     toggleRepeat, toggleShuffle, isFullscreen, setIsFullscreen, playTrack
   } = useAudioPlayer();
 
-  const [activeTab, setActiveTab] = useState('art');
+  const [activeTab, setActiveTab] = useState('lyrics');
   const [liked, setLiked] = useState(false);
-  const [currentLyricIdx, setCurrentLyricIdx] = useState(0);
   const progressRef = useRef(null);
   const volumeRef = useRef(null);
-  const lyricsRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragTime, setDragTime] = useState(0);
 
@@ -165,28 +162,7 @@ export default function FullscreenPlayer() {
     return () => window.removeEventListener('keydown', handler);
   }, [isFullscreen, currentTime, duration]);
 
-  // Lyric parsing & sync
-  const lyricLines = (() => {
-    if (!currentTrack?.lyrics || !duration) return [];
-    const lines = currentTrack.lyrics.split('\n').filter((l) => l.trim());
-    return lines.map((text, i) => ({ time: duration / lines.length * i, text: text.trim() }));
-  })();
 
-  useEffect(() => {
-    if (!lyricLines.length) return;
-    const idx = lyricLines.findIndex((l, i) => {
-      const next = lyricLines[i + 1];
-      return currentTime >= l.time && (!next || currentTime < next.time);
-    });
-    if (idx !== -1 && idx !== currentLyricIdx) setCurrentLyricIdx(idx);
-  }, [currentTime, lyricLines.length]);
-
-  useEffect(() => {
-    if (activeTab === 'lyrics' && lyricsRef.current) {
-      const el = lyricsRef.current.querySelector('[data-active="true"]');
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [currentLyricIdx, activeTab]);
 
   // Seek handlers
   const getSeekPct = (e, el) => {
@@ -248,8 +224,8 @@ export default function FullscreenPlayer() {
   const coverImg = currentTrack.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop';
 
   const TABS = [
-  { id: 'art', label: 'Art' },
   { id: 'lyrics', label: 'Lyrics' },
+  { id: 'art', label: 'Art' },
   { id: 'visualizer', label: 'Visualizer' },
   { id: 'queue', label: 'Queue' }];
 
@@ -298,8 +274,8 @@ export default function FullscreenPlayer() {
             </button>
           </div>
 
-          {/* Album Art — circular, prominent */}
-          <div className="relative z-10 flex justify-center px-8 flex-shrink-0 mb-5">
+          {/* Album Art — circular, prominent. Hidden when lyrics active */}
+          <div className={cn("relative z-10 flex justify-center px-8 flex-shrink-0 mb-5 transition-all duration-300", activeTab === 'lyrics' ? 'hidden' : '')}>
             <motion.div
             animate={{ scale: isPlaying ? 1 : 0.9 }}
             transition={{ type: 'spring', stiffness: 180, damping: 22 }}
@@ -320,9 +296,9 @@ export default function FullscreenPlayer() {
           </div>
 
           {/* Track Info */}
-          <div className="relative z-10 text-center px-8 flex-shrink-0 mb-4">
-            <h1 className="text-white text-2xl font-bold tracking-tight">{currentTrack.title}</h1>
-            <p className="text-white/50 text-sm mt-1">{currentTrack.style || 'AI Generated'}</p>
+          <div className={cn("relative z-10 text-center px-8 flex-shrink-0 mb-4 transition-all duration-300", activeTab === 'lyrics' ? 'mb-1' : '')}>
+            <h1 className={cn("text-white font-bold tracking-tight", activeTab === 'lyrics' ? 'text-lg' : 'text-2xl')}>{currentTrack.title}</h1>
+            {activeTab !== 'lyrics' && <p className="text-white/50 text-sm mt-1">{currentTrack.style || 'AI Generated'}</p>}
           </div>
 
           {/* Tab Content Area */}
@@ -334,35 +310,13 @@ export default function FullscreenPlayer() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="h-full overflow-y-auto"
-              ref={lyricsRef}
-              style={{ paddingBottom: '1rem' }}>
+              className="h-full">
               
-                  {lyricLines.length > 0 ?
-              <div className="space-y-4 py-4 text-center">
-                      {lyricLines.map((line, i) =>
-                <p
-                  key={i}
-                  data-active={i === currentLyricIdx ? 'true' : 'false'}
-                  className={cn(
-                    'transition-all duration-500 leading-relaxed px-4',
-                    i === currentLyricIdx ?
-                    'text-white text-xl font-bold' :
-                    Math.abs(i - currentLyricIdx) === 1 ?
-                    'text-white/50 text-base' :
-                    'text-white/20 text-sm'
-                  )}>
-                  
-                          {line.text}
-                        </p>
-                )}
-                    </div> :
-
-              <div className="h-full flex flex-col items-center justify-center text-white/20">
-                      <MicVocal className="h-10 w-10 mb-3" />
-                      <p className="text-sm">No lyrics available</p>
-                    </div>
-              }
+                  <LyricsView
+                    track={currentTrack}
+                    currentTime={currentTime}
+                    onSeek={seek}
+                  />
                 </motion.div>
             }
 
