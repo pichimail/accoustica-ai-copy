@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger } from
 "@/components/ui/dropdown-menu";
 import {
-  Sparkles, Globe, User, LogOut,
+  Sparkles, User, LogOut,
   Plus, Library, Crown, Home,
   Disc, MessageCircle, PanelLeftClose, PanelLeftOpen, GitBranch, Volume2, Edit3, BarChart3, ArrowLeft } from
 'lucide-react';
@@ -53,7 +53,6 @@ export default function Layout({ children, currentPageName }) {
   { name: 'Library', icon: Library, page: 'Library', requireAuth: true },
   { name: 'Insights', icon: BarChart3, page: 'Insights', requireAuth: true },
   { name: 'Feed', icon: MessageCircle, page: 'SocialFeed' },
-  { name: 'Discover', icon: Globe, page: 'Discover' },
   { name: 'Stems', icon: Disc, page: 'StemStudio', requireAuth: true },
   { name: 'Remix', icon: GitBranch, page: 'RemixStudio', requireAuth: true },
   { name: 'Master', icon: Volume2, page: 'MasteringProStudio', requireAuth: true },
@@ -178,7 +177,8 @@ export default function Layout({ children, currentPageName }) {
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-0.5">
             {filteredNavLinks.map((link) => {
-                const isActive = currentPageName === link.page;
+                // Treat Discover as Feed since they're merged
+                const isActive = currentPageName === link.page || (link.page === 'SocialFeed' && currentPageName === 'Discover');
                 return (
                   <Link key={link.page} to={createPageUrl(link.page)}>
                   <button
@@ -244,23 +244,17 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </aside>
 
-      {/* Main Content — extra bottom padding on mobile accounts for nav bar (56px) + player (60px) */}
+      {/* Main Content */}
       <main className={cn(
           "flex-1 lg:transition-all lg:duration-300 relative z-10",
-          currentPageName === 'Home' ? "pt-0 pb-0 lg:pb-0" : "pt-14 pb-[160px] lg:pt-0 lg:pb-20",
+          currentPageName === 'Home' ? "pt-0 pb-0 lg:pb-0" : "pt-14 pb-[168px] lg:pt-0 lg:pb-20",
           showSidebar && (sidebarOpen ? "lg:ml-64" : "lg:ml-20")
         )}>
         {children}
       </main>
 
-      {/* Global Audio Player — hide fully on mobile when on Create page */}
-      {currentPageName === 'Create' ? (
-        <div className="hidden lg:block">
-          <GlobalAudioPlayer currentPageName={currentPageName} />
-        </div>
-      ) : (
-        <GlobalAudioPlayer currentPageName={currentPageName} />
-      )}
+      {/* Global Audio Player — always rendered so audioRef stays mounted */}
+      <GlobalAudioPlayer currentPageName={currentPageName} />
 
       {/* Mobile Bottom Navigation — hidden on Home and Create */}
       {currentPageName !== 'Home' && currentPageName !== 'Create' &&

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Home, Sparkles, Plus, Library, Globe, User, Disc, MoreHorizontal, X, MessageCircle, BarChart3, GitBranch } from 'lucide-react';
+import { Home, Sparkles, Plus, Library, User, Disc, MoreHorizontal, X, MessageCircle, BarChart3, GitBranch } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { haptics } from '@/components/utils/haptics';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,7 +10,7 @@ const MORE_ITEMS = [
   { name: 'Insights', icon: BarChart3, page: 'Insights' },
   { name: 'Stems', icon: Disc, page: 'StemStudio' },
   { name: 'Remix', icon: GitBranch, page: 'RemixStudio' },
-  { name: 'Discover', icon: Globe, page: 'Discover' },
+  { name: 'Feed', icon: MessageCircle, page: 'SocialFeed' },
   { name: 'Profile', icon: User, page: 'Profile' },
 ];
 
@@ -24,9 +24,9 @@ const AUTH_LINKS = [
 
 const GUEST_LINKS = [
   { name: 'Home',    icon: Home,        page: 'Home' },
-  { name: 'Discover',icon: Globe,       page: 'Discover' },
-  { name: 'create',  icon: Plus,        page: 'Create', isCreate: true },
   { name: 'Feed',    icon: MessageCircle, page: 'SocialFeed' },
+  { name: 'create',  icon: Plus,        page: 'Create', isCreate: true },
+  { name: 'Library', icon: Library,     page: 'Library' },
   { name: 'more',    icon: MoreHorizontal, page: null,  isMore: true, label: 'More' },
 ];
 
@@ -145,7 +145,7 @@ export default function MobileNav({ currentPageName, user }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
-              className="lg:hidden fixed inset-0 z-[90] bg-black/65 backdrop-blur-sm"
+              className="lg:hidden fixed inset-0 z-[94] bg-black/65 backdrop-blur-sm"
               onClick={() => setShowMore(false)}
             />
             <motion.div
@@ -154,7 +154,7 @@ export default function MobileNav({ currentPageName, user }) {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: '100%', opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="lg:hidden fixed bottom-0 left-0 right-0 z-[91] rounded-t-[28px]"
+              className="lg:hidden fixed bottom-0 left-0 right-0 z-[95] rounded-t-[28px]"
               style={{
                 background: 'rgba(10,10,18,0.97)',
                 backdropFilter: 'blur(32px)',

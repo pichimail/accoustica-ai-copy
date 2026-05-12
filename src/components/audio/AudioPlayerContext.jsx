@@ -143,16 +143,15 @@ export function AudioPlayerProvider({ children }) {
     const tryPlay = async (attempt = 0) => {
       const audio = audioRef.current;
       if (!audio) {
-        if (attempt < 8) window.setTimeout(() => tryPlay(attempt + 1), 60);
+        if (attempt < 15) window.setTimeout(() => tryPlay(attempt + 1), 50);
         return;
       }
 
       try {
         const candidate = sourceCandidates[Math.min(attempt, sourceCandidates.length - 1)];
-        if (audio.src !== candidate) {
-          audio.src = candidate;
-          audio.load();
-        }
+        // Always set src to ensure fresh load
+        audio.src = candidate;
+        audio.load();
         audio.volume = volume / 100;
         await audio.play();
         pendingPlayRef.current = null;

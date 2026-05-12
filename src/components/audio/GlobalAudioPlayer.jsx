@@ -3,7 +3,7 @@ import { getTrackAudioSource, useAudioPlayer } from './AudioPlayerContext';
 import {
   Play, Pause, SkipBack, SkipForward,
   Volume2, VolumeX, Volume1, Heart,
-  Repeat, Repeat1, Shuffle, List, Maximize2
+  Repeat, Repeat1, Shuffle, List, Maximize2, ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,6 +24,12 @@ export default function GlobalAudioPlayer({ currentPageName }) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragTime, setDragTime] = useState(0);
   const [liked, setLiked] = useState(false);
+  const [showQueue, setShowQueue] = useState(false);
+  const [playerVisible, setPlayerVisible] = useState(true);
+
+  // ── AUDIO ELEMENT: always mounted, src managed imperatively ──────────
+  // We render a single persistent <audio> ref, never remount it.
+  // AudioPlayerContext.playTrack() sets audio.src directly.
 
   // Audio event listeners
   useEffect(() => {
@@ -44,6 +50,9 @@ export default function GlobalAudioPlayer({ currentPageName }) {
       updateDuration();
     };
     const onPause = () => setIsPlaying(false);
+    const onError = (e) => {
+      console.warn('Audio error:', e.target?.error);
+    };
 
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateDuration);
@@ -53,9 +62,8 @@ export default function GlobalAudioPlayer({ currentPageName }) {
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', onPlay);
     audio.addEventListener('pause', onPause);
+    audio.addEventListener('error', onError);
     audio.volume = volume / 100;
-    updateDuration();
-    updateTime();
 
     return () => {
       audio.removeEventListener('timeupdate', updateTime);
@@ -66,8 +74,9 @@ export default function GlobalAudioPlayer({ currentPageName }) {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('play', onPlay);
       audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('error', onError);
     };
-  }, [currentTrack?.id, currentTrack?.audio_url, currentTrack?.stream_audio_url, repeatMode, volume, isDragging, audioRef, setCurrentTime, setDuration, setIsPlaying]);
+  }, [repeatMode, volume, isDragging, audioRef, setCurrentTime, setDuration, setIsPlaying]);
 
   const fmt = (s) => {
     if (!s || isNaN(s) || !isFinite(s)) return '0:00';
@@ -89,20 +98,15 @@ export default function GlobalAudioPlayer({ currentPageName }) {
     if (!duration || !ref.current) return;
     e.preventDefault();
     const pct0 = getSeekPct(e, ref.current);
-    const t0 = pct0 * duration;
     setIsDragging(true);
-    setDragTime(t0);
+    setDragTime(pct0 * duration);
 
     const move = (me) => {
       if (!ref.current) return;
-      const p = getSeekPct(me, ref.current);
-      setDragTime(p * duration);
+      setDragTime(getSeekPct(me, ref.current) * duration);
     };
     const up = (me) => {
-      if (ref.current) {
-        const p = getSeekPct(me, ref.current);
-        seek(p * duration);
-      }
+      if (ref.current) seek(getSeekPct(me, ref.current) * duration);
       setIsDragging(false);
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
@@ -122,8 +126,7 @@ export default function GlobalAudioPlayer({ currentPageName }) {
       if (!volumeBarRef.current) return;
       const rect = volumeBarRef.current.getBoundingClientRect();
       const clientX = ev.touches ? ev.touches[0].clientX : (ev.changedTouches ? ev.changedTouches[0].clientX : ev.clientX);
-      const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-      changeVolume(Math.round((x / rect.width) * 100));
+      changeVolume(Math.round(Math.max(0, Math.min((clientX - rect.left) / rect.width, 1)) * 100));
     };
     getV(e);
     const move = (me) => getV(me);
@@ -140,27 +143,28 @@ export default function GlobalAudioPlayer({ currentPageName }) {
   };
 
   const coverImg = currentTrack?.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop';
-  const audioSource = getTrackAudioSource(currentTrack);
-  const [showQueue, setShowQueue] = useState(false);
+
+  // Height of player bar for pushing content up
+  // mobile: ~68px + safe-area, desktop: ~70px
+  const PLAYER_HEIGHT_MOBILE = 68;
+  const PLAYER_HEIGHT_DESKTOP = 70;
 
   return (
     <>
-      {currentTrack && audioSource && (
-        <audio
-          key={currentTrack.id || audioSource}
-          ref={audioRef}
-          src={audioSource}
-          preload="auto"
-          onTimeUpdate={(e) => !isDragging && setCurrentTime(e.currentTarget.currentTime || 0)}
-          onLoadedMetadata={(e) => {
-            const nextDuration = e.currentTarget.duration;
-            if (!isNaN(nextDuration) && isFinite(nextDuration)) setDuration(nextDuration);
-          }}
-        />
-      )}
+      {/* ── PERSISTENT AUDIO ELEMENT — never remounted ── */}
+      <audio
+        ref={audioRef}
+        preload="auto"
+        style={{ display: 'none' }}
+        onTimeUpdate={(e) => !isDragging && setCurrentTime(e.currentTarget.currentTime || 0)}
+        onLoadedMetadata={(e) => {
+          const d = e.currentTarget.duration;
+          if (!isNaN(d) && isFinite(d)) setDuration(d);
+        }}
+      />
 
       <AnimatePresence>
-        {currentTrack && (
+        {currentTrack && playerVisible && (
           <motion.div
             initial={{ y: 120, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -170,12 +174,12 @@ export default function GlobalAudioPlayer({ currentPageName }) {
               "fixed left-0 right-0 z-50 lg:bottom-0",
               currentPageName === 'Create'
                 ? "bottom-0"
-                : "bottom-[calc(64px+env(safe-area-inset-bottom,0px))]"
+                : "bottom-[calc(56px+env(safe-area-inset-bottom,0px))]"
             )}
           >
             {/* ── MOBILE ── */}
             <div className="lg:hidden">
-              {/* Seek bar - thin colored line above player */}
+              {/* Seek bar */}
               <div
                 ref={mobileProgressRef}
                 className="relative w-full h-[3px] cursor-pointer touch-none bg-white/10"
@@ -184,15 +188,12 @@ export default function GlobalAudioPlayer({ currentPageName }) {
               >
                 <div
                   className="absolute top-0 left-0 h-full transition-none"
-                  style={{
-                    width: `${pct}%`,
-                    background: 'linear-gradient(90deg, #22c55e, #86efac)',
-                  }}
+                  style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #22c55e, #86efac)' }}
                 />
               </div>
 
               {/* Player bar */}
-              <div className="bg-[#111118]/95 backdrop-blur-2xl border-t border-white/[0.04]">
+              <div className="bg-[#111118]/97 backdrop-blur-2xl border-t border-white/[0.06]">
                 <div className="flex items-center gap-3 px-4 py-3">
                   {/* Art */}
                   <button
@@ -226,7 +227,7 @@ export default function GlobalAudioPlayer({ currentPageName }) {
                       <SkipBack className="h-4 w-4" />
                     </button>
                     <button
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-black font-bold shadow-lg neon-green-glow"
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-black font-bold shadow-lg neon-green-glow"
                       style={{ background: '#22c55e' }}
                       onClick={togglePlayPause}
                     >
@@ -237,6 +238,14 @@ export default function GlobalAudioPlayer({ currentPageName }) {
                       onClick={playNext}
                     >
                       <SkipForward className="h-4 w-4" />
+                    </button>
+                    {/* Hide player toggle */}
+                    <button
+                      className="w-7 h-7 flex items-center justify-center text-white/25 hover:text-white/60"
+                      onClick={() => setPlayerVisible(false)}
+                      title="Hide player"
+                    >
+                      <ChevronDown className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -271,22 +280,15 @@ export default function GlobalAudioPlayer({ currentPageName }) {
                   <button
                     onClick={() => setLiked(!liked)}
                     className={cn('flex-shrink-0 transition-all w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10', liked ? 'text-green-400' : 'text-white/35 hover:text-white/65')}
-                    title="Like"
                   >
                     <Heart className="h-4 w-4" fill={liked ? 'currentColor' : 'none'} />
                   </button>
                 </div>
 
-                {/* Center — controls + waveform seek */}
+                {/* Center — controls + seek */}
                 <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
-                  {/* Transport controls */}
                   <div className="flex items-center gap-2">
-                    {/* Shuffle */}
-                    <button
-                      onClick={toggleShuffle}
-                      title="Shuffle"
-                      className={cn('w-8 h-8 flex items-center justify-center rounded-full transition-all', isShuffle ? 'text-green-400' : 'text-white/35 hover:text-white/70')}
-                    >
+                    <button onClick={toggleShuffle} className={cn('w-8 h-8 flex items-center justify-center rounded-full transition-all', isShuffle ? 'text-green-400' : 'text-white/35 hover:text-white/70')}>
                       <Shuffle className="h-3.5 w-3.5" />
                     </button>
                     <button onClick={playPrevious} className="w-9 h-9 flex items-center justify-center text-white/60 hover:text-white rounded-full hover:bg-white/10 transition-all">
@@ -302,12 +304,7 @@ export default function GlobalAudioPlayer({ currentPageName }) {
                     <button onClick={playNext} className="w-9 h-9 flex items-center justify-center text-white/60 hover:text-white rounded-full hover:bg-white/10 transition-all">
                       <SkipForward className="h-4 w-4" />
                     </button>
-                    {/* Repeat */}
-                    <button
-                      onClick={toggleRepeat}
-                      title={repeatMode === 'off' ? 'Enable Repeat' : repeatMode === 'all' ? 'Repeat One' : 'Disable Repeat'}
-                      className={cn('w-8 h-8 flex items-center justify-center rounded-full transition-all', repeatMode !== 'off' ? 'text-green-400' : 'text-white/35 hover:text-white/70')}
-                    >
+                    <button onClick={toggleRepeat} className={cn('w-8 h-8 flex items-center justify-center rounded-full transition-all', repeatMode !== 'off' ? 'text-green-400' : 'text-white/35 hover:text-white/70')}>
                       {repeatMode === 'one' ? <Repeat1 className="h-3.5 w-3.5" /> : <Repeat className="h-3.5 w-3.5" />}
                     </button>
                   </div>
@@ -322,14 +319,8 @@ export default function GlobalAudioPlayer({ currentPageName }) {
                       onTouchStart={(e) => startSeek(e, progressBarRef)}
                     >
                       <div className="absolute inset-0 bg-white/10 rounded-full" />
-                      <div
-                        className="absolute top-0 left-0 h-full rounded-full transition-none"
-                        style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #22c55e, #86efac)' }}
-                      />
-                      <div
-                        className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-                        style={{ left: `calc(${pct}% - 6px)` }}
-                      />
+                      <div className="absolute top-0 left-0 h-full rounded-full transition-none" style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #22c55e, #86efac)' }} />
+                      <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ left: `calc(${pct}% - 6px)` }} />
                     </div>
                     <span className="text-[11px] text-white/50 tabular-nums w-9">{fmt(duration)}</span>
                   </div>
@@ -337,19 +328,10 @@ export default function GlobalAudioPlayer({ currentPageName }) {
 
                 {/* Right — volume + extras */}
                 <div className="flex items-center gap-2 w-56 flex-shrink-0 justify-end">
-                  {/* Queue toggle */}
-                  <button
-                    onClick={() => setShowQueue(v => !v)}
-                    title="Queue"
-                    className={cn('w-8 h-8 flex items-center justify-center rounded-full transition-all', showQueue ? 'text-green-400 bg-green-400/10' : 'text-white/35 hover:text-white/70 hover:bg-white/10')}
-                  >
+                  <button onClick={() => setShowQueue(v => !v)} className={cn('w-8 h-8 flex items-center justify-center rounded-full transition-all', showQueue ? 'text-green-400 bg-green-400/10' : 'text-white/35 hover:text-white/70 hover:bg-white/10')}>
                     <List className="h-4 w-4" />
                   </button>
-
-                  <button
-                    onClick={() => changeVolume(volume === 0 ? 70 : 0)}
-                    className="text-white/45 hover:text-white transition-colors w-7 h-7 flex items-center justify-center"
-                  >
+                  <button onClick={() => changeVolume(volume === 0 ? 70 : 0)} className="text-white/45 hover:text-white transition-colors w-7 h-7 flex items-center justify-center">
                     {volume === 0 ? <VolumeX className="h-4 w-4" /> : volume < 50 ? <Volume1 className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                   </button>
                   <div
@@ -359,26 +341,37 @@ export default function GlobalAudioPlayer({ currentPageName }) {
                     onMouseDown={startVolume}
                     onTouchStart={startVolume}
                   >
-                    <div
-                      className="absolute top-0 left-0 h-full rounded-full"
-                      style={{ width: `${volume}%`, background: 'linear-gradient(90deg, #22c55e, #86efac)' }}
-                    />
-                    <div
-                      className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white shadow opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-                      style={{ left: `calc(${volume}% - 5px)` }}
-                    />
+                    <div className="absolute top-0 left-0 h-full rounded-full" style={{ width: `${volume}%`, background: 'linear-gradient(90deg, #22c55e, #86efac)' }} />
+                    <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white shadow opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ left: `calc(${volume}% - 5px)` }} />
                   </div>
-                  <button
-                    onClick={() => setIsFullscreen(true)}
-                    title="Full screen player"
-                    className="w-8 h-8 flex items-center justify-center rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-all"
-                  >
+                  <button onClick={() => setIsFullscreen(true)} className="w-8 h-8 flex items-center justify-center rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-all">
                     <Maximize2 className="h-3.5 w-3.5" />
+                  </button>
+                  {/* Hide player on desktop */}
+                  <button onClick={() => setPlayerVisible(false)} className="w-8 h-8 flex items-center justify-center rounded-full text-white/25 hover:text-white/60 hover:bg-white/10 transition-all" title="Hide player">
+                    <ChevronDown className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── SHOW PLAYER BUTTON when hidden ── */}
+      <AnimatePresence>
+        {currentTrack && !playerVisible && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            onClick={() => setPlayerVisible(true)}
+            className="fixed bottom-20 right-4 z-50 lg:bottom-4 w-12 h-12 rounded-full flex items-center justify-center shadow-xl"
+            style={{ background: '#22c55e', boxShadow: '0 0 20px rgba(34,197,94,0.5)' }}
+            title="Show player"
+          >
+            {isPlaying ? <Pause className="h-5 w-5 fill-black text-black" /> : <Play className="h-5 w-5 fill-black text-black ml-0.5" />}
+          </motion.button>
         )}
       </AnimatePresence>
 
