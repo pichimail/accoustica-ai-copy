@@ -217,6 +217,7 @@ export default function LibraryPage() {
 function LibraryTrackRow({ track, index, isCurrentlyPlaying, onPlay, onFavorite, onMore }) {
   const statusColors = { ready: '#22c55e', generating: '#c084fc', queued: '#facc15', failed: '#f87171' };
   const isReady = track.status === 'ready';
+  const isActiveGeneration = track.status === 'generating' || track.status === 'queued';
 
   return (
     <motion.div
@@ -280,6 +281,26 @@ function LibraryTrackRow({ track, index, isCurrentlyPlaying, onPlay, onFavorite,
             <span className="text-[10px] text-purple-400 bg-purple-400/10 px-1.5 rounded-full">Inst.</span>
           )}
         </div>
+        {isActiveGeneration && (
+          <div className="mt-2" aria-label={`${track.status} progress`}>
+            <div className="h-7 rounded-lg px-2 flex items-center gap-[2px] overflow-hidden"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              {[0.5, 0.8, 0.65, 0.9, 0.55, 0.75, 0.45, 0.7, 0.85, 0.6, 0.78, 0.52, 0.72, 0.58, 0.88, 0.62].map((h, i) => (
+                <span
+                  key={i}
+                  className="w-[3px] rounded-full"
+                  style={{
+                    height: `${h * 18}px`,
+                    background: track.status === 'queued'
+                      ? 'linear-gradient(180deg,#fde68a,#f59e0b)'
+                      : 'linear-gradient(180deg,#22d3ee,#a78bfa)',
+                    animation: `beat-bar ${0.45 + (i % 5) * 0.08}s ease-in-out infinite alternate`,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Actions */}

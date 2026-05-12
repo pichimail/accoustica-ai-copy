@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Share2, Maximize2, Settings2 } from 'lucide-react';
 import StudioLibraryPanel from '@/components/create/StudioLibraryPanel';
 import StudioCenterPanel from '@/components/create/StudioCenterPanel';
@@ -13,6 +13,7 @@ import { getTrackAudioSource } from '@/components/audio/AudioPlayerContext';
 
 export default function CreatePage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const params = new URLSearchParams(location.search || '');
   const isGenerateOnlyMobile = params.get('panel') === 'generate';
   // ── User & plan ──
@@ -199,6 +200,10 @@ export default function CreatePage() {
       toast.success('Generating your track!');
       haptics.success();
       pollStatus(response.data.taskId);
+      const isMobileView = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+      if (isMobileView) {
+        navigate('/Library');
+      }
 
       // Reset form
       setSimplePrompt(''); setTitle(''); setLyrics('');
