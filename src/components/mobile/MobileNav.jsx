@@ -51,28 +51,27 @@ export default function MobileNav({ currentPageName, user }) {
             borderTop: '1px solid rgba(255,255,255,0.06)',
           }}
         >
-          <div className="flex items-end justify-around px-2 pt-2 pb-2 safe-bottom" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+          <div className="flex items-center justify-around px-2 pt-2 pb-2 safe-bottom" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
             {links.map((link) => {
-              /* ── CREATE FAB ── */
+              /* ── CREATE ── */
               if (link.isCreate) {
                 return (
                   <Link
                     key="create"
                     to={`${createPageUrl('Create')}?panel=generate`}
                     onClick={() => haptics.medium()}
-                    className="flex flex-col items-center justify-end pb-1 -mt-5"
+                    className="flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[52px] group"
                     aria-label="Create"
                   >
                     <div
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-transform"
+                      className="relative w-8 h-6 rounded-xl flex items-center justify-center active:scale-90 transition-transform"
                       style={{
                         background: 'linear-gradient(135deg,#22c55e,#16a34a)',
-                        boxShadow: '0 4px 24px rgba(34,197,94,0.5)',
                       }}
                     >
-                      <Plus className="h-7 w-7 text-black" strokeWidth={2.8} />
+                      <Plus className="h-5 w-5 text-black" strokeWidth={2.8} />
                     </div>
-                    <span className="text-[10px] font-semibold text-white/50 mt-1">Create</span>
+                    <span className="text-[10px] font-semibold text-green-300">Create</span>
                   </Link>
                 );
               }
