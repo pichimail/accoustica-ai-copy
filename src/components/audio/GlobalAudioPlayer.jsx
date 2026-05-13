@@ -26,6 +26,15 @@ export default function GlobalAudioPlayer({ currentPageName }) {
   const [liked, setLiked] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
 
+  // Auto-hide full player bar on Create page (mobile only)
+  useEffect(() => {
+    if (currentPageName === 'Create' && currentTrack) {
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setPlayerVisible(false);
+      }
+    }
+  }, [currentPageName, currentTrack?.id]);
+
   // ── AUDIO ELEMENT: always mounted, src managed imperatively ──────────
   // We render a single persistent <audio> ref, never remount it.
   // AudioPlayerContext.playTrack() sets audio.src directly.
@@ -360,7 +369,10 @@ export default function GlobalAudioPlayer({ currentPageName }) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             onClick={() => setPlayerVisible(true)}
-            className="fixed bottom-20 right-4 z-50 lg:bottom-4 w-12 h-12 rounded-full flex items-center justify-center shadow-xl"
+            className={cn(
+              'fixed z-50 w-12 h-12 rounded-full flex items-center justify-center shadow-xl right-4 lg:bottom-4',
+              currentPageName === 'Create' ? 'bottom-40' : 'bottom-20'
+            )}
             style={{ background: '#22c55e', boxShadow: '0 0 20px rgba(34,197,94,0.5)' }}
             title="Show player"
           >

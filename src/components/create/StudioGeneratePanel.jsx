@@ -387,7 +387,7 @@ export default function StudioGeneratePanel({
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-3">
+      <div className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-3 pb-20 md:pb-3">
 
         {/* ════ SIMPLE ════ */}
         {tab === 'simple' && (
@@ -649,8 +649,8 @@ export default function StudioGeneratePanel({
 
       {/* Generate button footer */}
       <div
-        className="flex-shrink-0 md:static sticky z-10 px-4 pb-4 pt-3 border-t"
-        style={{ bottom: 'calc(var(--mobile-nav-reserve, 0px) + var(--player-reserve, 0px))', borderColor: 'rgba(255,255,255,0.08)', background: '#0a0a0f', backdropFilter: 'blur(8px)' }}
+        className="flex-shrink-0 md:static fixed left-0 right-0 z-30 px-4 pb-4 pt-3 border-t"
+        style={{ bottom: 'var(--mobile-nav-reserve, 0px)', borderColor: 'rgba(255,255,255,0.08)', background: '#0a0a0f', backdropFilter: 'blur(8px)' }}
       >
         <button
           type="button"
