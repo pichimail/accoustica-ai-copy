@@ -120,38 +120,53 @@ export default function WaveformCanvas({ audioRef, audioSrc, currentTime, durati
     return () => cancelAnimationFrame(animFrameRef.current);
   }, [currentTime, duration, accentColor]);
 
-  // Resize observer
+  // Resize observer — keep canvas buffer at device pixels (no ctx.scale; draw loop works in device pixel space)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ro = new ResizeObserver(() => {
-      canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-      canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-      const ctx = canvas.getContext('2d');
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    });
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+    };
+    const ro = new ResizeObserver(resize);
     ro.observe(canvas);
-    canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-    canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    resize();
     return () => ro.disconnect();
   }, []);
 
-  const handleClick = (e) => {
+  const handlePointerDown = (e) => {
     if (!onSeek || !duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const pct = Math.max(0, Math.min((e.clientX - rect.left) / rect.width, 1));
-    onSeek(pct * duration);
+    e.preventDefault();
+    const getSeekTime = (ev) => {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const clientX = ev.touches ? ev.touches[0].clientX
+        : (ev.changedTouches ? ev.changedTouches[0].clientX : ev.clientX);
+      return Math.max(0, Math.min((clientX - rect.left) / rect.width, 1)) * duration;
+    };
+    onSeek(getSeekTime(e));
+    const onMove = (ev) => { ev.preventDefault(); onSeek(getSeekTime(ev)); };
+    const onUp = (ev) => {
+      onSeek(getSeekTime(ev));
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    };
+    window.addEventListener('mousemove', onMove, { passive: false });
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
   };
 
   return (
     <canvas
       ref={canvasRef}
       className={`w-full ${className}`}
-      style={{ cursor: onSeek ? 'pointer' : 'default', display: 'block' }}
-      onClick={handleClick}
-      aria-label="Audio waveform visualizer"
+      style={{ cursor: onSeek ? 'pointer' : 'default', display: 'block', touchAction: 'none' }}
+      onMouseDown={handlePointerDown}
+      onTouchStart={handlePointerDown}
+      aria-label="Audio waveform seek bar"
     />
   );
 }

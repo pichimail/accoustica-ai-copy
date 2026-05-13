@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getTrackAudioSource, useAudioPlayer } from './AudioPlayerContext';
+import WaveformCanvas from './WaveformCanvas';
 import {
   Play, Pause, SkipBack, SkipForward,
   Volume2, VolumeX, Volume1, Heart,
@@ -18,11 +19,7 @@ export default function GlobalAudioPlayer({ currentPageName }) {
     playerVisible, setPlayerVisible, setCurrentTime, setDuration, setIsPlaying,
   } = useAudioPlayer();
 
-  const progressBarRef = useRef(null);
   const volumeBarRef = useRef(null);
-  const mobileProgressRef = useRef(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragTime, setDragTime] = useState(0);
   const [liked, setLiked] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
 
@@ -44,7 +41,7 @@ export default function GlobalAudioPlayer({ currentPageName }) {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const updateTime = () => { if (!isDragging) setCurrentTime(audio.currentTime || 0); };
+    const updateTime = () => { setCurrentTime(audio.currentTime || 0); };
     const updateDuration = () => {
       if (!isNaN(audio.duration) && isFinite(audio.duration)) setDuration(audio.duration);
     };
@@ -84,48 +81,14 @@ export default function GlobalAudioPlayer({ currentPageName }) {
       audio.removeEventListener('pause', onPause);
       audio.removeEventListener('error', onError);
     };
-  }, [repeatMode, volume, isDragging, audioRef, setCurrentTime, setDuration, setIsPlaying]);
+  }, [repeatMode, volume, audioRef, setCurrentTime, setDuration, setIsPlaying]);
 
   const fmt = (s) => {
     if (!s || isNaN(s) || !isFinite(s)) return '0:00';
     return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   };
 
-  const displayTime = isDragging ? dragTime : currentTime;
-  const pct = duration > 0 ? Math.min(100, (displayTime / duration) * 100) : 0;
-
-  // Universal seek helper
-  const getSeekPct = (e, el) => {
-    const rect = el.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : (e.changedTouches ? e.changedTouches[0].clientX : e.clientX);
-    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-    return x / rect.width;
-  };
-
-  const startSeek = (e, ref) => {
-    if (!duration || !ref.current) return;
-    e.preventDefault();
-    const pct0 = getSeekPct(e, ref.current);
-    setIsDragging(true);
-    setDragTime(pct0 * duration);
-
-    const move = (me) => {
-      if (!ref.current) return;
-      setDragTime(getSeekPct(me, ref.current) * duration);
-    };
-    const up = (me) => {
-      if (ref.current) seek(getSeekPct(me, ref.current) * duration);
-      setIsDragging(false);
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', up);
-      window.removeEventListener('touchmove', move);
-      window.removeEventListener('touchend', up);
-    };
-    window.addEventListener('mousemove', move, { passive: false });
-    window.addEventListener('mouseup', up);
-    window.addEventListener('touchmove', move, { passive: false });
-    window.addEventListener('touchend', up);
-  };
+  const displayTime = currentTime;
 
   // Volume
   const startVolume = (e) => {
@@ -150,6 +113,7 @@ export default function GlobalAudioPlayer({ currentPageName }) {
     window.addEventListener('touchend', up);
   };
 
+  const audioSrc = getTrackAudioSource(currentTrack) || '';
   const coverImg = currentTrack?.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&h=100&fit=crop';
 
   return (
@@ -159,7 +123,7 @@ export default function GlobalAudioPlayer({ currentPageName }) {
         ref={audioRef}
         preload="auto"
         style={{ display: 'none' }}
-        onTimeUpdate={(e) => !isDragging && setCurrentTime(e.currentTarget.currentTime || 0)}
+        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime || 0)}
         onLoadedMetadata={(e) => {
           const d = e.currentTarget.duration;
           if (!isNaN(d) && isFinite(d)) setDuration(d);
@@ -182,18 +146,15 @@ export default function GlobalAudioPlayer({ currentPageName }) {
           >
             {/* ── MOBILE ── */}
             <div className="lg:hidden">
-              {/* Seek bar */}
-              <div
-                ref={mobileProgressRef}
-                className="relative w-full h-[3px] cursor-pointer touch-none bg-white/10"
-                onMouseDown={(e) => startSeek(e, mobileProgressRef)}
-                onTouchStart={(e) => startSeek(e, mobileProgressRef)}
-              >
-                <div
-                  className="absolute top-0 left-0 h-full transition-none"
-                  style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #22c55e, #86efac)' }}
-                />
-              </div>
+              {/* Waveform seek bar */}
+              <WaveformCanvas
+                audioSrc={audioSrc}
+                currentTime={displayTime}
+                duration={duration}
+                onSeek={seek}
+                className="h-[44px]"
+                accentColor="#22c55e"
+              />
 
               {/* Player bar */}
               <div className="bg-[#111118]/97 backdrop-blur-2xl border-t border-white/[0.06]">
@@ -312,19 +273,17 @@ export default function GlobalAudioPlayer({ currentPageName }) {
                     </button>
                   </div>
 
-                  {/* Seek bar */}
+                  {/* Waveform seek */}
                   <div className="w-full flex items-center gap-2 max-w-lg">
                     <span className="text-[11px] text-white/50 tabular-nums w-9 text-right">{fmt(displayTime)}</span>
-                    <div
-                      ref={progressBarRef}
-                      className="flex-1 h-1.5 relative rounded-full cursor-pointer touch-none group"
-                      onMouseDown={(e) => startSeek(e, progressBarRef)}
-                      onTouchStart={(e) => startSeek(e, progressBarRef)}
-                    >
-                      <div className="absolute inset-0 bg-white/10 rounded-full" />
-                      <div className="absolute top-0 left-0 h-full rounded-full transition-none" style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #22c55e, #86efac)' }} />
-                      <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ left: `calc(${pct}% - 6px)` }} />
-                    </div>
+                    <WaveformCanvas
+                      audioSrc={audioSrc}
+                      currentTime={displayTime}
+                      duration={duration}
+                      onSeek={seek}
+                      className="flex-1 h-[40px]"
+                      accentColor="#22c55e"
+                    />
                     <span className="text-[11px] text-white/50 tabular-nums w-9">{fmt(duration)}</span>
                   </div>
                 </div>
