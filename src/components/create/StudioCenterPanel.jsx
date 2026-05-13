@@ -58,7 +58,7 @@ export default function StudioCenterPanel({ selectedTrack, tracks, currentTrack,
   }, [isDragging]);
 
   return (
-    <div ref={containerRef} className="flex flex-col h-full min-h-0 overflow-hidden" style={{ background: 'rgba(11,11,17,0.95)' }}>
+    <div ref={containerRef} className="flex flex-col h-full min-h-0 overflow-hidden" style={{ background: '#0a0a0f' }}>
       {/* TOP: Track detail */}
       <div className="flex-shrink-0 overflow-y-auto min-h-0" style={{ height: topH }}>
         <div className="px-5 pt-4 pb-2 h-full">

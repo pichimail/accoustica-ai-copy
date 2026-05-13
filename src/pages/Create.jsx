@@ -11,6 +11,48 @@ import StudioGeneratePanel from '@/components/create/StudioGeneratePanel';
 import { haptics } from '@/components/utils/haptics';
 import { getTrackAudioSource } from '@/components/audio/AudioPlayerContext';
 
+// ── Auto-fill helpers ──
+function computeAutoNegativeTag(styles) {
+  const s = styles.toLowerCase();
+  if (s.includes('lo-fi') || s.includes('lofi') || s.includes('chill'))
+    return 'aggressive, harsh, loud, distorted, metal';
+  if (s.includes('raaga') || s.includes('classical') || s.includes('devotional') || s.includes('hindustani') || s.includes('carnatic'))
+    return 'electronic, trap, edm, distorted, auto-tune, aggressive';
+  if (s.includes('ambient') || s.includes('meditation') || s.includes('dreamy') || s.includes('meditat'))
+    return 'aggressive, loud, harsh, distorted, fast tempo, metal';
+  if (s.includes('jazz'))
+    return 'electronic, trap, auto-tune, over-compressed, distorted';
+  if (s.includes('folk') || s.includes('acoustic'))
+    return 'electronic, synthetic, auto-tune, over-produced, harsh';
+  if (s.includes('edm') || s.includes('techno') || s.includes('electronic') || s.includes('house'))
+    return 'acoustic, organic, slow, low energy, unplugged';
+  if (s.includes('metal') || s.includes('rock'))
+    return 'soft, ballad, acoustic, smooth, mellow';
+  if (s.includes('bollywood') || s.includes('telugu') || s.includes('cinematic') || s.includes('orchestral'))
+    return 'atonal, harsh, noise, avant-garde, dissonant';
+  if (s.includes('psychedelic') || s.includes('psy') || s.includes('hitchhiker') || s.includes('cosmic'))
+    return 'bland, generic, over-polished, sterile';
+  return '';
+}
+
+function computeAutoStyleWeight(styles) {
+  const s = styles.toLowerCase();
+  if (s.includes('raaga') || s.includes('classical') || s.includes('devotional') || s.includes('hindustani')) return 88;
+  if (s.includes('ambient') || s.includes('lo-fi') || s.includes('dreamy') || s.includes('chill')) return 62;
+  if (s.includes('hitchhiker') || s.includes('cosmic') || s.includes('surreal')) return 72;
+  if (s.includes('techno') || s.includes('edm') || s.includes('electronic')) return 80;
+  return 75;
+}
+
+function computeAutoWeirdness(styles, lyrics) {
+  const s = (styles + ' ' + lyrics).toLowerCase();
+  if (s.includes('psychedelic') || s.includes('experimental') || s.includes('surreal') || s.includes('psy') || s.includes('hitchhiker')) return 68;
+  if (s.includes('devotional') || s.includes('classical') || s.includes('folk') || s.includes('acoustic') || s.includes('meditat')) return 32;
+  if (s.includes('jazz') || s.includes('lo-fi') || s.includes('chill') || s.includes('ambient')) return 45;
+  if (s.includes('techno') || s.includes('edm') || s.includes('electronic') || s.includes('house')) return 58;
+  return 55;
+}
+
 export default function CreatePage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -52,6 +94,21 @@ export default function CreatePage() {
 
   // ── Mobile panel state ──
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+
+  // ── Auto-fill negative tags & sliders from style/lyrics ──
+  useEffect(() => {
+    if (!styles && !lyrics) return;
+    if (!negativeTagTouched) {
+      const auto = computeAutoNegativeTag(styles);
+      setNegativeTag(auto);
+    }
+    if (!styleWeightTouched) {
+      setStyleWeight(computeAutoStyleWeight(styles));
+    }
+    if (!weirdnessTouched) {
+      setClarityWeight(computeAutoWeirdness(styles, lyrics));
+    }
+  }, [styles, lyrics]);
 
   const queryClient = useQueryClient();
   const { playTrack, currentTrack, isPlaying } = useAudioPlayer();
@@ -164,8 +221,8 @@ export default function CreatePage() {
           title: title || `${source.title} Remix`,
           audioWeight: remixInfluence,
           ...(negativeTag.trim() && { negativeTags: negativeTag.trim() }),
-          ...(styleWeightTouched && { styleWeight }),
-          ...(weirdnessTouched && { weirdnessConstraint: clarityWeight }),
+          styleWeight,
+          weirdnessConstraint: clarityWeight,
           ...(vocalGender !== 'Auto' && { vocalGender }),
           ...(selectedPersonaId && { personaId: selectedPersonaId }),
         });
@@ -179,9 +236,9 @@ export default function CreatePage() {
           ...(title.trim() && { title: title.trim() }),
           customMode: true,
           instrumental: isInstrumental,
-          ...(negativeTagTouched && negativeTag.trim() && { negativeTags: negativeTag.trim() }),
-          ...(styleWeightTouched && { styleWeight }),
-          ...(weirdnessTouched && { weirdnessConstraint: clarityWeight }),
+          ...(negativeTag.trim() && { negativeTags: negativeTag.trim() }),
+          styleWeight,
+          weirdnessConstraint: clarityWeight,
           ...(vocalGender !== 'Auto' && { vocalGender }),
           ...(selectedPersonaId && { personaId: selectedPersonaId }),
         } : {
@@ -254,7 +311,7 @@ export default function CreatePage() {
   return (
     <>
       {/* ════ DESKTOP: 3-panel Studio Layout ════ */}
-      <div ref={desktopStudioRef} className="hidden md:flex overflow-hidden" style={{ background: 'radial-gradient(circle at 20% 0%, #101325 0%, #050507 48%, #030303 100%)', height: 'var(--content-available-height, 100vh)', filter: 'contrast(1.24)' }}>
+      <div ref={desktopStudioRef} className="hidden md:flex overflow-hidden" style={{ background: '#0a0a0f', height: 'var(--content-available-height, 100vh)' }}>
 
         {/* LEFT — Library */}
         <div className="flex-shrink-0 h-full overflow-hidden" style={{ width: libraryWidth }}>
@@ -276,7 +333,7 @@ export default function CreatePage() {
         {/* CENTER — Split track detail + generations */}
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
           {/* Studio header bar */}
-          <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'linear-gradient(135deg, rgba(5,5,10,0.95), rgba(9,16,30,0.9))' }}>
+          <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#0a0a0f' }}>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-extrabold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.35)' }}>⚙</span>
               <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.75)' }}>Studio Center</span>
@@ -338,7 +395,7 @@ export default function CreatePage() {
       </div>
 
       {/* ════ MOBILE: single column ════ */}
-      <div className="md:hidden flex flex-col" style={{ background: 'radial-gradient(circle at 20% 0%, #101325 0%, #050507 48%, #030303 100%)', minHeight: 'var(--content-available-height, 100vh)', filter: 'contrast(1.24)' }}>
+      <div className="md:hidden flex flex-col" style={{ background: '#0a0a0f', minHeight: 'var(--content-available-height, 100vh)' }}>
         {/* Mobile header */}
         <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b" style={{ background: 'rgba(9,9,15,0.97)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.06)' }}>
           <div className="flex items-center gap-2">
@@ -429,6 +486,7 @@ export default function CreatePage() {
 }
 
 function SplitterHandle({ label, onPointerDown }) {
+  const [hovered, setHovered] = React.useState(false);
   return (
     <div
       role="separator"
@@ -437,13 +495,24 @@ function SplitterHandle({ label, onPointerDown }) {
       tabIndex={0}
       onMouseDown={onPointerDown}
       onTouchStart={onPointerDown}
-      className="w-2 flex-shrink-0 cursor-col-resize bg-transparent hover:bg-white/5 focus:bg-white/10 focus:outline-none"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="w-3 flex-shrink-0 cursor-col-resize focus:outline-none group relative transition-all"
       style={{
-        borderLeft: '1px solid rgba(255,255,255,0.05)',
-        borderRight: '1px solid rgba(255,255,255,0.04)',
+        background: hovered ? 'rgba(225,29,72,0.08)' : 'transparent',
+        borderLeft: `1px solid ${hovered ? 'rgba(225,29,72,0.25)' : 'rgba(255,255,255,0.07)'}`,
+        borderRight: `1px solid ${hovered ? 'rgba(225,29,72,0.15)' : 'rgba(255,255,255,0.04)'}`,
       }}
     >
-      <div className="h-full w-px mx-auto" style={{ background: 'rgba(255,255,255,0.1)' }} />
+      <div className="h-full flex flex-col items-center justify-center gap-1">
+        <div className="w-px" style={{ height: '100%', background: hovered ? 'rgba(225,29,72,0.5)' : 'rgba(255,255,255,0.13)' }} />
+      </div>
+      {hovered && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-10 rounded-full flex flex-col items-center justify-center gap-0.5"
+          style={{ background: 'rgba(225,29,72,0.18)', border: '1px solid rgba(225,29,72,0.35)' }}>
+          <div className="w-0.5 h-3 rounded-full" style={{ background: '#e11d48' }} />
+        </div>
+      )}
     </div>
   );
 }

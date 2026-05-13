@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 export default function StudioLibraryPanel({ tracks, search, onSearch, selectedTrack, onSelectTrack, onPlay, currentTrack, isPlaying, isLoading }) {
   return (
-    <div className="flex flex-col h-full" style={{ background: 'rgba(10,10,16,0.97)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+    <div className="flex flex-col h-full" style={{ background: '#0a0a0f', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
       {/* Header */}
       <div className="flex-shrink-0 px-3 pt-3 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center justify-between mb-2.5">
