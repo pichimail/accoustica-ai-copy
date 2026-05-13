@@ -12,7 +12,7 @@ import { getPublicTrackUrl } from '@/lib/trackSharing';
 export default function SocialFeedPage() {
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState('');
-  const [sort, setSort] = useState('-created_date');
+  const [sort] = useState('-created_date');
   const [commentInput, setCommentInput] = useState({});
   const [openComments, setOpenComments] = useState({});
   const { playTrack, currentTrack, isPlaying, currentTime } = useAudioPlayer();

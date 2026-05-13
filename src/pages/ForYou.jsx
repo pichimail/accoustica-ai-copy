@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { haptics } from '@/components/utils/haptics';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
-import { Sparkles, TrendingUp, Clock, Zap, Loader2, Play, Pause, RefreshCw } from 'lucide-react';
+import { Sparkles, TrendingUp, Clock, Zap, Loader2, Play, Pause } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
 import OledBackground from '@/components/audio/OledBackground';

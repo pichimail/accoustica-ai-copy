@@ -23,8 +23,6 @@ import {
   Volume2,
   Zap,
   Trash2,
-  Eye,
-  EyeOff,
 } from 'lucide-react';
 
 const TABS = [

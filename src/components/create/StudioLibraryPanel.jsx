@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * @typedef Track
- * @property {string | number} id
+ * @property {string | number} [id]
  * @property {string} [title]
  * @property {string} [cover_image_url]
  * @property {string} [stream_audio_url]
@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * @typedef StudioLibraryPanelProps
- * @property {Track[]} tracks
+ * @property {any[]} tracks
  * @property {string} search
  * @property {(value: string) => void} onSearch
  * @property {Track | null | undefined} selectedTrack

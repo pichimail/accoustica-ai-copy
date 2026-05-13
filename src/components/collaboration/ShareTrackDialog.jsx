@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, Globe, Loader2, Send, Share2, Trash2, MessageCircle } from 'lucide-react';
+import { Copy, Globe, Loader2, Send, Share2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getPublicTrackUrl, getSeoDescription, getTrackPublicSlug } from '@/lib/trackSharing';
 

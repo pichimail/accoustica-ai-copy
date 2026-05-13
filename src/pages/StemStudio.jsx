@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Disc, Search, Play, Clock, Sparkles, GitBranch, Volume2, Wand2, Loader2 } from 'lucide-react';
+import { Disc, Search, Play, Clock, Sparkles, GitBranch, Volume2, Wand2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import StemSeparationDialog from '@/components/audio/StemSeparationDialog';
