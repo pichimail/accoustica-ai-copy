@@ -338,17 +338,17 @@ export default function CreatePage() {
               <span className="text-[10px] font-extrabold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.35)' }}>⚙</span>
               <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.75)' }}>Studio Center</span>
             </div>
-            <div className="flex items-center gap-2 hidden">
-              <button className="p-1.5 rounded-lg hover:bg-white/5 transition-colors" title="Share">
-                <Share2 className="h-3.5 w-3.5" style={{ color: 'rgba(255,255,255,0.3)' }} />
-              </button>
-              <button className="p-1.5 rounded-lg hover:bg-white/5 transition-colors" title="Settings">
-                <Settings2 className="h-3.5 w-3.5" style={{ color: 'rgba(255,255,255,0.3)' }} />
-              </button>
-              <button className="p-1.5 rounded-lg hover:bg-white/5 transition-colors" title="Fullscreen">
-                <Maximize2 className="h-3.5 w-3.5" style={{ color: 'rgba(255,255,255,0.3)' }} />
-              </button>
-            </div>
+            
+
+
+
+
+
+
+
+
+
+            
           </div>
 
           <div className="flex-1 min-h-0 overflow-hidden">
