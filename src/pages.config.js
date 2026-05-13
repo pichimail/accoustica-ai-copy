@@ -18,7 +18,7 @@ import TrackInfo from './pages/TrackInfo';
 import ArtistInfo from './pages/ArtistInfo';
 import SocialFeed from './pages/SocialFeed';
 import SongEditor from './pages/SongEditor';
-import RemixStudio from './pages/RemixStudio';
+// RemixStudio merged into StemStudio
 import MasteringProStudio from './pages/MasteringProStudio';
 import AdminFeatureFlags from './pages/AdminFeatureFlags';
 import Insights from './pages/Insights';
@@ -46,7 +46,7 @@ export const PAGES = {
     "ArtistInfo": ArtistInfo,
     "SocialFeed": SocialFeed,
     "SongEditor": SongEditor,
-    "RemixStudio": RemixStudio,
+    "RemixStudio": StemStudio, // redirects to merged StemStudio page
     "MasteringProStudio": MasteringProStudio,
     "AdminFeatureFlags": AdminFeatureFlags,
     "Insights": Insights,
