@@ -12,16 +12,119 @@ const SIMPLE_PROMPT_MAX = 495;
 const STYLE_MAX = 995;
 const LYRICS_MAX = 4995;
 
-// Short-label chips → full prompt values
+const STYLE_TEMPLATES = {
+  rock: {
+    themes: ['rebellion', 'freedom', 'power', 'angst', 'energy'],
+    instruments: ['electric guitar', 'drums', 'bass', 'distortion'],
+    descriptors: ['powerful', 'energetic', 'raw', 'aggressive', 'intense'],
+  },
+  romantic: {
+    themes: ['intimacy', 'warmth', 'tenderness', 'affection', 'romance'],
+    instruments: ['soft piano', 'warm pads', 'gentle guitar', 'light percussion'],
+    descriptors: ['intimate', 'warm', 'moody', 'tender', 'slow-burning', 'dreamy'],
+  },
+  deephouse: {
+    themes: ['groove', 'hypnotic', 'atmospheric', 'underground'],
+    instruments: ['deep bass', 'filtered pads', 'subtle percussion', 'vinyl texture'],
+    descriptors: ['120-126 BPM', 'deep', 'groovy', 'minimal', 'hypnotic'],
+  },
+  techno: {
+    themes: ['industrial', 'driving', 'relentless', 'futuristic'],
+    instruments: ['kick drum', 'hi-hats', 'synth stabs', '303 bass'],
+    descriptors: ['128-160 BPM', 'pounding', 'hypnotic', 'repetitive', 'dark'],
+  },
+  psychedelic: {
+    themes: ['mind-expanding', 'trippy', 'cosmic', 'consciousness'],
+    instruments: ['acid bassline', 'modulated synths', 'reverb', 'delay effects'],
+    descriptors: ['LSD-inspired', 'trippy', 'swirling', 'hallucinogenic', 'psychedelic'],
+  },
+  minimaltechno: {
+    themes: ['stripped-back', 'subtle', 'hypnotic', 'minimal'],
+    instruments: ['sparse percussion', 'minimal synths', 'sub bass'],
+    descriptors: ['128-135 BPM', 'minimal', 'precise', 'clean', 'focused'],
+  },
+  progressivepsych: {
+    themes: ['journey', 'evolving', 'cosmic', 'transcendent'],
+    instruments: ['layered synths', 'rolling bassline', 'complex percussion'],
+    descriptors: ['135-145 BPM', 'evolving', 'progressive', 'psychedelic', 'layered'],
+  },
+  telugu: {
+    themes: ['culture', 'tradition', 'emotion', 'storytelling'],
+    instruments: ['tabla', 'flute', 'veena', 'mridangam', 'harmonium'],
+    descriptors: ['crystal clear Telugu lyrics', 'traditional', 'melodic', 'soulful', 'authentic'],
+  },
+  telugu70s: {
+    themes: ['nostalgia', 'golden era', 'classic', 'timeless'],
+    instruments: ['vintage keyboard', 'acoustic guitar', 'traditional drums', 'classical vocals'],
+    descriptors: ['1970s Telugu classic style', 'retro', 'melodious', 'vintage production'],
+  },
+  synthwave: {
+    themes: ['nostalgia', '80s', 'retro-futuristic', 'neon'],
+    instruments: ['analog synths', 'drum machines', 'arpeggiators', 'gated reverb'],
+    descriptors: ['80s inspired', 'nostalgic', 'neon', 'retro', 'cinematic'],
+  },
+  devotional: {
+    themes: ['spiritual', 'divine', 'prayer', 'worship', 'peace'],
+    instruments: ['harmonium', 'tabla', 'bells', 'flute', 'tanpura'],
+    descriptors: ['devotional', 'peaceful', 'spiritual', 'meditative', 'sacred'],
+  },
+  lofi: {
+    themes: ['chill', 'study', 'relaxation', 'nostalgia'],
+    instruments: ['jazzy keys', 'vinyl crackle', 'lo-fi drums', 'smooth bass'],
+    descriptors: ['70-90 BPM', 'chill', 'relaxed', 'nostalgic', 'warm'],
+  },
+  edm: {
+    themes: ['energy', 'festival', 'euphoria', 'drop'],
+    instruments: ['synth leads', 'big drums', 'sub bass', 'risers'],
+    descriptors: ['128-140 BPM', 'energetic', 'festival-ready', 'massive drop', 'euphoric'],
+  },
+  hitchhiker: {
+    themes: ['absurd galactic travel', 'satirical adventure', 'interstellar storytelling', 'cosmic road trip'],
+    instruments: ['warm analog guitars', 'neon synth bass', 'talk-sung hooks', 'playful percussion'],
+    descriptors: ['witty', 'quirky', 'cinematic', 'surreal', 'space-folk energy'],
+  },
+  raga: {
+    themes: ['classical expression', 'spiritual depth', 'improvised journey', 'meditative storytelling'],
+    instruments: ['sitar', 'tabla', 'tanpura', 'bansuri'],
+    descriptors: ['Indian classical', 'ornamented melody', 'soulful', 'cinematic', 'emotive'],
+  },
+};
+
 const SIMPLE_CHIPS = [
-  { label: 'Hitchhiker', value: 'Hitchhiker-style cosmic road trip anthem with witty spoken hooks and neon synths' },
-  { label: 'Indian Raga', value: 'Indian sitar raaga journey in Yaman with tabla groove and cinematic strings' },
-  { label: 'Telugu 70s', value: 'Telugu retro 70s melody with warm analog keys and soulful chorus' },
-  { label: 'Dawn Bhajan', value: 'Devotional dawn bhajan with tanpura drone, flute answers, and serene choir' },
-  { label: 'Psy-Techno', value: 'Progressive psy-techno odyssey with rolling bass and hypnotic polyrhythms' },
-  { label: 'Lo-Fi Rain', value: 'Lo-fi study rain beat with dusty vinyl texture and mellow jazz chords' },
-  { label: 'Festival EDM', value: 'Festival EDM drop with euphoric build, chant vocals, and cinematic brass' },
+  { label: 'Hitch Hiker', value: 'hitchhiker' },
+  { label: 'Raga', value: 'raga' },
+  { label: 'Telugu', value: 'telugu' },
+  { label: 'Telugu 70s', value: 'telugu70s' },
+  { label: 'Rock', value: 'rock' },
+  { label: 'Romantic', value: 'romantic' },
+  { label: 'Deep House', value: 'deephouse' },
+  { label: 'Techno', value: 'techno' },
+  { label: 'Psychedelic', value: 'psychedelic' },
+  { label: 'Minimal Techno', value: 'minimaltechno' },
+  { label: 'Progressive Psych', value: 'progressivepsych' },
+  { label: 'Synthwave', value: 'synthwave' },
+  { label: 'Devotional', value: 'devotional' },
+  { label: 'Lo-Fi', value: 'lofi' },
+  { label: 'EDM', value: 'edm' },
 ];
+
+function pickRandom(items, count) {
+  const shuffled = [...items].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.max(1, Math.min(count, shuffled.length)));
+}
+
+function generatePromptFromStyle(styleKey) {
+  const template = STYLE_TEMPLATES[styleKey];
+  if (!template) return '';
+
+  const theme = template.themes[Math.floor(Math.random() * template.themes.length)];
+  const instruments = pickRandom(template.instruments, 2 + Math.floor(Math.random() * 2));
+  const descriptors = pickRandom(template.descriptors, 2 + Math.floor(Math.random() * 2));
+  const styleLabel = styleKey.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+  const prompt = `${descriptors.join(', ')} ${styleLabel} track centered on ${theme}, built with ${instruments.join(', ')}. Add dynamic section shifts, rich texture, and memorable hooks suitable for AI music generation.`;
+  return prompt.slice(0, SIMPLE_PROMPT_MAX);
+}
 
 // Horizontal-swipe style preset chips for advanced/mashup tabs
 const ADV_STYLE_CHIPS = [
@@ -418,7 +521,7 @@ export default function StudioGeneratePanel({
               {simpleCount}/{SIMPLE_PROMPT_MAX}
             </div>
             {/* Short-label prompt chips */}
-            <HChipRow chips={SIMPLE_CHIPS} onPick={v => onSimplePromptChange(v.slice(0, SIMPLE_PROMPT_MAX))} />
+            <HChipRow chips={SIMPLE_CHIPS} onPick={(styleKey) => onSimplePromptChange(generatePromptFromStyle(styleKey))} />
           </PanelSection>
         )}
 
