@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Share2, Maximize2, Settings2 } from 'lucide-react';
 import StudioLibraryPanel from '@/components/create/StudioLibraryPanel';
 import StudioCenterPanel from '@/components/create/StudioCenterPanel';
 import StudioGeneratePanel from '@/components/create/StudioGeneratePanel';
@@ -14,6 +13,14 @@ import { getTrackAudioSource } from '@/components/audio/AudioPlayerContext';
 // ── Auto-fill helpers ──
 function computeAutoNegativeTag(styles) {
   const s = styles.toLowerCase();
+  if (s.includes('shamanic') || s.includes('ecstatic dance') || s.includes('root chakra') || s.includes('tribal ambient'))
+  return 'pop chorus, trap hats, dubstep wobble, metal guitars, cheap EDM risers, cartoon vocals, harsh distortion';
+  if (s.includes('hitch hiker') || s.includes('hitchhiker') || s.includes('canyon pulse') || s.includes('desert house'))
+  return 'cheesy pop, happy ukulele, thin bass, over-bright vocals, trap hi-hats, generic festival EDM';
+  if (s.includes('maksim') || s.includes('dark minimal techno') || s.includes('warehouse groove'))
+  return 'pop vocals, soft ballad, acoustic guitar, bright tropical house, lo-fi haze, orchestral drama';
+  if (s.includes('nostalgia') || s.includes('night drive') || s.includes('vocoder texture'))
+  return 'metal guitars, folk acoustic, raw punk, trap beat, atonal noise, muddy mix';
   if (s.includes('lo-fi') || s.includes('lofi') || s.includes('chill'))
   return 'aggressive, harsh, loud, distorted, metal';
   if (s.includes('raaga') || s.includes('classical') || s.includes('devotional') || s.includes('hindustani') || s.includes('carnatic'))
@@ -180,7 +187,7 @@ export default function CreatePage() {
     if (!isAdvanced && !isRemix && !isMashup && finalPrompt.length > 495) {toast.error('Simple prompt must be 495 chars or less');return;}
     if (isAdvanced && styles.length > 995) {toast.error('Styles must be 995 chars or less');return;}
     if (isAdvanced && lyrics.length > 4995) {toast.error('Lyrics must be 4995 chars or less');return;}
-    if (isAdvanced && !lyrics.trim()) {toast.error('Please add lyrics');return;}
+    if (isAdvanced && !lyrics.trim()) {toast.error(isInstrumental ? 'Please add an instrumental structure prompt' : 'Please add lyrics');return;}
     if (!isAdvanced && !isRemix && !isMashup && !finalPrompt) {toast.error('Please describe your music');return;}
     if (isRemix && !remixSource) {toast.error('Choose a source track to remix');return;}
     if (isMashup && mashupTrackIds.length !== 2) {toast.error('Choose exactly two ready tracks for a mashup');return;}
@@ -237,7 +244,7 @@ export default function CreatePage() {
         const payload = isAdvanced ? {
           mode: 'custom',
           model: 'V5',
-          prompt: isInstrumental ? '' : lyrics,
+          prompt: lyrics,
           style: `${styles || 'Pop'}${strictVoiceDirective}`,
           ...(title.trim() && { title: title.trim() }),
           customMode: true,
