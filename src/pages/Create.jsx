@@ -60,7 +60,7 @@ export default function CreatePage() {
   const isGenerateOnlyMobile = params.get('panel') === 'generate';
   // ── User & plan ──
   const [user, setUser] = useState(null);
-  useEffect(() => {base44.auth.me().then(setUser);}, []);
+  useEffect(() => {base44.auth.me().then(setUser).catch(() => {});}, []);
 
   // ── Library state ──
   const [libSearch, setLibSearch] = useState('');
