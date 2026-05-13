@@ -205,6 +205,12 @@ export default function CreatePage() {
           style: styles,
           title: title || `Mashup: ${selected.map(track => track.title).join(' x ')}`,
           model: 'V5',
+          instrumental: isInstrumental,
+          // audioWeight controls the blend weight of source audio features (0–100 → normalised to 0–1 in the backend)
+          audioWeight: remixInfluence,
+          styleWeight,
+          weirdnessConstraint: clarityWeight,
+          ...(vocalGender !== 'Auto' && { vocalGender }),
         });
       } else if (isRemix) {
         const source = allTracks.find(track => track.id === remixSource);

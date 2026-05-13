@@ -2,6 +2,37 @@ import React from 'react';
 import { Music, Play, Pause, Loader2, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+/**
+ * @typedef {'ready' | 'generating' | 'queued' | 'failed'} TrackStatus
+ */
+
+/**
+ * @typedef Track
+ * @property {string | number} id
+ * @property {string} [title]
+ * @property {string} [cover_image_url]
+ * @property {string} [stream_audio_url]
+ * @property {string} [audio_url]
+ * @property {string} [created_by]
+ * @property {TrackStatus} [status]
+ */
+
+/**
+ * @typedef StudioLibraryPanelProps
+ * @property {Track[]} tracks
+ * @property {string} search
+ * @property {(value: string) => void} onSearch
+ * @property {Track | null | undefined} selectedTrack
+ * @property {(track: Track) => void} onSelectTrack
+ * @property {(track: Track) => void} onPlay
+ * @property {Track | null | undefined} currentTrack
+ * @property {boolean} isPlaying
+ * @property {boolean} isLoading
+ */
+
+/**
+ * @param {StudioLibraryPanelProps} props
+ */
 export default function StudioLibraryPanel({ tracks, search, onSearch, selectedTrack, onSelectTrack, onPlay, currentTrack, isPlaying, isLoading }) {
   return (
     <div className="flex flex-col h-full" style={{ background: '#0a0a0f', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
@@ -42,14 +73,14 @@ export default function StudioLibraryPanel({ tracks, search, onSearch, selectedT
           </div>
         ) : (
           <div className="space-y-0.5">
-            {tracks.map(track => (
+            {tracks.map((track) => (
               <LibraryItem
                 key={track.id}
                 track={track}
                 isSelected={selectedTrack?.id === track.id}
                 isPlaying={currentTrack?.id === track.id && isPlaying}
                 onClick={() => onSelectTrack(track)}
-                onPlay={e => { e.stopPropagation(); onPlay(track); }}
+                onPlay={(e) => { e.stopPropagation(); onPlay(track); }}
               />
             ))}
           </div>
@@ -59,7 +90,17 @@ export default function StudioLibraryPanel({ tracks, search, onSearch, selectedT
   );
 }
 
+/**
+ * @param {{
+ *   track: Track;
+ *   isSelected: boolean;
+ *   isPlaying: boolean;
+ *   onClick: () => void;
+ *   onPlay: (e: React.MouseEvent<HTMLButtonElement>) => void;
+ * }} props
+ */
 function LibraryItem({ track, isSelected, isPlaying, onClick, onPlay }) {
+  /** @type {Record<TrackStatus, string>} */
   const statusDot = { ready: '#22c55e', generating: '#a78bfa', queued: '#fbbf24', failed: '#f87171' };
   const canPlay = !!(track?.stream_audio_url || track?.audio_url);
   return (
@@ -67,8 +108,8 @@ function LibraryItem({ track, isSelected, isPlaying, onClick, onPlay }) {
       onClick={onClick}
       className={cn('w-full flex items-center gap-2 px-2 py-2 rounded-xl text-left transition-all group')}
       style={{ background: isSelected ? 'rgba(225,29,72,0.12)' : 'transparent' }}
-      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+      onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+      onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
     >
       <div className="relative w-9 h-9 rounded-lg overflow-hidden flex-shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
         {track.cover_image_url
@@ -103,7 +144,7 @@ function LibraryItem({ track, isSelected, isPlaying, onClick, onPlay }) {
         </p>
       </div>
       {!canPlay && (
-        <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: statusDot[track.status] || '#555' }} />
+        <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: (track.status && statusDot[track.status]) || '#555' }} />
       )}
     </button>
   );
