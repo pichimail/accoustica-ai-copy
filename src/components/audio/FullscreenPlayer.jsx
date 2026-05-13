@@ -6,41 +6,9 @@ import {
   Heart, ListMusic } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudioPlayer } from './AudioPlayerContext';
-import LyricsView from './LyricsView';
+import { getAudioAnalyser, resumeAudioContext } from '@/lib/audioContext';
 
-// ── Module-level singleton: AudioContext lives forever, never recreated ──
-// This prevents "HTMLMediaElement already connected" on tab switch remount.
-const _viz = { ctx: null, analyser: null, source: null, audioEl: null };
-
-function _ensureVizSetup(audio) {
-  try {
-    if (!audio) return false;
-    if (!_viz.ctx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return false;
-      _viz.ctx = new AC();
-    }
-    if (_viz.ctx.state === 'suspended') _viz.ctx.resume();
-    if (!_viz.analyser) {
-      const an = _viz.ctx.createAnalyser();
-      an.fftSize = 512;                  // higher resolution for beat accuracy
-      an.smoothingTimeConstant = 0.62;   // less smoothing = tighter beat sync
-      _viz.analyser = an;
-    }
-    // Only create MediaElementSource once per audio element
-    if (_viz.audioEl !== audio) {
-      if (_viz.source) { try { _viz.source.disconnect(); } catch (_) {} }
-      _viz.source = _viz.ctx.createMediaElementSource(audio);
-      _viz.audioEl = audio;
-      _viz.source.connect(_viz.analyser);
-      _viz.analyser.connect(_viz.ctx.destination); // audio MUST route to destination
-    }
-    return true;
-  } catch (e) {
-    // already connected or cross-origin — try to reuse existing analyser
-    return !!_viz.analyser;
-  }
-}
+import { getAudioAnalyser, resumeAudioContext } from '@/lib/audioContext';
 
 // ── BEAT VISUALIZER CANVAS ─────────────────────────────────────────
 function BeatVisualizer({ audioRef, isPlaying, coverImg }) {
@@ -51,9 +19,8 @@ function BeatVisualizer({ audioRef, isPlaying, coverImg }) {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    _ensureVizSetup(audio);
-    // Resume context on every play event (browser autoplay policy)
-    const onPlay = () => { if (_viz.ctx?.state === 'suspended') _viz.ctx.resume(); };
+    getAudioAnalyser(audio); // wire to shared singleton
+    const onPlay = () => resumeAudioContext();
     audio.addEventListener('play', onPlay);
     onPlay(); // trigger immediately if already playing
     return () => audio.removeEventListener('play', onPlay);
@@ -82,13 +49,14 @@ function BeatVisualizer({ audioRef, isPlaying, coverImg }) {
       c.clearRect(0, 0, W, H);
 
       const data = new Uint8Array(BARS);
-      if (_viz.analyser) {
-        const buf = new Uint8Array(_viz.analyser.frequencyBinCount);
-        _viz.analyser.getByteFrequencyData(buf);
+      const _an = getAudioAnalyser(audioRef.current);
+      if (_an) {
+        const buf = new Uint8Array(_an.frequencyBinCount);
+        _an.getByteFrequencyData(buf);
         for (let i = 0; i < BARS; i++) {
           data[i] = buf[Math.floor((i / BARS) * buf.length)];
         }
-        if (_viz.ctx?.state === 'suspended') _viz.ctx.resume();
+        resumeAudioContext();
       } else {
         // Idle pulse
         const t = Date.now() / 1000;
@@ -137,7 +105,7 @@ function BeatVisualizer({ audioRef, isPlaying, coverImg }) {
       cancelAnimationFrame(frameRef.current);
       ro.disconnect();
     };
-  }, []); // intentionally empty — draw loop reads _viz singleton directly
+  }, []); // intentionally empty — draw loop reads shared singleton via getAudioAnalyser
 
   return (
     <div className="relative w-full h-full rounded-2xl overflow-hidden">

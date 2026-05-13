@@ -23,8 +23,8 @@ export function getAudioAnalyser(audioElement) {
     // Only create source once per element
     if (_connectedEl !== audioElement) {
       _analyser = _ctx.createAnalyser();
-      _analyser.fftSize = 256;
-      _analyser.smoothingTimeConstant = 0.8;
+      _analyser.fftSize = 512;
+      _analyser.smoothingTimeConstant = 0.62;
       _source = _ctx.createMediaElementSource(audioElement);
       _source.connect(_analyser);
       _analyser.connect(_ctx.destination);

@@ -2,7 +2,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Music, Play, Pause, Loader2, Search, SkipForward, Video, Layers, Info, MoreHorizontal } from 'lucide-react';
-import WaveformVisualizer from './WaveformVisualizer';
+import StudioCenterVisualizer from './StudioCenterVisualizer';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,7 +58,13 @@ export default function StudioCenterPanel({ selectedTrack, tracks, currentTrack,
   }, [isDragging]);
 
   return (
-    <div ref={containerRef} className="flex flex-col h-full min-h-0 overflow-hidden" style={{ background: '#0a0a0f' }}>
+    <div ref={containerRef} className="flex flex-col h-full min-h-0 overflow-hidden relative" style={{ background: '#0a0a0f' }}>
+
+      {/* ── Full-panel frequency visualizer — absolute background layer ── */}
+      <StudioCenterVisualizer />
+
+      {/* ── Foreground content — floats above visualizer ── */}
+      <div className="relative z-[1] flex flex-col h-full min-h-0 overflow-hidden">
       {/* TOP: Track detail */}
       <div className="flex-shrink-0 overflow-y-auto min-h-0" style={{ height: topH }}>
         <div className="px-5 pt-4 pb-2 h-full">
@@ -93,7 +99,7 @@ export default function StudioCenterPanel({ selectedTrack, tracks, currentTrack,
       </div>
 
       {/* BOTTOM: Generations list */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ background: 'rgba(10,10,15,0.90)', backdropFilter: 'blur(2px)' }}>
         {/* Search */}
         <div className="flex-shrink-0 px-4 py-2.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
           <div className="flex items-center gap-2">
@@ -144,6 +150,7 @@ export default function StudioCenterPanel({ selectedTrack, tracks, currentTrack,
           ))}
         </div>
       </div>
+      </div>{/* end foreground content wrapper */}
     </div>
   );
 }
@@ -206,12 +213,7 @@ function TrackDetailView({ track, currentTrack, isPlaying, onPlay }) {
         </div>
       )}
 
-      {/* Waveform */}
-      {isActive && (
-        <div className="rounded-xl overflow-hidden flex-shrink-0" style={{ background: 'rgba(225,29,72,0.06)', border: '1px solid rgba(225,29,72,0.12)' }}>
-          <WaveformVisualizer height={48} />
-        </div>
-      )}
+      {/* Waveform — now provided by the full-panel StudioCenterVisualizer */}
     </div>
   );
 }
