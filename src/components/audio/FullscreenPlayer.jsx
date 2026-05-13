@@ -8,120 +8,152 @@ import { cn } from '@/lib/utils';
 import { useAudioPlayer } from './AudioPlayerContext';
 import LyricsView from './LyricsView';
 
-// ── BEAT VISUALIZER CANVAS ─────────────────────────────────────────
-function BeatVisualizer({ audioRef, isPlaying }) {
-  const canvasRef = useRef(null);
-  const animRef = useRef(null);
-  const analyserRef = useRef(null);
-  const srcRef = useRef(null);
-  const audioCtxRef = useRef(null);
+// ── Module-level singleton: AudioContext lives forever, never recreated ──
+// This prevents "HTMLMediaElement already connected" on tab switch remount.
+const _viz = { ctx: null, analyser: null, source: null, audioEl: null };
 
-  // Set up Web Audio once
+function _ensureVizSetup(audio) {
+  try {
+    if (!audio) return false;
+    if (!_viz.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return false;
+      _viz.ctx = new AC();
+    }
+    if (_viz.ctx.state === 'suspended') _viz.ctx.resume();
+    if (!_viz.analyser) {
+      const an = _viz.ctx.createAnalyser();
+      an.fftSize = 512;                  // higher resolution for beat accuracy
+      an.smoothingTimeConstant = 0.62;   // less smoothing = tighter beat sync
+      _viz.analyser = an;
+    }
+    // Only create MediaElementSource once per audio element
+    if (_viz.audioEl !== audio) {
+      if (_viz.source) { try { _viz.source.disconnect(); } catch (_) {} }
+      _viz.source = _viz.ctx.createMediaElementSource(audio);
+      _viz.audioEl = audio;
+      _viz.source.connect(_viz.analyser);
+      _viz.analyser.connect(_viz.ctx.destination); // audio MUST route to destination
+    }
+    return true;
+  } catch (e) {
+    // already connected or cross-origin — try to reuse existing analyser
+    return !!_viz.analyser;
+  }
+}
+
+// ── BEAT VISUALIZER CANVAS ─────────────────────────────────────────
+function BeatVisualizer({ audioRef, isPlaying, coverImg }) {
+  const canvasRef = useRef(null);
+  const frameRef = useRef(null);
+
+  // Wire up AudioContext — runs once on mount, reuses singleton
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const setup = () => {
-      try {
-        if (!audioCtxRef.current) {
-          const AudioContextClass = window.AudioContext || window['webkitAudioContext'];
-          if (!AudioContextClass) return;
-          audioCtxRef.current = new AudioContextClass();
-        }
-        if (audioCtxRef.current.state === 'suspended') {
-          audioCtxRef.current.resume();
-        }
-        const ctx = audioCtxRef.current;
-        if (!analyserRef.current) {
-          const analyser = ctx.createAnalyser();
-          analyser.fftSize = 256;
-          analyser.smoothingTimeConstant = 0.82;
-          if (!srcRef.current) {
-            srcRef.current = ctx.createMediaElementSource(audio);
-          }
-          srcRef.current.connect(analyser);
-          analyser.connect(ctx.destination);
-          analyserRef.current = analyser;
-        }
-      } catch (e) {/* cross-origin or already connected */}
-    };
-    audio.addEventListener('play', setup, { once: false });
-    setup();
-    return () => audio.removeEventListener('play', setup);
+    _ensureVizSetup(audio);
+    // Resume context on every play event (browser autoplay policy)
+    const onPlay = () => { if (_viz.ctx?.state === 'suspended') _viz.ctx.resume(); };
+    audio.addEventListener('play', onPlay);
+    onPlay(); // trigger immediately if already playing
+    return () => audio.removeEventListener('play', onPlay);
   }, [audioRef]);
 
-  // Draw loop
+  // Draw loop — center-spread mirrored bars
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let frameId;
+    const c = canvas.getContext('2d');
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = canvas.offsetWidth * dpr;
+      canvas.width  = canvas.offsetWidth  * dpr;
       canvas.height = canvas.offsetHeight * dpr;
-      ctx.scale(dpr, dpr);
+      c.scale(dpr, dpr);
     };
     resize();
-    window.addEventListener('resize', resize);
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
 
+    const BARS = 56;
     const draw = () => {
       const W = canvas.offsetWidth;
       const H = canvas.offsetHeight;
-      ctx.clearRect(0, 0, W, H);
+      c.clearRect(0, 0, W, H);
 
-      const bars = 64;
-      const data = new Uint8Array(bars);
-
-      if (analyserRef.current) {
-        const buf = new Uint8Array(analyserRef.current.frequencyBinCount);
-        analyserRef.current.getByteFrequencyData(buf);
-        for (let i = 0; i < bars; i++) {
-          data[i] = buf[Math.floor(i / bars * buf.length)];
+      const data = new Uint8Array(BARS);
+      if (_viz.analyser) {
+        const buf = new Uint8Array(_viz.analyser.frequencyBinCount);
+        _viz.analyser.getByteFrequencyData(buf);
+        for (let i = 0; i < BARS; i++) {
+          data[i] = buf[Math.floor((i / BARS) * buf.length)];
         }
+        if (_viz.ctx?.state === 'suspended') _viz.ctx.resume();
       } else {
-        // Idle animation
+        // Idle pulse
         const t = Date.now() / 1000;
-        for (let i = 0; i < bars; i++) {
-          data[i] = (Math.sin(t * 2 + i * 0.4) * 0.5 + 0.5) * 40 + 10;
+        for (let i = 0; i < BARS; i++) {
+          data[i] = (Math.sin(t * 2 + i * 0.4) * 0.5 + 0.5) * 40 + 12;
         }
       }
 
-      const barW = W / bars;
-      for (let i = 0; i < bars; i++) {
-        const v = data[i] / 255;
-        const bH = Math.max(3, v * H * 0.7);
-        const x = i * barW;
-        const w = Math.max(1, barW - 2);
+      const barW   = W / BARS;
+      const midY   = H / 2;
 
-        // Glow
-        ctx.globalAlpha = v * 0.3;
-        ctx.fillStyle = '#22c55e';
-        ctx.fillRect(x, H - bH * 1.4, w, bH * 1.4);
+      for (let i = 0; i < BARS; i++) {
+        const v    = data[i] / 255;
+        const half = Math.max(5, v * midY * 0.88); // half-height from centre
+        const x    = i * barW;
+        const w    = Math.max(1.5, barW - 2.5);
 
-        // Main bar
-        ctx.globalAlpha = 0.5 + v * 0.5;
-        const grad = ctx.createLinearGradient(0, H - bH, 0, H);
-        grad.addColorStop(0, `rgba(34,197,94,${v})`);
-        grad.addColorStop(0.5, `rgba(192,132,252,${v * 0.8})`);
-        grad.addColorStop(1, `rgba(244,114,182,${v * 0.6})`);
-        ctx.fillStyle = grad;
-        ctx.fillRect(x, H - bH, w, bH);
+        // Soft glow behind bars
+        c.globalAlpha = v * 0.35;
+        c.fillStyle   = '#22c55e';
+        c.fillRect(x, midY - half * 1.25, w, half * 2.5);
+
+        // Upward bar (centre → top)
+        c.globalAlpha = 0.72 + v * 0.28;
+        const gUp = c.createLinearGradient(0, midY, 0, midY - half);
+        gUp.addColorStop(0,   `rgba(34,197,94,${0.95})`);
+        gUp.addColorStop(0.5, `rgba(192,132,252,${0.9})`);
+        gUp.addColorStop(1,   `rgba(244,114,182,${0.85})`);
+        c.fillStyle = gUp;
+        c.fillRect(x, midY - half, w, half);
+
+        // Downward mirror (centre → bottom)
+        const gDn = c.createLinearGradient(0, midY, 0, midY + half);
+        gDn.addColorStop(0,   `rgba(34,197,94,${0.95})`);
+        gDn.addColorStop(0.5, `rgba(192,132,252,${0.9})`);
+        gDn.addColorStop(1,   `rgba(244,114,182,${0.85})`);
+        c.fillStyle = gDn;
+        c.fillRect(x, midY, w, half);
       }
-      ctx.globalAlpha = 1;
-      frameId = requestAnimationFrame(draw);
+      c.globalAlpha = 1;
+      frameRef.current = requestAnimationFrame(draw);
     };
 
     draw();
     return () => {
-      cancelAnimationFrame(frameId);
-      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(frameRef.current);
+      ro.disconnect();
     };
-  }, [isPlaying]);
+  }, []); // intentionally empty — draw loop reads _viz singleton directly
 
   return (
-    <canvas ref={canvasRef} className="w-full h-full" style={{ display: 'block' }} />);
-
+    <div className="relative w-full h-full rounded-2xl overflow-hidden">
+      {/* 60% blurred album art background */}
+      <img
+        src={coverImg}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+        style={{ filter: 'blur(32px)', opacity: 0.6, transform: 'scale(1.18)' }}
+      />
+      {/* Dark veil so bars stay contrasted */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'rgba(4,4,12,0.42)' }} />
+      {/* Canvas overlay */}
+      <canvas ref={canvasRef} className="relative z-10 w-full h-full" style={{ display: 'block' }} />
+    </div>
+  );
 }
 
 // ── MAIN FULLSCREEN PLAYER ─────────────────────────────────────────
@@ -146,6 +178,18 @@ export default function FullscreenPlayer() {
 
   const displayTime = isDragging ? dragTime : currentTime;
   const pct = duration > 0 ? Math.min(100, displayTime / duration * 100) : 0;
+
+  // Disable browser pull-to-refresh while fullscreen is open (mobile only)
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const prev = document.body.style.overscrollBehavior;
+    document.documentElement.style.overscrollBehavior = 'none';
+    document.body.style.overscrollBehavior = 'none';
+    return () => {
+      document.documentElement.style.overscrollBehavior = prev || '';
+      document.body.style.overscrollBehavior = prev || '';
+    };
+  }, [isFullscreen]);
 
   // Keyboard controls
   useEffect(() => {
@@ -239,7 +283,7 @@ export default function FullscreenPlayer() {
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 30, stiffness: 280 }}
         className="fixed inset-0 z-[200] flex flex-col overflow-hidden"
-        style={{ background: '#08080f' }}>
+        style={{ background: '#08080f', overscrollBehavior: 'none', touchAction: 'pan-x' }}>
         
           {/* Blurred album background */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -274,8 +318,8 @@ export default function FullscreenPlayer() {
             </button>
           </div>
 
-          {/* Album Art — circular, prominent. Hidden when lyrics active */}
-          <div className={cn("relative z-10 flex justify-center px-8 flex-shrink-0 mb-5 transition-all duration-300", activeTab === 'lyrics' ? 'hidden' : '')}>
+          {/* Album Art — circular, prominent. Hidden when lyrics or visualizer active */}
+          <div className={cn("relative z-10 flex justify-center px-8 flex-shrink-0 mb-5 transition-all duration-300", (activeTab === 'lyrics' || activeTab === 'visualizer') ? 'hidden' : '')}>
             <motion.div
             animate={{ scale: isPlaying ? 1 : 0.9 }}
             transition={{ type: 'spring', stiffness: 180, damping: 22 }}
@@ -341,10 +385,9 @@ export default function FullscreenPlayer() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="h-full flex items-end rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(255,255,255,0.02)' }}>
+              className="h-full w-full">
               
-                  <BeatVisualizer audioRef={audioRef} isPlaying={isPlaying} />
+                  <BeatVisualizer audioRef={audioRef} isPlaying={isPlaying} coverImg={coverImg} />
                 </motion.div>
             }
 
