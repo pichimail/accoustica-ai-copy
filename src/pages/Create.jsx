@@ -400,92 +400,33 @@ export default function CreatePage() {
         </div>
       </div>
 
-      {/* ════ MOBILE: single column ════ */}
-      <div className="md:hidden flex flex-col" style={{ background: '#0a0a0f', minHeight: 'var(--content-available-height, 100vh)' }}>
-        {/* Mobile header */}
-        <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b" style={{ background: 'rgba(9,9,15,0.97)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.06)' }}>
-          <div className="flex items-center gap-2">
-            {isGenerateOnlyMobile &&
-            <button
-              onClick={() => navigate(-1)}
-              className="w-8 h-8 flex items-center justify-center rounded-xl text-white/50 hover:text-white transition-colors"
-              aria-label="Go back">
-              
-                <span className="text-base">←</span>
-              </button>
-            }
-            <span className="text-base font-extrabold text-white">
-              {isGenerateOnlyMobile ? 'Create' : 'Studio'}
-            </span>
-          </div>
-          {!isGenerateOnlyMobile &&
-          <button
-            onClick={() => setMobilePanelOpen((v) => !v)}
-            className="px-3 py-1.5 text-xs font-bold rounded-lg transition-all focus:outline-none"
-            style={{ background: mobilePanelOpen ? 'rgba(225,29,72,0.25)' : 'rgba(255,255,255,0.06)', color: mobilePanelOpen ? '#f43f5e' : 'rgba(255,255,255,0.6)', border: `1px solid ${mobilePanelOpen ? 'rgba(225,29,72,0.35)' : 'rgba(255,255,255,0.08)'}` }}>
-            
-              {mobilePanelOpen ? 'Library' : 'Generate'}
-            </button>
-          }
-        </div>
-
-        {showGeneratePanelMobile ? (
-        /* Generate panel */
-        <div className="flex-1">
-            <StudioGeneratePanel
-            tab={tab} onTabChange={setTab}
-            title={title} onTitleChange={setTitle}
-            lyrics={lyrics} onLyricsChange={setLyrics}
-            styles={styles} onStylesChange={setStyles}
-            vocalGender={vocalGender} onVocalGenderChange={setVocalGender}
-            negativeTag={negativeTag} onNegativeTagChange={(value) => {setNegativeTag(value);setNegativeTagTouched(true);}}
-            styleWeight={styleWeight} onStyleWeightChange={(value) => {setStyleWeight(value);setStyleWeightTouched(true);}}
-            clarityWeight={clarityWeight} onClarityWeightChange={(value) => {setClarityWeight(value);setWeirdnessTouched(true);}}
-            isInstrumental={isInstrumental} onInstrumentalChange={setIsInstrumental}
-            strictVoiceClone={strictVoiceClone} onStrictVoiceCloneChange={setStrictVoiceClone}
-            simplePrompt={simplePrompt} onSimplePromptChange={setSimplePrompt}
-            showMoreOptions={showMoreOptions} onToggleMoreOptions={() => setShowMoreOptions((v) => !v)}
-            remixSource={remixSource} onRemixSourceChange={setRemixSource}
-            remixPrompt={remixPrompt} onRemixPromptChange={setRemixPrompt}
-            remixInfluence={remixInfluence} onRemixInfluenceChange={setRemixInfluence}
-            mashupTrackIds={mashupTrackIds}
-            onToggleMashupTrack={(id) => setMashupTrackIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id].slice(-2))}
-            selectedPersonaId={selectedPersonaId} onSelectPersona={setSelectedPersonaId}
-            onGenerate={handleGenerate}
-            isGenerating={isGenerating}
-            tracks={allTracks} />
-          
-          </div>) : (
-
-        /* Library + Center stacked */
-        <div className="flex-1 flex flex-col">
-            {/* Selected track detail */}
-            {selectedTrack &&
-          <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(10,10,16,0.8)' }}>
-                <MobileTrackDetail track={selectedTrack} currentTrack={currentTrack} isPlaying={isPlaying} onPlay={() => handlePlay(selectedTrack)} />
-              </div>
-          }
-            {/* Tracks list */}
-            <div className="flex-1 overflow-y-auto">
-              {allTracks.map((track) =>
-            <MobileTrackRow
-              key={track.id}
-              track={track}
-              isCurrent={currentTrack?.id === track.id}
-              isPlaying={currentTrack?.id === track.id && isPlaying}
-              isSelected={selectedTrack?.id === track.id}
-              onPlay={() => handlePlay(track)}
-              onSelect={() => setSelectedTrack(track)} />
-
-            )}
-              {tracksLoading &&
-            <div className="flex justify-center py-8">
-                  <div className="w-5 h-5 rounded-full border-2 border-white/10 border-t-rose-500 animate-spin" />
-                </div>
-            }
-            </div>
-          </div>)
-        }
+      {/* ════ MOBILE: single column — always shows generate panel ════ */}
+      <div
+        className="md:hidden flex flex-col overflow-hidden"
+        style={{ background: '#0a0a0f', height: 'calc(var(--content-available-height, calc(100vh - 128px)) - 3.5rem)' }}
+      >
+        <StudioGeneratePanel
+          tab={tab} onTabChange={setTab}
+          title={title} onTitleChange={setTitle}
+          lyrics={lyrics} onLyricsChange={setLyrics}
+          styles={styles} onStylesChange={setStyles}
+          vocalGender={vocalGender} onVocalGenderChange={setVocalGender}
+          negativeTag={negativeTag} onNegativeTagChange={(value) => {setNegativeTag(value);setNegativeTagTouched(true);}}
+          styleWeight={styleWeight} onStyleWeightChange={(value) => {setStyleWeight(value);setStyleWeightTouched(true);}}
+          clarityWeight={clarityWeight} onClarityWeightChange={(value) => {setClarityWeight(value);setWeirdnessTouched(true);}}
+          isInstrumental={isInstrumental} onInstrumentalChange={setIsInstrumental}
+          strictVoiceClone={strictVoiceClone} onStrictVoiceCloneChange={setStrictVoiceClone}
+          simplePrompt={simplePrompt} onSimplePromptChange={setSimplePrompt}
+          showMoreOptions={showMoreOptions} onToggleMoreOptions={() => setShowMoreOptions((v) => !v)}
+          remixSource={remixSource} onRemixSourceChange={setRemixSource}
+          remixPrompt={remixPrompt} onRemixPromptChange={setRemixPrompt}
+          remixInfluence={remixInfluence} onRemixInfluenceChange={setRemixInfluence}
+          mashupTrackIds={mashupTrackIds}
+          onToggleMashupTrack={(id) => setMashupTrackIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id].slice(-2))}
+          selectedPersonaId={selectedPersonaId} onSelectPersona={setSelectedPersonaId}
+          onGenerate={handleGenerate}
+          isGenerating={isGenerating}
+          tracks={allTracks} />
       </div>
     </>);
 

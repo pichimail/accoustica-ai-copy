@@ -257,8 +257,8 @@ export default function Layout({ children, currentPageName }) {
       {/* Global Audio Player — always rendered so audioRef stays mounted */}
       <GlobalAudioPlayer currentPageName={currentPageName} />
 
-      {/* Mobile Bottom Navigation — hidden on Home and Create */}
-      {currentPageName !== 'Home' && currentPageName !== 'Create' &&
+      {/* Mobile Bottom Navigation — hidden on Home only */}
+      {currentPageName !== 'Home' &&
         <MobileNav currentPageName={currentPageName} user={user} />
       }
     </div>
@@ -269,7 +269,7 @@ export default function Layout({ children, currentPageName }) {
 function ReservedMain({ children, currentPageName, showSidebar, sidebarOpen }) {
   const { currentTrack, playerVisible } = useAudioPlayer();
   const hasVisiblePlayer = !!currentTrack && playerVisible;
-  const hasMobileNav = currentPageName !== 'Home' && currentPageName !== 'Create';
+  const hasMobileNav = currentPageName !== 'Home';
   const playerReserve = hasVisiblePlayer ? '86px' : '0px';
   const mobileNavReserve = hasMobileNav ? '72px' : '0px';
 

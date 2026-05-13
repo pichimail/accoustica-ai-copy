@@ -650,7 +650,7 @@ export default function StudioGeneratePanel({
       {/* Generate button footer */}
       <div
         className="flex-shrink-0 md:static sticky z-10 px-4 pb-4 pt-3 border-t"
-        style={{ bottom: 'var(--player-reserve, 0px)', borderColor: 'rgba(255,255,255,0.08)', background: '#0a0a0f', backdropFilter: 'blur(8px)' }}
+        style={{ bottom: 'calc(var(--mobile-nav-reserve, 0px) + var(--player-reserve, 0px))', borderColor: 'rgba(255,255,255,0.08)', background: '#0a0a0f', backdropFilter: 'blur(8px)' }}
       >
         <button
           type="button"
