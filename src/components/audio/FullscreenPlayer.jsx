@@ -7,8 +7,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAudioPlayer } from './AudioPlayerContext';
 import { getAudioAnalyser, resumeAudioContext } from '@/lib/audioContext';
-
-import { getAudioAnalyser, resumeAudioContext } from '@/lib/audioContext';
+import LyricsView from './LyricsView';
 
 // ── BEAT VISUALIZER CANVAS ─────────────────────────────────────────
 function BeatVisualizer({ audioRef, isPlaying, coverImg }) {
