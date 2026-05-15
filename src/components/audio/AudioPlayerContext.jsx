@@ -1,38 +1,16 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
+// @ts-nocheck
+import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { ensureAudioContext, resumeAudioContext } from '@/lib/audioContext';
 
 const AudioPlayerContext = createContext(null);
 
-const normalizeAudioUrl = (value) => {
+export const normalizeAudioUrl = (value) => {
   const url = String(value || '').trim();
   if (!url) return '';
   if (url.startsWith('//')) return `https:${url}`;
   return url;
-};
-
-const buildAudioCandidates = (track) => {
-  const raw = [
-    track?.__resolvedAudioSource,
-    track?.stream_audio_url,
-    track?.audio_url,
-    track?.streamAudioUrl,
-    track?.audioUrl,
-    track?.sourceAudioUrl,
-    track?.url,
-  ].map(normalizeAudioUrl).filter(Boolean);
-
-  // Also add http<->https variants for each url
-  const expanded = [...raw];
-  for (const candidate of raw) {
-    if (candidate.startsWith('http://')) {
-      expanded.push(`https://${candidate.slice(7)}`);
-    } else if (candidate.startsWith('https://')) {
-      expanded.push(`http://${candidate.slice(8)}`);
-    }
-  }
-
-  return Array.from(new Set(expanded));
 };
 
 export const getTrackAudioSource = (track) => (
@@ -46,19 +24,30 @@ export const getTrackAudioSource = (track) => (
   || ''
 );
 
+const buildAudioCandidates = (track) => {
+  const raw = [
+    track?.__resolvedAudioSource,
+    track?.stream_audio_url,
+    track?.audio_url,
+    track?.streamAudioUrl,
+    track?.audioUrl,
+    track?.sourceAudioUrl,
+    track?.url,
+  ].map(normalizeAudioUrl).filter(Boolean);
+  return Array.from(new Set(raw));
+};
+
 // Fetch fresh audio URLs from the API when stored URLs expire
 const refreshTrackUrls = async (track) => {
   if (!track?.task_id) return null;
   try {
     const res = await base44.functions.invoke('getMusicDetails', { taskId: track.task_id });
     const sunoTracks = res?.data?.tracks || [];
-    // Match by external_audio_id or position
     let match = sunoTracks.find(t => t.id === track.external_audio_id);
     if (!match && sunoTracks.length > 0) match = sunoTracks[0];
     if (match) {
       const freshUrl = match.stream_audio_url || match.audio_url || match.audioUrl || match.streamAudioUrl;
       if (freshUrl) {
-        // Persist the fresh URL back to the database so future plays work
         await base44.entities.Track.update(track.id, {
           audio_url: match.audio_url || match.audioUrl || freshUrl,
           stream_audio_url: match.stream_audio_url || match.streamAudioUrl || freshUrl,
@@ -72,11 +61,30 @@ const refreshTrackUrls = async (track) => {
   return null;
 };
 
+// Wait for audio to be ready to play, with timeout
+const waitForCanPlay = (audio, timeoutMs = 8000) => {
+  return new Promise((resolve, reject) => {
+    if (audio.readyState >= 3) { resolve(); return; }
+    let done = false;
+    const cleanup = () => {
+      done = true;
+      audio.removeEventListener('canplay', onCanPlay);
+      audio.removeEventListener('error', onError);
+      clearTimeout(timer);
+    };
+    const onCanPlay = () => { if (!done) { cleanup(); resolve(); } };
+    const onError = (e) => { if (!done) { cleanup(); reject(e); } };
+    const timer = setTimeout(() => {
+      if (!done) { cleanup(); reject(new Error('canplay timeout')); }
+    }, timeoutMs);
+    audio.addEventListener('canplay', onCanPlay, { once: true });
+    audio.addEventListener('error', onError, { once: true });
+  });
+};
+
 export const useAudioPlayer = () => {
   const context = useContext(AudioPlayerContext);
-  if (!context) {
-    throw new Error('useAudioPlayer must be used within AudioPlayerProvider');
-  }
+  if (!context) throw new Error('useAudioPlayer must be used within AudioPlayerProvider');
   return context;
 };
 
@@ -93,9 +101,16 @@ export function AudioPlayerProvider({ children }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [playerVisible, setPlayerVisible] = useState(true);
   const [audioSettings, setAudioSettings] = useState(null);
-  const audioRef = useRef(null);
-  const pendingPlayRef = useRef(null);
 
+  // audioRef is populated by GlobalAudioPlayer's callback ref
+  const audioRef = useRef(null);
+  // Cancel stale load operations
+  const loadingIdRef = useRef(null);
+  const volumeRef = useRef(70);
+
+  useEffect(() => { volumeRef.current = volume; }, [volume]);
+
+  // Load user audio settings once
   useEffect(() => {
     let mounted = true;
     base44.auth.me()
@@ -106,9 +121,10 @@ export function AudioPlayerProvider({ children }) {
           : user.audio_settings;
         setAudioSettings(settings);
         if (typeof settings.defaultVolume === 'number') {
-          const nextVolume = Math.max(0, Math.min(100, settings.defaultVolume));
-          setVolume(nextVolume);
-          if (audioRef.current) audioRef.current.volume = nextVolume / 100;
+          const v = Math.max(0, Math.min(100, settings.defaultVolume));
+          setVolume(v);
+          volumeRef.current = v;
+          if (audioRef.current) audioRef.current.volume = v / 100;
         }
         if (settings.autoplayNext === true) setRepeatMode('all');
       })
@@ -116,103 +132,145 @@ export function AudioPlayerProvider({ children }) {
     return () => { mounted = false; };
   }, []);
 
-  // Play a specific track — with automatic URL refresh fallback
-  const playTrack = async (track, trackQueue = []) => {
-    const sourceCandidates = buildAudioCandidates(track);
-    if (sourceCandidates.length === 0) {
+  const playTrack = useCallback(async (track, trackQueue = []) => {
+    ensureAudioContext();
+    resumeAudioContext();
+
+    const candidates = buildAudioCandidates(track);
+    if (candidates.length === 0) {
       toast.error('This track does not have a playable audio URL yet');
       return;
     }
 
-    if (currentTrack?.id === track.id && isPlaying) {
-      pauseTrack();
+    // Toggle play/pause for the same track
+    if (currentTrack?.id === track.id) {
+      const audio = audioRef.current;
+      if (!audio) return;
+      if (isPlaying) {
+        audio.pause();
+        setIsPlaying(false);
+      } else {
+        ensureAudioContext();
+        resumeAudioContext();
+        try {
+          await audio.play();
+          setIsPlaying(true);
+        } catch (e) {
+          console.error('Resume play failed:', e);
+        }
+      }
       return;
     }
 
-    pendingPlayRef.current = track.id || sourceCandidates[0];
+    const loadId = Date.now() + Math.random();
+    loadingIdRef.current = loadId;
+
     setPlayerVisible(true);
-    setCurrentTrack({ ...track, __resolvedAudioSource: sourceCandidates[0] });
+    setCurrentTrack({ ...track, __resolvedAudioSource: candidates[0] });
     setCurrentTime(0);
     setDuration(Number(track.duration) || 0);
+    setIsPlaying(false);
 
     if (trackQueue.length > 0) {
-      const playableQueue = trackQueue.filter(item => getTrackAudioSource(item));
+      const playableQueue = trackQueue.filter(t => getTrackAudioSource(t));
       setQueue(playableQueue);
-      const index = playableQueue.findIndex(t => t.id === track.id);
-      setQueueIndex(index >= 0 ? index : 0);
+      const idx = playableQueue.findIndex(t => t.id === track.id);
+      setQueueIndex(idx >= 0 ? idx : 0);
     }
 
-    const tryPlay = async (attempt = 0) => {
-      const audio = audioRef.current;
+    const attemptPlay = async (urlIndexOrUrl, refreshed = false) => {
+      if (loadingIdRef.current !== loadId) return;
+
+      let audio = audioRef.current;
       if (!audio) {
-        if (attempt < 15) window.setTimeout(() => tryPlay(attempt + 1), 50);
+        // Audio element not mounted yet — retry
+        const retryCount = typeof urlIndexOrUrl === 'number' ? urlIndexOrUrl : 0;
+        if (retryCount < 20) {
+          setTimeout(() => attemptPlay(retryCount), 50);
+        }
         return;
       }
 
+      const url = refreshed ? urlIndexOrUrl : candidates[Math.min(urlIndexOrUrl, candidates.length - 1)];
+
       try {
-        const candidate = sourceCandidates[Math.min(attempt, sourceCandidates.length - 1)];
-        // Always set src to ensure fresh load
-        audio.src = candidate;
+        audio.pause();
+        audio.removeAttribute('src');
+
+        // crossOrigin MUST be set before src for AudioContext CORS to work
+        audio.crossOrigin = 'anonymous';
+        audio.src = url;
+        audio.volume = volumeRef.current / 100;
+        audio.preload = 'auto';
         audio.load();
-        audio.volume = volume / 100;
+
+        await waitForCanPlay(audio, 10000);
+
+        if (loadingIdRef.current !== loadId) return;
+
+        ensureAudioContext();
+        resumeAudioContext();
         await audio.play();
-        pendingPlayRef.current = null;
-        setCurrentTrack((prev) => prev ? { ...prev, __resolvedAudioSource: candidate } : prev);
+
+        if (loadingIdRef.current !== loadId) return;
         setIsPlaying(true);
+        setCurrentTrack(prev => prev ? { ...prev, __resolvedAudioSource: url } : prev);
+
       } catch (error) {
-        if (attempt < sourceCandidates.length - 1) {
-          // Try next candidate URL
-          window.setTimeout(() => tryPlay(attempt + 1), 120);
-        } else {
-          // All stored URLs failed — fetch fresh URLs from API
-          console.warn('All stored URLs failed, fetching fresh URLs...');
-          const freshUrl = await refreshTrackUrls(track);
-          if (freshUrl) {
-            try {
-              audio.src = freshUrl;
-              audio.load();
-              audio.volume = volume / 100;
-              await audio.play();
-              pendingPlayRef.current = null;
-              setCurrentTrack((prev) => prev ? { ...prev, __resolvedAudioSource: freshUrl, audio_url: freshUrl, stream_audio_url: freshUrl } : prev);
-              setIsPlaying(true);
-              return;
-            } catch (e2) {
-              console.error('Fresh URL also failed:', e2);
+        if (loadingIdRef.current !== loadId) return;
+        console.warn('Playback attempt failed:', typeof urlIndexOrUrl === 'number' ? `URL[${urlIndexOrUrl}]` : 'refreshed', error?.message || error);
+
+        if (!refreshed) {
+          const nextIndex = (typeof urlIndexOrUrl === 'number' ? urlIndexOrUrl : 0) + 1;
+          if (nextIndex < candidates.length) {
+            setTimeout(() => attemptPlay(nextIndex), 150);
+          } else {
+            // Try to refresh from API
+            const freshUrl = await refreshTrackUrls(track);
+            if (freshUrl && loadingIdRef.current === loadId) {
+              await attemptPlay(freshUrl, true);
+            } else if (loadingIdRef.current === loadId) {
+              setIsPlaying(false);
+              toast.error('Playback failed — try refreshing the page.');
             }
           }
-          pendingPlayRef.current = null;
+        } else {
           setIsPlaying(false);
-          toast.error('Playback failed — track URL may have expired. Refresh to retry.');
+          toast.error('Playback failed — try refreshing the page.');
         }
       }
     };
 
-    window.setTimeout(() => tryPlay(), 0);
-  };
+    // Start first attempt (0ms delay — immediate)
+    attemptPlay(0);
+  }, [currentTrack, isPlaying]);
 
-  const pauseTrack = () => {
+  const pauseTrack = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
       setIsPlaying(false);
     }
-  };
+  }, []);
 
-  const togglePlayPause = async () => {
-    if (!audioRef.current) return;
+  const togglePlayPause = useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    ensureAudioContext();
+    resumeAudioContext();
     if (isPlaying) {
-      pauseTrack();
+      audio.pause();
+      setIsPlaying(false);
     } else {
       try {
-        await audioRef.current.play();
+        await audio.play();
         setIsPlaying(true);
       } catch (error) {
-        console.error('Playback error:', error);
+        console.error('togglePlayPause error:', error);
       }
     }
-  };
+  }, [isPlaying]);
 
-  const playNext = () => {
+  const playNext = useCallback(() => {
     if (queue.length === 0) return;
     let nextIndex = queueIndex + 1;
     if (nextIndex >= queue.length) {
@@ -221,46 +279,43 @@ export function AudioPlayerProvider({ children }) {
     }
     setQueueIndex(nextIndex);
     playTrack(queue[nextIndex], queue);
-  };
+  }, [queue, queueIndex, repeatMode, playTrack]);
 
-  const playPrevious = () => {
+  const playPrevious = useCallback(() => {
     if (queue.length === 0) return;
     if (currentTime > 3) { seek(0); return; }
     let prevIndex = queueIndex - 1;
     if (prevIndex < 0) prevIndex = queue.length - 1;
     setQueueIndex(prevIndex);
     playTrack(queue[prevIndex], queue);
-  };
+  }, [queue, queueIndex, currentTime, playTrack]);
 
-  const seek = (time) => {
+  const seek = useCallback((time) => {
     if (audioRef.current) {
       audioRef.current.currentTime = time;
       setCurrentTime(time);
     }
-  };
+  }, []);
 
-  const changeVolume = (newVolume) => {
-    setVolume(newVolume);
-    if (audioRef.current) audioRef.current.volume = newVolume / 100;
-  };
+  const changeVolume = useCallback((newVolume) => {
+    const v = Math.max(0, Math.min(100, newVolume));
+    setVolume(v);
+    volumeRef.current = v;
+    if (audioRef.current) audioRef.current.volume = v / 100;
+  }, []);
 
-  const toggleRepeat = () => {
+  const toggleRepeat = useCallback(() => {
     const modes = ['off', 'all', 'one'];
-    const currentIndex = modes.indexOf(repeatMode);
-    setRepeatMode(modes[(currentIndex + 1) % modes.length]);
-  };
+    setRepeatMode(prev => modes[(modes.indexOf(prev) + 1) % modes.length]);
+  }, []);
 
-  const toggleShuffle = () => setIsShuffle(!isShuffle);
-
-  const addToQueue = (track) => setQueue([...queue, track]);
-
-  const removeFromQueue = (index) => {
-    const newQueue = queue.filter((_, i) => i !== index);
-    setQueue(newQueue);
-    if (queueIndex >= index && queueIndex > 0) setQueueIndex(queueIndex - 1);
-  };
-
-  const clearQueue = () => { setQueue([]); setQueueIndex(0); };
+  const toggleShuffle = useCallback(() => setIsShuffle(s => !s), []);
+  const addToQueue = useCallback((track) => setQueue(q => [...q, track]), []);
+  const removeFromQueue = useCallback((index) => {
+    setQueue(q => q.filter((_, i) => i !== index));
+    setQueueIndex(qi => qi >= index && qi > 0 ? qi - 1 : qi);
+  }, []);
+  const clearQueue = useCallback(() => { setQueue([]); setQueueIndex(0); }, []);
 
   const value = {
     currentTrack, isPlaying, currentTime, duration, volume,

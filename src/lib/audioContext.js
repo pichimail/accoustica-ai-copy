@@ -5,6 +5,19 @@ let _analyser = null;
 let _source = null;
 let _connectedEl = null;
 
+// Eagerly resume the AudioContext on any user interaction so audio plays immediately
+function _attachAutoResume() {
+  if (typeof window === 'undefined') return;
+  const resume = () => {
+    if (_ctx && _ctx.state === 'suspended') {
+      _ctx.resume().catch(() => {});
+    }
+  };
+  ['click', 'touchstart', 'keydown', 'pointerdown'].forEach((evt) => {
+    window.addEventListener(evt, resume, { once: false, passive: true, capture: true });
+  });
+}
+
 export function getAudioAnalyser(audioElement) {
   if (!audioElement) return null;
 
@@ -17,6 +30,7 @@ export function getAudioAnalyser(audioElement) {
   try {
     if (!_ctx) {
       _ctx = new (window.AudioContext || window.webkitAudioContext)();
+      _attachAutoResume();
     }
     if (_ctx.state === 'suspended') _ctx.resume().catch(() => {});
 
@@ -39,5 +53,16 @@ export function getAudioAnalyser(audioElement) {
 }
 
 export function resumeAudioContext() {
+  if (_ctx?.state === 'suspended') _ctx.resume().catch(() => {});
+}
+
+// Create/ensure AudioContext exists and is resumed — call on user gesture
+export function ensureAudioContext() {
+  if (!_ctx) {
+    try {
+      _ctx = new (window.AudioContext || window.webkitAudioContext)();
+      _attachAutoResume();
+    } catch (e) {}
+  }
   if (_ctx?.state === 'suspended') _ctx.resume().catch(() => {});
 }

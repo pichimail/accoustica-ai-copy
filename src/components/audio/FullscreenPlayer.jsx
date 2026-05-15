@@ -6,7 +6,7 @@ import {
   Heart, ListMusic } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudioPlayer } from './AudioPlayerContext';
-import { getAudioAnalyser, resumeAudioContext } from '@/lib/audioContext';
+import { getAudioAnalyser, resumeAudioContext, ensureAudioContext } from '@/lib/audioContext';
 import LyricsView from './LyricsView';
 
 // ── BEAT VISUALIZER CANVAS ─────────────────────────────────────────
@@ -18,10 +18,13 @@ function BeatVisualizer({ audioRef, isPlaying, coverImg }) {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    getAudioAnalyser(audio); // wire to shared singleton
-    const onPlay = () => resumeAudioContext();
+    ensureAudioContext();
+    // Connect audio element to AudioContext analyser
+    getAudioAnalyser(audio);
+    resumeAudioContext();
+    const onPlay = () => { ensureAudioContext(); resumeAudioContext(); };
     audio.addEventListener('play', onPlay);
-    onPlay(); // trigger immediately if already playing
+    if (!audio.paused) onPlay();
     return () => audio.removeEventListener('play', onPlay);
   }, [audioRef]);
 
@@ -455,7 +458,7 @@ export default function FullscreenPlayer() {
               </button>
               <motion.button
               whileTap={{ scale: 0.92 }}
-              onClick={togglePlayPause}
+              onClick={() => { ensureAudioContext(); resumeAudioContext(); togglePlayPause(); }}
               className="w-16 h-16 rounded-full flex items-center justify-center text-black font-bold shadow-2xl neon-green-glow"
               style={{ background: '#22c55e' }}>
               
