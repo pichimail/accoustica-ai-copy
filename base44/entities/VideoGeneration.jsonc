@@ -1,0 +1,57 @@
+{
+  "name": "VideoGeneration",
+  "type": "object",
+  "properties": {
+    "track_id": {
+      "type": "string",
+      "description": "ID of the track"
+    },
+    "task_id": {
+      "type": "string",
+      "description": "Suno API video generation task ID"
+    },
+    "video_url": {
+      "type": "string",
+      "description": "URL to the generated video"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processing",
+        "ready",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "author": {
+      "type": "string",
+      "description": "Author name displayed in video"
+    },
+    "domain_name": {
+      "type": "string",
+      "description": "Domain name watermark"
+    },
+    "error_message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "track_id",
+    "task_id"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}
