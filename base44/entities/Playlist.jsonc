@@ -1,0 +1,52 @@
+{
+  "name": "Playlist",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Playlist name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Playlist description"
+    },
+    "cover_image_url": {
+      "type": "string",
+      "description": "Custom cover image for playlist"
+    },
+    "is_public": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether playlist is publicly visible"
+    },
+    "track_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of tracks in playlist"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "data.is_public": true
+        }
+      ]
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}
