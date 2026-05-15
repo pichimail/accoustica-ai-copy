@@ -1,0 +1,82 @@
+{
+  "name": "MasteringPreset",
+  "type": "object",
+  "properties": {
+    "preset_name": {
+      "type": "string",
+      "description": "Name of the custom preset"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the preset"
+    },
+    "genre": {
+      "type": "string",
+      "description": "Target genre"
+    },
+    "mood": {
+      "type": "string",
+      "description": "Target mood"
+    },
+    "loudness": {
+      "type": "number",
+      "description": "Loudness adjustment in dB"
+    },
+    "eq_adjust": {
+      "type": "number",
+      "description": "EQ balance adjustment in dB"
+    },
+    "compression": {
+      "type": "number",
+      "description": "Compression percentage"
+    },
+    "stereo_width": {
+      "type": "number",
+      "description": "Stereo width percentage"
+    },
+    "bass_boost": {
+      "type": "number",
+      "description": "Bass boost in dB"
+    },
+    "high_boost": {
+      "type": "number",
+      "description": "High frequency boost in dB"
+    },
+    "reference_track_url": {
+      "type": "string",
+      "description": "URL to reference track used for analysis"
+    },
+    "is_public": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the preset is shared publicly"
+    }
+  },
+  "required": [
+    "preset_name",
+    "loudness",
+    "eq_adjust",
+    "compression"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "data.is_public": true
+        }
+      ]
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}
