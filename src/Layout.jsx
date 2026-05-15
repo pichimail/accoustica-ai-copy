@@ -145,7 +145,7 @@ export default function Layout({ children, currentPageName }) {
             sidebarOpen ? "w-64" : "w-20",
             currentPageName === 'Home' && "hidden"
           )}
-          style={{ background: 'rgba(10,10,15,0.97)', backdropFilter: 'blur(24px)', borderRight: '1px solid rgba(255,255,255,0.06)', paddingBottom: 'var(--player-reserve, 0px)' }}>
+          style={{ background: 'rgba(10,10,15,0.97)', backdropFilter: 'blur(24px)', borderRight: '1px solid rgba(255,255,255,0.06)', paddingBottom: 'clamp(64px, 10vh, 96px)' }}>
           
         <div className="flex flex-col w-full">
           {/* Logo & Toggle */}
@@ -269,7 +269,8 @@ function ReservedMain({ children, currentPageName, showSidebar, sidebarOpen }) {
   const { currentTrack, playerVisible } = useAudioPlayer();
   const hasVisiblePlayer = !!currentTrack && playerVisible;
   const hasMobileNav = currentPageName !== 'Home';
-  const playerReserve = hasVisiblePlayer ? '86px' : '0px';
+  // Player bar is exactly 10vh, clamped between 64-96px
+  const playerReserve = hasVisiblePlayer ? 'clamp(64px, 10vh, 96px)' : '0px';
   const mobileNavReserve = hasMobileNav ? '72px' : '0px';
 
   useEffect(() => {
