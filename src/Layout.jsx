@@ -18,8 +18,8 @@ import {
 'lucide-react';
 
 import { cn } from "@/lib/utils";
-import { AudioPlayerProvider, useAudioPlayer } from '@/components/audio/AudioPlayerContext.jsx';
-import GlobalAudioPlayer from '@/components/audio/GlobalAudioPlayer.jsx';
+import { AudioPlayerProvider, useAudioPlayer } from '@/components/audio/AudioPlayerContext';
+import GlobalAudioPlayer from '@/components/audio/GlobalAudioPlayer';
 import MobileNav from '@/components/mobile/MobileNav';
 
 const publicPages = ['Home', 'PublicTrack', 'Discover'];
