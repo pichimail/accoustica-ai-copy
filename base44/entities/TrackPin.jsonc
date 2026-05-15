@@ -1,0 +1,42 @@
+{
+  "name": "TrackPin",
+  "type": "object",
+  "properties": {
+    "track_id": {
+      "type": "string",
+      "description": "ID of the pinned track"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of user who pinned the track"
+    },
+    "pin_location": {
+      "type": "string",
+      "enum": [
+        "library",
+        "profile",
+        "both"
+      ],
+      "default": "library",
+      "description": "Where the track is pinned"
+    }
+  },
+  "required": [
+    "track_id",
+    "user_email"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}
