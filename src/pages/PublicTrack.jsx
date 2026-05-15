@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, Copy, Disc3, Globe, Pause, Play, Share2, Sparkles, Volume2 } from 'lucide-react';
+import { AlertCircle, Calendar, Clock, Copy, Disc3, Globe, Loader2, Pause, Play, RefreshCw, Share2, Sparkles, Volume2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import { getPublicTrackUrl, getSeoDescription, getTrackPublicSlug } from '@/lib/trackSharing';
+import { normalizeAudioUrl } from '@/components/audio/AudioPlayerContext';
 import WaveformCanvas from '@/components/audio/WaveformCanvas';
 
 const FALLBACK_COVER = 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=1200&h=1200&fit=crop';
@@ -192,15 +193,90 @@ function EmbeddedPlayer({ track, coverImage, onFirstPlay }) {
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(track.duration || 0);
-  const audioSrc = track.audio_url || track.stream_audio_url;
+  const [audioError, setAudioError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Build ordered list of candidate URLs, normalize each
+  const buildCandidates = (t) => {
+    return [
+      t?.stream_audio_url,
+      t?.audio_url,
+      t?.streamAudioUrl,
+      t?.audioUrl,
+      t?.sourceAudioUrl,
+      t?.url,
+    ]
+      .map(normalizeAudioUrl)
+      .filter(Boolean)
+      .filter((v, i, a) => a.indexOf(v) === i); // unique
+  };
+
+  const candidatesRef = useRef(buildCandidates(track));
+  const candidateIndexRef = useRef(0);
+
+  const getNextCandidate = () => {
+    const candidates = candidatesRef.current;
+    candidateIndexRef.current += 1;
+    return candidates[candidateIndexRef.current] || null;
+  };
+
+  const [audioSrc, setAudioSrc] = useState(() => candidatesRef.current[0] || '');
+
+  // Try to refresh via getMusicDetails backend function (may fail for public users — handled gracefully)
+  const tryRefreshUrls = async () => {
+    if (!track.task_id) return null;
+    try {
+      const res = await base44.functions.invoke('getMusicDetails', { taskId: track.task_id });
+      const sunoTracks = res?.data?.tracks || [];
+      const match = sunoTracks.find(t => t.id === track.external_audio_id) || sunoTracks[0];
+      if (!match) return null;
+      const fresh = [
+        match.stream_audio_url,
+        match.audio_url,
+        match.audioUrl,
+        match.streamAudioUrl,
+      ].map(normalizeAudioUrl).filter(Boolean)[0];
+      return fresh || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleAudioError = async () => {
+    if (refreshing) return;
+
+    // 1) Try next local candidate first (fast, no network)
+    const next = getNextCandidate();
+    if (next) {
+      setAudioSrc(next);
+      return;
+    }
+
+    // 2) All local candidates exhausted — try refreshing via API
+    setRefreshing(true);
+    const fresh = await tryRefreshUrls();
+    setRefreshing(false);
+
+    if (fresh) {
+      setAudioSrc(fresh);
+      setAudioError(false);
+    } else {
+      setAudioError(true);
+    }
+  };
 
   const toggle = async () => {
-    if (!audioRef.current) return;
+    const el = audioRef.current;
+    if (!el || audioError || refreshing) return;
     if (playing) {
-      audioRef.current.pause();
+      el.pause();
     } else {
-      await audioRef.current.play();
-      onFirstPlay?.();
+      try {
+        await el.play();
+        onFirstPlay?.();
+      } catch (e) {
+        if (e?.name !== 'AbortError') handleAudioError();
+      }
     }
   };
 
@@ -218,17 +294,21 @@ function EmbeddedPlayer({ track, coverImage, onFirstPlay }) {
 
   return (
     <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.035)' }}>
-      <audio
-        ref={audioRef}
-        src={audioSrc}
-        preload="metadata"
-        crossOrigin="anonymous"
-        onTimeUpdate={e => setCurrentTime(e.currentTarget.currentTime)}
-        onLoadedMetadata={e => setDuration(e.currentTarget.duration || track.duration || 0)}
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onEnded={() => setPlaying(false)}
-      />
+      {audioSrc ? (
+        <audio
+          key={audioSrc}
+          ref={audioRef}
+          src={audioSrc}
+          preload="metadata"
+          crossOrigin="anonymous"
+          onTimeUpdate={e => setCurrentTime(e.currentTarget.currentTime)}
+          onLoadedMetadata={e => setDuration(e.currentTarget.duration || track.duration || 0)}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={() => setPlaying(false)}
+          onError={handleAudioError}
+        />
+      ) : null}
 
       {/* Waveform */}
       <div className="px-4 pt-4 pb-2">
@@ -248,18 +328,52 @@ function EmbeddedPlayer({ track, coverImage, onFirstPlay }) {
         <button
           type="button"
           onClick={toggle}
-          className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg"
+          disabled={audioError || refreshing}
+          className="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg disabled:opacity-40 transition-opacity"
           aria-label={playing ? 'Pause track' : 'Play track'}
           style={{ background: '#22c55e', color: '#020204' }}
         >
-          {playing ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current ml-0.5" />}
+          {refreshing ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : playing ? (
+            <Pause className="h-5 w-5 fill-current" />
+          ) : (
+            <Play className="h-5 w-5 fill-current ml-0.5" />
+          )}
         </button>
+
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold truncate">{track.title}</p>
-          <span className="text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.55)' }}>
-            {fmt(currentTime)} / {fmt(duration)}
-          </span>
+          {audioError ? (
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" style={{ color: '#fb7185' }} />
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                Audio unavailable —{' '}
+                <button
+                  className="underline hover:text-white transition-colors"
+                  onClick={async () => {
+                    setAudioError(false);
+                    candidateIndexRef.current = 0;
+                    setRefreshing(true);
+                    const fresh = await tryRefreshUrls();
+                    setRefreshing(false);
+                    if (fresh) { setAudioSrc(fresh); }
+                    else { setAudioError(true); toast.error('Could not refresh audio source'); }
+                  }}
+                >
+                  retry
+                </button>
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm font-bold truncate">{track.title}</p>
+              <span className="text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                {fmt(currentTime)} / {fmt(duration)}
+              </span>
+            </>
+          )}
         </div>
+
         <Volume2 className="h-4 w-4 hidden sm:block flex-shrink-0" style={{ color: 'rgba(255,255,255,0.36)' }} />
       </div>
     </div>

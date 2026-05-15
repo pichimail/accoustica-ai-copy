@@ -3,9 +3,36 @@ import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, Globe, Loader2, Send, Share2, Trash2 } from 'lucide-react';
+import { Copy, Globe, Loader2, Send, Share2, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { getPublicTrackUrl, getSeoDescription, getTrackPublicSlug } from '@/lib/trackSharing';
+
+const SOCIALS = [
+  {
+    label: 'WhatsApp', color: '#25D366',
+    fn: (url, title) => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`🎵 "${title}" — made with Accoustica AI`)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener'),
+  },
+  {
+    label: 'Facebook', color: '#1877F2',
+    fn: (url) => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank', 'noopener'),
+  },
+  {
+    label: 'Twitter/X', color: '#1D9BF0',
+    fn: (url, title) => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`🎵 "${title}" — made with @AccousticaAI`)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener'),
+  },
+  {
+    label: 'TikTok', color: '#69C9D0',
+    fn: () => window.open('https://www.tiktok.com/upload', '_blank', 'noopener'),
+  },
+  {
+    label: 'Instagram', color: '#E1306C',
+    fn: (url) => { navigator.clipboard.writeText(url); toast.info('Link copied — paste in Instagram bio or story'); },
+  },
+  {
+    label: 'YouTube', color: '#FF0000',
+    fn: () => window.open('https://studio.youtube.com/', '_blank', 'noopener'),
+  },
+];
 
 export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
   const [email, setEmail] = useState('');
@@ -44,14 +71,8 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
     try {
       await ensurePublic();
       await navigator.clipboard.writeText(publicUrl);
-      await base44.entities.TrackShare.create({
-        track_id: track.id,
-        public_url: publicUrl,
-        status: 'active',
-      });
-      await base44.entities.Track.update(track.id, {
-        share_count: (track.share_count || 0) + 1,
-      });
+      await base44.entities.TrackShare.create({ track_id: track.id, public_url: publicUrl, status: 'active' });
+      await base44.entities.Track.update(track.id, { share_count: (track.share_count || 0) + 1 });
       toast.success('Public player link copied');
       queryClient.invalidateQueries({ queryKey: ['myTracks'] });
       queryClient.invalidateQueries({ queryKey: ['trackShares', track.id] });
@@ -68,18 +89,12 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
     try {
       await ensurePublic();
       if (navigator.share) {
-        await navigator.share({
-          title: track.seo_title || track.title,
-          text: track.seo_description || getSeoDescription(track),
-          url: publicUrl,
-        });
+        await navigator.share({ title: track.seo_title || track.title, text: track.seo_description || getSeoDescription(track), url: publicUrl });
       } else {
         await navigator.clipboard.writeText(publicUrl);
         toast.success('Public player link copied');
       }
-      await base44.entities.Track.update(track.id, {
-        share_count: (track.share_count || 0) + 1,
-      });
+      await base44.entities.Track.update(track.id, { share_count: (track.share_count || 0) + 1 });
       queryClient.invalidateQueries({ queryKey: ['myTracks'] });
       onSuccess?.();
     } catch (error) {
@@ -90,10 +105,7 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
   };
 
   const handlePrivateShare = async () => {
-    if (!email.trim()) {
-      toast.error('Enter an email address');
-      return;
-    }
+    if (!email.trim()) { toast.error('Enter an email address'); return; }
     setSaving(true);
     try {
       await base44.entities.TrackShare.create({
@@ -124,29 +136,44 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl border-white/10 bg-[#09090f] text-white shadow-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-extrabold">Share Track</DialogTitle>
-        </DialogHeader>
+      {/* Wider on desktop, full bottom-sheet on mobile */}
+      <DialogContent className="sm:max-w-lg border-white/10 bg-[#09090f] text-white shadow-2xl p-0 overflow-hidden">
 
-        <div className="space-y-5">
-          <div className="flex items-center gap-3 border-b pb-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-            <div className="h-14 w-14 overflow-hidden border flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)' }}>
-              {track.cover_image_url ? <img src={track.cover_image_url} alt="" className="h-full w-full object-cover" /> : <Globe className="h-5 w-5 m-4 text-white/25" />}
-            </div>
-            <div className="min-w-0">
-              <p className="font-bold truncate">{track.title}</p>
-              <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>{publicUrl}</p>
-            </div>
+        {/* Drag handle (mobile only) */}
+        <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
+
+        {/* Track preview banner */}
+        <div className="flex items-center gap-3 px-5 pt-4 pb-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+          <div className="h-14 w-14 rounded-lg overflow-hidden border flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+            {track.cover_image_url
+              ? <img src={track.cover_image_url} alt="" className="h-full w-full object-cover" />
+              : <Globe className="h-5 w-5 m-4 text-white/25" />}
           </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold truncate text-sm">{track.title}</p>
+            <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>{publicUrl}</p>
+          </div>
+          {/* Close on desktop (mobile uses swipe) */}
+          <button
+            onClick={onClose}
+            className="hidden sm:flex w-8 h-8 items-center justify-center rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-all flex-shrink-0"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-          <div className="grid sm:grid-cols-2 gap-2">
+        {/* Scrollable body */}
+        <div className="overflow-y-auto px-5 pt-4 pb-6 space-y-5" style={{ maxHeight: 'calc(80vh - 80px)' }}>
+
+          {/* Primary actions */}
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={handleCopyPublicLink}
               disabled={saving}
-              className="flex items-center justify-center gap-2 border px-4 py-3 text-sm font-bold disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-rose-400"
-              style={{ background: '#e11d48', borderColor: '#e11d48' }}
+              className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-xl disabled:opacity-50 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-rose-400/50"
+              style={{ background: '#e11d48' }}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
               Copy Link
@@ -155,57 +182,55 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
               type="button"
               onClick={handleNativeShare}
               disabled={saving}
-              className="flex items-center justify-center gap-2 border px-4 py-3 text-sm font-bold disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-rose-400"
-              style={{ background: 'rgba(255,255,255,0.045)', borderColor: 'rgba(255,255,255,0.1)' }}
+              className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold rounded-xl disabled:opacity-50 transition-all active:scale-95 border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
+              style={{ background: 'rgba(255,255,255,0.055)' }}
             >
               <Share2 className="h-4 w-4" />
               Share
             </button>
           </div>
 
-          {/* Social Platform Sharing */}
+          {/* Social platforms */}
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>Share to Social</p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { label: 'WhatsApp', color: '#25D366', fn: () => { const url = encodeURIComponent(publicUrl); const text = encodeURIComponent(`🎵 "${track.title}" — made with Accoustica AI`); window.open(`https://api.whatsapp.com/send?text=${text}%20${url}`, '_blank'); } },
-                { label: 'Facebook', color: '#1877F2', fn: () => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publicUrl)}`, '_blank') },
-                { label: 'Twitter/X', color: '#1D9BF0', fn: () => { const text = encodeURIComponent(`🎵 "${track.title}" — made with @AccousticaAI`); window.open(`https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(publicUrl)}`, '_blank'); } },
-                { label: 'TikTok', color: '#69C9D0', fn: () => window.open('https://www.tiktok.com/upload', '_blank') },
-                { label: 'Instagram', color: '#E1306C', fn: () => { navigator.clipboard.writeText(publicUrl); toast.info('Link copied — paste in Instagram bio or story'); } },
-                { label: 'YouTube', color: '#FF0000', fn: () => window.open('https://studio.youtube.com/', '_blank') },
-              ].map(({ label, color, fn }) => (
+            <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Share to Social
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {SOCIALS.map(({ label, color, fn }) => (
                 <button
                   key={label}
                   type="button"
-                  onClick={async () => { await ensurePublic(); fn(); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-white/10 hover:text-white transition-all"
-                  style={{ background: 'rgba(255,255,255,0.05)', color }}
+                  onClick={async () => { await ensurePublic(); fn(publicUrl, track.title); }}
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold border border-white/8 hover:border-white/20 hover:bg-white/5 transition-all active:scale-95 focus:outline-none"
+                  style={{ color }}
                 >
                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-                  {label}
+                  <span className="truncate">{label}</span>
                 </button>
               ))}
             </div>
           </div>
 
+          {/* Private invite */}
           <div className="border-t pt-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-            <p className="text-xs font-extrabold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>Private Invite</p>
-            <div className="grid sm:grid-cols-[1fr_auto] gap-2">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest mb-3" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Private Invite
+            </p>
+            <div className="flex gap-2">
               <input
                 type="email"
                 value={email}
-                onChange={event => setEmail(event.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 placeholder="user@example.com"
                 aria-label="Invite email"
-                className="px-3 py-2.5 text-sm bg-white/[0.04] border border-white/10 text-white placeholder:text-white/25 focus:outline-none focus:ring-1 focus:ring-rose-400"
+                className="flex-1 min-w-0 px-3 py-2.5 text-sm rounded-xl bg-white/[0.04] border border-white/10 text-white placeholder:text-white/25 focus:outline-none focus:ring-1 focus:ring-rose-400"
               />
               <button
                 type="button"
                 onClick={handlePrivateShare}
                 disabled={saving}
-                className="px-4 py-2.5 border text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"
-                style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.055)' }}
+                className="px-4 py-2.5 border border-white/12 rounded-xl text-sm font-bold flex items-center gap-2 disabled:opacity-50 flex-shrink-0 hover:bg-white/5 transition-all"
+                style={{ background: 'rgba(255,255,255,0.055)' }}
               >
                 <Send className="h-4 w-4" />
                 Invite
@@ -213,25 +238,37 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
             </div>
             <textarea
               value={message}
-              onChange={event => setMessage(event.target.value)}
+              onChange={e => setMessage(e.target.value)}
               placeholder="Optional message"
               aria-label="Share message"
-              rows={3}
-              className="mt-2 w-full px-3 py-2.5 text-sm bg-white/[0.04] border border-white/10 text-white placeholder:text-white/25 resize-none focus:outline-none focus:ring-1 focus:ring-rose-400"
+              rows={2}
+              className="mt-2 w-full px-3 py-2.5 text-sm rounded-xl bg-white/[0.04] border border-white/10 text-white placeholder:text-white/25 resize-none focus:outline-none focus:ring-1 focus:ring-rose-400"
             />
           </div>
 
+          {/* Share history */}
           {shares.length > 0 && (
             <div className="border-t pt-4" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-              <p className="text-xs font-extrabold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>Share History</p>
-              <div className="divide-y divide-white/5 border" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                {shares.map(share => (
-                  <div key={share.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+              <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                Share History
+              </p>
+              <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                {shares.map((share, idx) => (
+                  <div
+                    key={share.id}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5"
+                    style={{ borderTop: idx > 0 ? '1px solid rgba(255,255,255,0.05)' : undefined }}
+                  >
                     <div className="min-w-0">
                       <p className="text-sm truncate">{share.shared_with_email || 'Public link'}</p>
-                      <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.38)' }}>{share.status}</p>
+                      <p className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>{share.status}</p>
                     </div>
-                    <button type="button" onClick={() => handleRemoveShare(share.id)} aria-label="Remove share" className="p-2 text-red-400 hover:bg-red-500/10">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveShare(share.id)}
+                      aria-label="Remove share"
+                      className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
+                    >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -244,3 +281,4 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
     </Dialog>
   );
 }
+

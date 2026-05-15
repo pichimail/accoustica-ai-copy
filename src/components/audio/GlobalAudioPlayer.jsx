@@ -1,15 +1,14 @@
 // @ts-nocheck
 import React, { useEffect, useCallback, useRef, useState } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Maximize2, Share2, Download, Mic2, X, Copy, Twitter, Facebook, Music2 } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Maximize2, Share2, Download, Mic2, X, Music2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useAudioPlayer } from './AudioPlayerContext.jsx';
 import { ensureAudioContext, resumeAudioContext, getAudioAnalyser } from '@/lib/audioContext';
 import FullscreenPlayer from './FullscreenPlayer';
 import { toast } from 'sonner';
-import { getPublicTrackUrl } from '@/lib/trackSharing';
 import LyricsView from './LyricsView';
-import { base44 } from '@/api/base44Client';
+import ShareTrackDialog from '@/components/collaboration/ShareTrackDialog';
 
 function formatTime(s) {
   if (!s || isNaN(s) || !isFinite(s)) return '0:00';
@@ -160,89 +159,6 @@ function LiquidWaveformSeekbar({ audioSrc, currentTime, duration, onSeek, isPlay
   );
 }
 
-// ── Share Modal ────────────────────────────────────────────────────
-function ShareModal({ track, onClose }) {
-  const publicUrl = track ? getPublicTrackUrl(track) : window.location.href;
-  const [isPublic, setIsPublic] = useState(!!track?.is_public);
-
-  const makePublic = async () => {
-    if (isPublic) return;
-    try {
-      await base44.entities.Track.update(track.id, { is_public: true });
-      setIsPublic(true);
-      toast.success('Track is now public');
-    } catch { toast.error('Failed to make track public'); }
-  };
-
-  const copyLink = async () => { await makePublic(); await navigator.clipboard.writeText(publicUrl); toast.success('Link copied!'); };
-  const shareToTwitter = async () => {
-    await makePublic();
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`🎵 "${track?.title}" — AI-generated on Accoustica`)}&url=${encodeURIComponent(publicUrl)}`, '_blank', 'noopener');
-  };
-  const shareToFacebook = async () => {
-    await makePublic();
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publicUrl)}`, '_blank', 'noopener');
-  };
-  const shareNative = async () => {
-    await makePublic();
-    if (navigator.share) { try { await navigator.share({ title: track?.title || 'AI Track', url: publicUrl }); } catch {} }
-    else copyLink();
-  };
-
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[300] flex items-end justify-center"
-      style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
-      <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
-        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="w-full max-w-sm mx-4 mb-24 rounded-2xl overflow-hidden"
-        style={{ background: 'rgba(14,14,22,0.98)', border: '1px solid rgba(255,255,255,0.1)' }}
-        onClick={e => e.stopPropagation()}>
-        {/* Preview card with beat sync waveform */}
-        <div className="relative h-28 overflow-hidden">
-          <img src={track?.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400'}
-            alt={track?.title} className="w-full h-full object-cover" style={{ filter: 'brightness(0.55)' }} />
-          <div className="absolute inset-0 flex flex-col justify-end p-4"
-            style={{ background: 'linear-gradient(to top, rgba(14,14,22,0.95), transparent)' }}>
-            <p className="text-white font-bold text-sm leading-tight">{track?.title}</p>
-            <p className="text-white/45 text-xs mt-0.5">{track?.style || 'AI Generated'} · Accoustica</p>
-          </div>
-          <div className="absolute top-3 right-3 flex items-end gap-[2px]">
-            {[0.5, 0.9, 0.65, 1, 0.75].map((h, i) => (
-              <span key={i} className="w-[3px] rounded-full"
-                style={{ height: `${h * 16}px`, background: 'linear-gradient(to top, #22c55e, #a855f7)', animation: `beat-bar ${0.4 + i * 0.15}s ease-in-out infinite alternate` }} />
-            ))}
-          </div>
-        </div>
-        <div className="p-4 space-y-3">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <span className="flex-1 text-white/40 text-xs truncate">{publicUrl}</span>
-            <button onClick={copyLink} className="flex-shrink-0 text-green-400 hover:text-green-300 transition-colors" aria-label="Copy link">
-              <Copy className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <button onClick={shareNative} className="flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-medium transition-all active:scale-95"
-              style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.22)', color: '#22c55e' }}>
-              <Share2 className="h-4 w-4" />Share
-            </button>
-            <button onClick={shareToTwitter} className="flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-medium transition-all active:scale-95"
-              style={{ background: 'rgba(29,161,242,0.12)', border: '1px solid rgba(29,161,242,0.22)', color: '#1da1f2' }}>
-              <Twitter className="h-4 w-4" />Twitter/X
-            </button>
-            <button onClick={shareToFacebook} className="flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-medium transition-all active:scale-95"
-              style={{ background: 'rgba(24,119,242,0.12)', border: '1px solid rgba(24,119,242,0.22)', color: '#1877f2' }}>
-              <Facebook className="h-4 w-4" />Facebook
-            </button>
-          </div>
-          {!isPublic && <p className="text-white/25 text-[10px] text-center">Track will be made public when shared</p>}
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
 // ── Download Modal ─────────────────────────────────────────────────
 function DownloadModal({ track, onClose }) {
   const mp3Url = track?.audio_url || track?.stream_audio_url;
@@ -367,10 +283,14 @@ export default function GlobalAudioPlayer({ currentPageName }) {
     <>
       <audio ref={audioCallbackRef} crossOrigin="anonymous" preload="auto" style={{ display: 'none' }} />
 
-      {/* Modals */}
-      <AnimatePresence>
-        {showShare && <ShareModal track={currentTrack} onClose={() => setShowShare(false)} />}
-      </AnimatePresence>
+      {/* Share dialog (uses the full-featured ShareTrackDialog) */}
+      <ShareTrackDialog
+        track={currentTrack}
+        open={showShare}
+        onClose={() => setShowShare(false)}
+      />
+
+      {/* Download modal */}
       <AnimatePresence>
         {showDownload && <DownloadModal track={currentTrack} onClose={() => setShowDownload(false)} />}
       </AnimatePresence>
