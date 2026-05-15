@@ -33,5 +33,25 @@
   },
   "required": [
     "track_id"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }
