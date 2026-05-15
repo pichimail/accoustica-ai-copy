@@ -1,0 +1,49 @@
+{
+  "name": "Persona",
+  "type": "object",
+  "properties": {
+    "persona_id": {
+      "type": "string",
+      "description": "Unique persona ID from Suno API"
+    },
+    "name": {
+      "type": "string",
+      "description": "Name of the persona"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the persona's musical characteristics"
+    },
+    "task_id": {
+      "type": "string",
+      "description": "Original music task ID"
+    },
+    "audio_id": {
+      "type": "string",
+      "description": "Audio ID used to create the persona"
+    },
+    "track_id": {
+      "type": "string",
+      "description": "Associated track ID in the database"
+    }
+  },
+  "required": [
+    "persona_id",
+    "name",
+    "description"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}
