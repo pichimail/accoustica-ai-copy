@@ -1,0 +1,92 @@
+{
+  "name": "StemSeparation",
+  "type": "object",
+  "properties": {
+    "track_id": {
+      "type": "string",
+      "description": "ID of the original track"
+    },
+    "task_id": {
+      "type": "string",
+      "description": "Suno API task ID for the separation"
+    },
+    "separation_type": {
+      "type": "string",
+      "enum": [
+        "separate_vocal",
+        "split_stem"
+      ],
+      "description": "Type of stem separation performed"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processing",
+        "ready",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "vocal_url": {
+      "type": "string",
+      "description": "URL to isolated vocals"
+    },
+    "instrumental_url": {
+      "type": "string",
+      "description": "URL to instrumental track"
+    },
+    "backing_vocals_url": {
+      "type": "string"
+    },
+    "drums_url": {
+      "type": "string"
+    },
+    "bass_url": {
+      "type": "string"
+    },
+    "guitar_url": {
+      "type": "string"
+    },
+    "keyboard_url": {
+      "type": "string"
+    },
+    "percussion_url": {
+      "type": "string"
+    },
+    "strings_url": {
+      "type": "string"
+    },
+    "synth_url": {
+      "type": "string"
+    },
+    "fx_url": {
+      "type": "string"
+    },
+    "brass_url": {
+      "type": "string"
+    },
+    "woodwinds_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "track_id",
+    "task_id",
+    "separation_type"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "created_by": "{{user.email}}"
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}
