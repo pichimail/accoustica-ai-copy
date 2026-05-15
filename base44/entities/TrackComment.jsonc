@@ -4,25 +4,40 @@
   "properties": {
     "track_id": {
       "type": "string",
-      "description": "ID of the commented track"
+      "description": "ID of the track being commented on"
     },
     "user_email": {
       "type": "string",
-      "description": "Email of the commenting user"
+      "description": "Email of the user who made the comment"
     },
     "user_name": {
       "type": "string",
-      "description": "Display name of the commenting user"
+      "description": "Name of the user who made the comment"
     },
     "comment_text": {
       "type": "string",
-      "description": "Comment body"
+      "description": "The comment content"
     },
     "timestamp_seconds": {
       "type": "number",
-      "default": 0,
-      "description": "Playback timestamp attached to the comment"
+      "description": "Timestamp in the track (seconds) where comment applies"
     }
   },
-  "required": ["track_id", "comment_text"]
+  "required": [
+    "track_id",
+    "user_email",
+    "comment_text"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {},
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
 }
