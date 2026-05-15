@@ -44,6 +44,24 @@ function inferSettings(style = '', prompt = '') {
     };
 }
 
+/**
+ * Auto-select Suno model based on style/prompt content.
+ * V5_5 is the default (most expressive). V5_0 is used for styles that
+ * benefit from the older model's stability (classical, traditional, folk, lo-fi).
+ */
+function autoSelectModel(requestedModel: string, style = '', prompt = '') {
+    // If caller explicitly sets a specific model other than auto/V5, respect it
+    if (requestedModel && requestedModel !== 'V5' && requestedModel !== 'auto') {
+        return requestedModel;
+    }
+    const source = `${style} ${prompt}`.toLowerCase();
+    // V5_0 for traditional / classical / low-complexity styles
+    const v5_0Patterns = /raaga|raga|hindustani|carnatic|classical|folk|acoustic|lo-?fi|devotional|bhairavi|darbari|kafi|telugu.*70s|vintage|retro.*classic|shamanic.*traditional|sufi/i;
+    if (v5_0Patterns.test(source)) return 'V5_0';
+    // Default to V5_5 for everything else (modern, expressive, EDM, pop, synthwave, etc.)
+    return 'V5_5';
+}
+
 function makeTitle(input = 'Untitled Track') {
     const cleaned = input
         .replace(/\[[^\]]+\]/g, ' ')
@@ -70,7 +88,7 @@ Deno.serve(async (req) => {
 
         const { 
             mode = 'simple',
-            model = 'V5',
+            model = 'V5_5',
             prompt, 
             style = '', 
             title = '', 
@@ -107,11 +125,14 @@ Deno.serve(async (req) => {
             inferred.styleWeight
         );
 
+        // Auto-select model: V5_5 by default, V5_0 for traditional/classical styles
+        const finalModel = autoSelectModel(model, style, prompt);
+
         // Build API payload based on mode
         const payload = {
             customMode: resolvedCustomMode,
             instrumental: instrumental,
-            model: model,
+            model: finalModel,
             callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`,
         };
 
@@ -174,7 +195,7 @@ Deno.serve(async (req) => {
                     task_id: data.data.taskId,
                     status: 'queued',
                     is_instrumental: instrumental,
-                    model_version: model,
+                    model_version: finalModel,
                     generation_settings: JSON.stringify({
                         customMode: resolvedCustomMode,
                         negativeTags: resolvedCustomMode ? finalNegativeTags : undefined,

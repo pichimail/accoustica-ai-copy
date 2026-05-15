@@ -212,7 +212,7 @@ export default function CreatePage() {
           prompt: remixPrompt || `Blend ${selected.map((track) => track.title).join(' and ')} into a coherent mashup`,
           style: styles,
           title: title || `Mashup: ${selected.map((track) => track.title).join(' x ')}`,
-          model: 'V5',
+          model: 'V5_5',
           instrumental: isInstrumental,
           // audioWeight controls the blend weight of source audio features (0–100 → normalised to 0–1 in the backend)
           audioWeight: remixInfluence,
@@ -230,7 +230,7 @@ export default function CreatePage() {
           prompt: remixPrompt || styles || `Remix ${source.title}`,
           customMode: true,
           instrumental: isInstrumental,
-          model: 'V5',
+          model: 'V5_5',
           style: `${styles || source.style || 'AI remix'}${strictVoiceDirective}`,
           title: title || `${source.title} Remix`,
           audioWeight: remixInfluence,
@@ -244,7 +244,7 @@ export default function CreatePage() {
         const strictVoiceDirective = selectedPersonaId && strictVoiceClone ? ' strict voice clone, preserve identity timbre and articulation' : '';
         const payload = isAdvanced ? {
           mode: 'custom',
-          model: 'V5',
+          model: 'V5_5',
           prompt: lyrics,
           style: `${styles || 'Pop'}${strictVoiceDirective}`,
           ...(title.trim() && { title: title.trim() }),
@@ -257,7 +257,7 @@ export default function CreatePage() {
           ...(selectedPersonaId && { personaId: selectedPersonaId })
         } : {
           mode: 'simple',
-          model: 'V5',
+          model: 'V5_5',
           prompt: finalPrompt,
           customMode: false,
           instrumental: false

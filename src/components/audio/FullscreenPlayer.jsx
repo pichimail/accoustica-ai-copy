@@ -3,11 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronDown, Play, Pause, SkipBack, SkipForward,
   Repeat, Repeat1, Shuffle, Volume2, VolumeX, Volume1,
-  Heart, ListMusic } from 'lucide-react';
+  Heart, ListMusic, Share2, Download, Copy, Twitter, Facebook, X as CloseX, Music2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudioPlayer } from './AudioPlayerContext';
 import { getAudioAnalyser, resumeAudioContext, ensureAudioContext } from '@/lib/audioContext';
 import LyricsView from './LyricsView';
+import { toast } from 'sonner';
+import { getPublicTrackUrl } from '@/lib/trackSharing';
+import { base44 } from '@/api/base44Client';
 
 // ── BEAT VISUALIZER CANVAS ─────────────────────────────────────────
 function BeatVisualizer({ audioRef, isPlaying, coverImg }) {
@@ -136,6 +139,8 @@ export default function FullscreenPlayer() {
 
   const [activeTab, setActiveTab] = useState('lyrics');
   const [liked, setLiked] = useState(false);
+  const [showFsShare, setShowFsShare] = useState(false);
+  const [showFsDownload, setShowFsDownload] = useState(false);
   const progressRef = useRef(null);
   const volumeRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -279,14 +284,140 @@ export default function FullscreenPlayer() {
               <ChevronDown className="h-5 w-5" />
             </button>
             <p className="text-white/60 text-xs font-semibold uppercase tracking-widest">Now Playing</p>
-            <button
-            onClick={() => setLiked(!liked)}
-            className={cn('w-10 h-10 flex items-center justify-center rounded-full transition-all',
-            liked ? 'text-pink-400' : 'text-white/40 hover:text-white/70')}>
-            
-              <Heart className="h-5 w-5" fill={liked ? 'currentColor' : 'none'} />
-            </button>
+            <div className="flex items-center gap-1">
+              {/* Share */}
+              <button onClick={() => setShowFsShare(v => !v)}
+                className="w-9 h-9 flex items-center justify-center rounded-full transition-all text-white/40 hover:text-white/70">
+                <Share2 className="h-4 w-4" />
+              </button>
+              {/* Download */}
+              <button onClick={() => setShowFsDownload(v => !v)}
+                className="w-9 h-9 flex items-center justify-center rounded-full transition-all text-white/40 hover:text-white/70">
+                <Download className="h-4 w-4" />
+              </button>
+              {/* Like */}
+              <button
+              onClick={() => setLiked(!liked)}
+              className={cn('w-9 h-9 flex items-center justify-center rounded-full transition-all',
+              liked ? 'text-pink-400' : 'text-white/40 hover:text-white/70')}>
+                <Heart className="h-4 w-4" fill={liked ? 'currentColor' : 'none'} />
+              </button>
+            </div>
           </div>
+
+          {/* Fullscreen share overlay */}
+          <AnimatePresence>
+            {showFsShare && currentTrack && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 z-[250] flex items-center justify-center"
+                style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
+                onClick={() => setShowFsShare(false)}>
+                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                  className="w-full max-w-sm mx-4 rounded-2xl overflow-hidden"
+                  style={{ background: 'rgba(14,14,22,0.99)', border: '1px solid rgba(255,255,255,0.12)' }}
+                  onClick={e => e.stopPropagation()}>
+                  <div className="relative h-24 overflow-hidden">
+                    <img src={currentTrack.cover_image_url || ''} alt={currentTrack.title}
+                      className="w-full h-full object-cover" style={{ filter: 'brightness(0.5)' }} />
+                    <div className="absolute inset-0 flex flex-col justify-end p-4"
+                      style={{ background: 'linear-gradient(to top, rgba(14,14,22,0.95), transparent)' }}>
+                      <p className="text-white font-bold text-sm">{currentTrack.title}</p>
+                      <p className="text-white/40 text-xs">{currentTrack.style || 'AI Generated'} · Accoustica</p>
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {(() => {
+                      const url = getPublicTrackUrl(currentTrack);
+                      return (
+                        <>
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <span className="flex-1 text-white/38 text-xs truncate">{url}</span>
+                            <button onClick={() => { navigator.clipboard.writeText(url); toast.success('Copied!'); }}
+                              className="text-green-400 hover:text-green-300 transition-colors">
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button onClick={() => { if (navigator.share) navigator.share({ title: currentTrack.title, url }).catch(() => {}); else { navigator.clipboard.writeText(url); toast.success('Copied!'); } }}
+                              className="flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-medium active:scale-95 transition-all"
+                              style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.22)', color: '#22c55e' }}>
+                              <Share2 className="h-4 w-4" />Share
+                            </button>
+                            <button onClick={() => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`🎵 "${currentTrack.title}" — Accoustica`)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener')}
+                              className="flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-medium active:scale-95 transition-all"
+                              style={{ background: 'rgba(29,161,242,0.12)', border: '1px solid rgba(29,161,242,0.22)', color: '#1da1f2' }}>
+                              <Twitter className="h-4 w-4" />Twitter/X
+                            </button>
+                            <button onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank', 'noopener')}
+                              className="flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-medium active:scale-95 transition-all"
+                              style={{ background: 'rgba(24,119,242,0.12)', border: '1px solid rgba(24,119,242,0.22)', color: '#1877f2' }}>
+                              <Facebook className="h-4 w-4" />Facebook
+                            </button>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Fullscreen download overlay */}
+          <AnimatePresence>
+            {showFsDownload && currentTrack && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 z-[250] flex items-center justify-center"
+                style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
+                onClick={() => setShowFsDownload(false)}>
+                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                  className="w-full max-w-sm mx-4 rounded-2xl p-4 space-y-3"
+                  style={{ background: 'rgba(14,14,22,0.99)', border: '1px solid rgba(255,255,255,0.12)' }}
+                  onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-white font-bold text-sm">Export / Download</p>
+                    <button onClick={() => setShowFsDownload(false)} className="text-white/40 hover:text-white transition-colors">
+                      <CloseX className="h-4 w-4" />
+                    </button>
+                  </div>
+                  {(() => {
+                    const mp3Url = currentTrack.audio_url || currentTrack.stream_audio_url;
+                    const mp4Url = currentTrack.video_url;
+                    const slug = (currentTrack.title || 'track').replace(/[^a-z0-9\s-]/gi, '').trim().replace(/\s+/g, '-').slice(0, 50);
+                    const dl = (url, name, type) => {
+                      if (!url) { toast.error(`No ${type} available yet`); return; }
+                      const a = document.createElement('a'); a.href = url; a.download = name; a.target = '_blank'; a.rel = 'noopener';
+                      document.body.appendChild(a); a.click(); document.body.removeChild(a); toast.success(`${type} download started`);
+                    };
+                    return (
+                      <>
+                        <button onClick={() => dl(mp3Url, `${slug}.mp3`, 'MP3')} disabled={!mp3Url}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium active:scale-[0.98] transition-all disabled:opacity-35 disabled:cursor-not-allowed"
+                          style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.28)', color: '#22c55e' }}>
+                          <Music2 className="h-5 w-5 flex-shrink-0" />
+                          <div className="text-left flex-1"><p className="font-semibold">Download MP3</p><p className="text-[10px] text-white/35 font-normal">Audio · High quality</p></div>
+                          <Download className="h-4 w-4 flex-shrink-0" />
+                        </button>
+                        <button onClick={() => dl(mp4Url, `${slug}-lyrical.mp4`, 'MP4 Video')} disabled={!mp4Url}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium active:scale-[0.98] transition-all disabled:opacity-35 disabled:cursor-not-allowed"
+                          style={{ background: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.28)', color: '#a855f7' }}>
+                          <svg className="h-5 w-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m10 8 6 4-6 4V8z" fill="currentColor"/>
+                          </svg>
+                          <div className="text-left flex-1"><p className="font-semibold">Download MP4</p><p className="text-[10px] text-white/35 font-normal">Lyrical video · Visual</p></div>
+                          <Download className="h-4 w-4 flex-shrink-0" />
+                        </button>
+                        {!mp4Url && <p className="text-white/22 text-[10px] text-center">MP4 requires video generation on this track first</p>}
+                      </>
+                    );
+                  })()}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Album Art — circular, prominent. Hidden when lyrics or visualizer active */}
           <div className={cn("relative z-10 flex justify-center px-8 flex-shrink-0 mb-5 transition-all duration-300", (activeTab === 'lyrics' || activeTab === 'visualizer') ? 'hidden' : '')}>
