@@ -1,0 +1,80 @@
+{
+  "name": "Plan",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Plan name (e.g., Free, Pro, Enterprise)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Plan description"
+    },
+    "daily_limit": {
+      "type": "number",
+      "description": "Maximum generations per day"
+    },
+    "monthly_limit": {
+      "type": "number",
+      "description": "Maximum generations per month"
+    },
+    "max_duration": {
+      "type": "number",
+      "description": "Maximum track duration in minutes"
+    },
+    "concurrent_jobs": {
+      "type": "number",
+      "description": "Maximum concurrent generation jobs"
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of features included"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the plan is currently available"
+    },
+    "price_monthly": {
+      "type": "number",
+      "description": "Monthly price in USD"
+    },
+    "model_access": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Which AI models this plan can access"
+    },
+    "priority": {
+      "type": "number",
+      "description": "Display priority (lower = first)"
+    }
+  },
+  "required": [
+    "name",
+    "daily_limit",
+    "monthly_limit"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {},
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
