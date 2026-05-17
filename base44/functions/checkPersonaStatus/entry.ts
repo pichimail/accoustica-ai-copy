@@ -8,7 +8,6 @@ const corsHeaders = {
 };
 
 const FINAL_FAILURE_STATUSES = new Set(['fail', 'failed', 'processing_validate_fail']);
-const IN_PROGRESS_STATUSES = new Set(['wait_processing', 'processing_validate', 'wait_validating']);
 
 function normalizeStatus(status: unknown): string {
   return typeof status === 'string' ? status.toLowerCase() : '';
@@ -42,8 +41,6 @@ Deno.serve(async (req) => {
       : await req.json();
 
     const personaId = String(params?.personaId || '').trim();
-    const kieTaskId = String(params?.kieTaskId || '').trim();
-
     if (!personaId) {
       return Response.json({ error: 'personaId is required' }, { status: 400, headers: corsHeaders });
     }
@@ -54,22 +51,21 @@ Deno.serve(async (req) => {
     }
 
     const persona = await base44.entities.Persona.get(personaId);
-
     if (!persona) {
       return Response.json({ error: 'Persona not found' }, { status: 404, headers: corsHeaders });
-    }
-
-    const currentTaskId = kieTaskId || persona.task_id;
-    if (!currentTaskId) {
-      return Response.json({ error: 'No Kie task id available for this persona' }, { status: 400, headers: corsHeaders });
     }
 
     if (persona.status === 'ready' || persona.status === 'failed') {
       return Response.json({ success: true, persona }, { headers: corsHeaders });
     }
 
-    // Step 1: validation phrase workflow status
-    if (persona.status === 'validating') {
+    const currentTaskId = String(persona.task_id || params?.kieTaskId || '').trim();
+    if (!currentTaskId) {
+      return Response.json({ error: 'No Kie task id available for this persona' }, { status: 400, headers: corsHeaders });
+    }
+
+    // 1) Phrase validation stage
+    if (persona.status === 'validating' || persona.status === 'pending') {
       const validateInfo = await kieGet(apiKey, `/voice/validate-info?taskId=${encodeURIComponent(currentTaskId)}`);
 
       if (validateInfo?.code !== 200) {
@@ -89,80 +85,31 @@ Deno.serve(async (req) => {
         return Response.json({ success: true, persona: failedPersona }, { headers: corsHeaders });
       }
 
-      if (IN_PROGRESS_STATUSES.has(status)) {
-        // Kie voice flow requires verifyUrl in /voice/generate.
-        // We use the uploaded/recorded source audio URL currently stored in audio_id.
-        // This enables a one-step UX in the app while still following task progression.
-        if (!persona.audio_id) {
-          const failedPersona = await base44.entities.Persona.update(persona.id, {
-            status: 'failed',
-            error_message: 'Missing uploaded audio URL for voice verification',
-          });
-          return Response.json({ success: true, persona: failedPersona }, { headers: corsHeaders });
-        }
-
-        const callbackRoot = Deno.env.get('BASE44_FUNCTION_URL') || '';
-        const callbackUrl = callbackRoot ? `${callbackRoot}/sunoVoiceGenerateCallback` : undefined;
-
-        const generateResponse = await fetch(`${SUNO_API_BASE}/voice/generate`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            taskId: currentTaskId,
-            verifyUrl: persona.audio_id,
-            voiceName: persona.name,
-            description: persona.description || `Voice persona: ${persona.name}`,
-            style: 'Custom Voice',
-            ...(callbackUrl ? { callBackUrl: callbackUrl } : {}),
-          }),
-        });
-
-        const generateData = await generateResponse.json();
-
-        if (generateData?.code !== 200 || !generateData?.data?.taskId) {
-          if (status === 'wait_processing' || status === 'processing_validate') {
-            // Validation phrase is still being prepared; keep polling.
-            const pendingPersona = await base44.entities.Persona.update(persona.id, {
-              status: 'validating',
-            });
-            return Response.json({ success: true, persona: pendingPersona }, { headers: corsHeaders });
-          }
-
-          const failedPersona = await base44.entities.Persona.update(persona.id, {
-            status: 'failed',
-            error_message: generateData?.msg || 'Voice generation failed',
-          });
-          return Response.json({ success: true, persona: failedPersona }, { headers: corsHeaders });
-        }
-
-        const generatingPersona = await base44.entities.Persona.update(persona.id, {
-          status: 'generating',
-          task_id: generateData.data.taskId,
+      if (status === 'wait_validating') {
+        const phrase = validateInfo?.data?.verifyPhrase || validateInfo?.data?.phrase || persona.verification_phrase || null;
+        const waitingPersona = await base44.entities.Persona.update(persona.id, {
+          status: 'validating',
+          verification_phrase: phrase,
           error_message: null,
         });
 
-        return Response.json({ success: true, persona: generatingPersona }, { headers: corsHeaders });
+        return Response.json({
+          success: true,
+          persona: waitingPersona,
+          requiresVerification: true,
+          verifyPhrase: phrase,
+        }, { headers: corsHeaders });
       }
 
-      if (status === 'success') {
-        // Sometimes voice creation may have been completed directly in this task chain.
-        // Move to generating and continue through record-info in next poll.
-        const movedPersona = await base44.entities.Persona.update(persona.id, {
-          status: 'generating',
-        });
-        return Response.json({ success: true, persona: movedPersona }, { headers: corsHeaders });
-      }
-
+      // wait_processing / processing_validate / success -> keep validating until user submits phrase recording.
       const unchangedPersona = await base44.entities.Persona.update(persona.id, {
         status: 'validating',
+        error_message: null,
       });
       return Response.json({ success: true, persona: unchangedPersona }, { headers: corsHeaders });
     }
 
-    // Step 2: generated custom voice status
+    // 2) Voice generation stage after submitPersonaVerification
     const voiceRecord = await kieGet(apiKey, `/voice/record-info?taskId=${encodeURIComponent(currentTaskId)}`);
 
     if (voiceRecord?.code !== 200) {
@@ -193,7 +140,6 @@ Deno.serve(async (req) => {
         return Response.json({ success: true, persona: failedPersona }, { headers: corsHeaders });
       }
 
-      // Optional availability check before marking as ready.
       const checkVoiceResponse = await fetch(`${SUNO_API_BASE}/voice/check-voice`, {
         method: 'POST',
         headers: {
@@ -211,7 +157,7 @@ Deno.serve(async (req) => {
       if (!isAvailable) {
         const pendingPersona = await base44.entities.Persona.update(persona.id, {
           status: 'generating',
-          error_message: 'Voice generated but not yet available',
+          error_message: null,
         });
         return Response.json({ success: true, persona: pendingPersona }, { headers: corsHeaders });
       }
@@ -219,7 +165,7 @@ Deno.serve(async (req) => {
       const readyPersona = await base44.entities.Persona.update(persona.id, {
         status: 'ready',
         persona_id: voiceId,
-        audio_id: persona.audio_id || null,
+        audio_id: persona.verification_audio_url || persona.audio_id || null,
         error_message: null,
       });
 
@@ -228,6 +174,7 @@ Deno.serve(async (req) => {
 
     const generatingPersona = await base44.entities.Persona.update(persona.id, {
       status: 'generating',
+      error_message: null,
     });
 
     return Response.json({ success: true, persona: generatingPersona }, { headers: corsHeaders });

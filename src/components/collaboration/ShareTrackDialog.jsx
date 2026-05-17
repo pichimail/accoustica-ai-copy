@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy, Globe, Loader2, Send, Share2, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';

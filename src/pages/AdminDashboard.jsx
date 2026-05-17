@@ -5,30 +5,25 @@
  * Single page, 7-tab nav: Overview · Users · Tracks · Plans · Feature Flags · Insights · System
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, Music, Crown, Shield, Settings,
+  LayoutDashboard, Users, Music, Crown, Settings,
   Search, Plus, Trash2, Edit2, Eye, EyeOff, Ban, CheckCircle2,
-  Loader2, RefreshCw, Save, X, ChevronDown, ChevronUp, MoreHorizontal,
-  TrendingUp, Zap, Globe, Lock, Play, Pause, ExternalLink, BarChart3,
-  Calendar, Clock, Activity, Star, Filter, Download, Upload, Bell,
-  AlertTriangle, CheckSquare, XSquare, Sliders, Database, Server,
-  GitBranch, Volume2, Wand2, Mic2, Video, Film, UserCheck, UserX,
-  ArrowUpDown, SortAsc, SortDesc, Hash, Percent, DollarSign, Layers,
-  ToggleLeft, ToggleRight, Info, Sparkles, Radio, Cpu, HardDrive,
-  Network, Terminal, Bug, Flag, Package, Boxes, ArrowRight
+  Loader2, RefreshCw, Save, X, ChevronDown, Zap, Globe, Lock, Play, Pause, BarChart3, Clock, Activity, Star, Download, Bell,
+  AlertTriangle, XSquare, Server,
+  GitBranch, Volume2, Wand2, Mic2, Film, UserCheck, SortAsc, Hash, DollarSign, Layers, Sparkles, Radio, HardDrive, Terminal, Flag, Boxes
 } from 'lucide-react';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 
 // ─────────────────────────────────────────────

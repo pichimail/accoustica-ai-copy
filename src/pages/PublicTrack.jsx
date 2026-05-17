@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { AlertCircle, Calendar, Clock, Copy, Disc3, Globe, Loader2, Pause, Play, RefreshCw, Share2, Sparkles, Volume2 } from 'lucide-react';
+import { AlertCircle, Calendar, Clock, Copy, Disc3, Globe, Loader2, Pause, Play, Share2, Sparkles, Volume2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import { getPublicTrackUrl, getSeoDescription, getTrackPublicSlug } from '@/lib/trackSharing';

@@ -10,7 +10,6 @@ import { getAudioAnalyser, resumeAudioContext, ensureAudioContext } from '@/lib/
 import LyricsView from './LyricsView';
 import { toast } from 'sonner';
 import { getPublicTrackUrl } from '@/lib/trackSharing';
-import { base44 } from '@/api/base44Client';
 
 // ── BEAT VISUALIZER CANVAS ─────────────────────────────────────────
 function BeatVisualizer({ audioRef, isPlaying, coverImg }) {

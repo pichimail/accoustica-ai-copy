@@ -11,15 +11,6 @@ function getString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function normalizeLanguage(input: string): string {
-  const value = (input || '').trim().toLowerCase();
-  if (value === 'hindi' || value === 'hi') return 'hi';
-  if (value === 'tamil' || value === 'ta') return 'ta';
-  if (value === 'telugu' || value === 'te') return 'te';
-  if (value === 'tinglish' || value === 'telugu+english' || value === 'te-en') return 'en';
-  return 'en';
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -33,41 +24,54 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
+    let personaId = '';
     let audioUrl = '';
-    let personaName = '';
-    let language = 'en';
     let file: File | null = null;
 
     const contentType = req.headers.get('content-type') || '';
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
+      personaId = getString(formData.get('personaId'));
+      audioUrl = getString(formData.get('audioUrl'));
       const possibleFile = formData.get('file');
       file = possibleFile instanceof File ? possibleFile : null;
-      audioUrl = getString(formData.get('audioUrl'));
-      personaName = getString(formData.get('personaName'));
-      language = normalizeLanguage(getString(formData.get('language')));
     } else {
       const body = await req.json();
+      personaId = getString(body?.personaId);
       audioUrl = getString(body?.audioUrl);
-      personaName = getString(body?.personaName);
-      language = normalizeLanguage(getString(body?.language));
       file = body?.file instanceof File ? body.file : null;
     }
 
-    if (!personaName) {
-      return Response.json({ error: 'personaName is required' }, { status: 400, headers: corsHeaders });
+    if (!personaId) {
+      return Response.json({ error: 'personaId is required' }, { status: 400, headers: corsHeaders });
     }
 
-    let finalAudioUrl = audioUrl;
-
-    if (!finalAudioUrl && file) {
+    let verifyAudioUrl = audioUrl;
+    if (!verifyAudioUrl && file) {
       const uploaded = await base44.integrations.Core.UploadFile({ file });
-      finalAudioUrl = uploaded?.file_url || uploaded?.file_uri || '';
+      verifyAudioUrl = uploaded?.file_url || uploaded?.file_uri || '';
     }
 
-    if (!finalAudioUrl) {
+    if (!verifyAudioUrl) {
       return Response.json({ error: 'Either file or audioUrl is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    const persona = await base44.entities.Persona.get(personaId);
+    if (!persona) {
+      return Response.json({ error: 'Persona not found' }, { status: 404, headers: corsHeaders });
+    }
+
+    if (persona.status === 'ready') {
+      return Response.json({ error: 'Persona is already ready' }, { status: 400, headers: corsHeaders });
+    }
+
+    if (persona.status === 'failed') {
+      return Response.json({ error: 'Persona is failed. Restart from voice upload.' }, { status: 400, headers: corsHeaders });
+    }
+
+    if (!persona.task_id) {
+      return Response.json({ error: 'Missing validation task id on persona' }, { status: 400, headers: corsHeaders });
     }
 
     const apiKey = Deno.env.get('SUNO_API_KEY');
@@ -76,57 +80,50 @@ Deno.serve(async (req) => {
     }
 
     const callbackRoot = Deno.env.get('BASE44_FUNCTION_URL') || '';
-    const callbackUrl = callbackRoot ? `${callbackRoot}/sunoVoiceValidateCallback` : undefined;
+    const callbackUrl = callbackRoot ? `${callbackRoot}/sunoVoiceGenerateCallback` : undefined;
 
-    const validateResponse = await fetch(`${SUNO_API_BASE}/voice/validate`, {
+    const generateResponse = await fetch(`${SUNO_API_BASE}/voice/generate`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        voiceUrl: finalAudioUrl,
-        vocalStartS: 0,
-        vocalEndS: 10,
-        language,
+        taskId: persona.task_id,
+        verifyUrl: verifyAudioUrl,
+        voiceName: persona.name,
+        description: persona.description || `Voice persona: ${persona.name}`,
+        style: 'Custom Voice',
         ...(callbackUrl ? { callBackUrl: callbackUrl } : {}),
       }),
     });
 
-    const validateData = await validateResponse.json();
+    const generateData = await generateResponse.json();
 
-    if (validateData?.code !== 200 || !validateData?.data?.taskId) {
+    if (generateData?.code !== 200 || !generateData?.data?.taskId) {
       return Response.json({
-        error: validateData?.msg || 'Voice validation failed',
-        details: validateData,
+        error: generateData?.msg || 'Voice generation failed',
+        details: generateData,
       }, { status: 400, headers: corsHeaders });
     }
 
-    const createdPersona = await base44.entities.Persona.create({
-      name: personaName,
-      description: 'Voice model in validation flow',
-      status: 'validating',
-      task_id: validateData.data.taskId,
-      source_audio_url: finalAudioUrl,
-      verification_audio_url: null,
-      verification_phrase: null,
-      validation_language: language,
-      audio_id: null,
-      persona_id: null,
-      track_id: null,
+    const updatedPersona = await base44.entities.Persona.update(persona.id, {
+      status: 'generating',
+      task_id: generateData.data.taskId,
+      verification_audio_url: verifyAudioUrl,
+      audio_id: verifyAudioUrl,
       error_message: null,
     });
 
     return Response.json({
       success: true,
-      personaId: createdPersona.id,
-      taskId: validateData.data.taskId,
-      language,
+      taskId: generateData.data.taskId,
+      persona: updatedPersona,
     }, { headers: corsHeaders });
   } catch (error) {
-    console.error('Error in initiateVoiceProcess:', error);
+    console.error('Error in submitPersonaVerification:', error);
     return Response.json({
-      error: error?.message || 'Failed to initiate voice process',
+      error: error?.message || 'Failed to submit persona verification audio',
     }, { status: 500, headers: corsHeaders });
   }
 });

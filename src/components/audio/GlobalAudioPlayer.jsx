@@ -424,7 +424,7 @@ export default function GlobalAudioPlayer() {
       if (repeatMode === 'one') { node.currentTime = 0; node.play().catch(() => {}); }
       else playNext();
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);  
 
   if (!currentTrack || !playerVisible) {
     return <audio ref={audioCallbackRef} crossOrigin="anonymous" preload="auto" style={{ display: 'none' }} />;

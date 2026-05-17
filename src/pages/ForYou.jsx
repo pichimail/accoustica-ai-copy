@@ -7,9 +7,8 @@ import { haptics } from '@/components/utils/haptics';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import {
   Sparkles, TrendingUp, Clock, Zap, Loader2, Play, Pause,
-  Heart, MessageCircle, ChevronRight, Shuffle, Music2,
-  Star, Radio, Trophy, BarChart2, Headphones, RefreshCw,
-  Volume2, MicVocal, Layers
+  Heart, MessageCircle, ChevronRight, Music2,
+  Star, Radio, Headphones, RefreshCw, Layers
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
