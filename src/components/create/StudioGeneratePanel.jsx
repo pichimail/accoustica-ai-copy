@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState, useRef, useCallback } from 'react';
-import { Sparkles, Wand2, ChevronDown, ChevronUp, Loader2, Mic2, Music, Plus, BookOpen, GripHorizontal } from 'lucide-react';
+import { Sparkles, Wand2, ChevronDown, ChevronUp, Loader2, Mic2, Music, Plus, BookOpen, GripHorizontal, X, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -292,6 +292,10 @@ const STYLE_TEMPLATES = {
  *  onToggleMoreOptions: () => void;
  *  remixSource: string;
  *  onRemixSourceChange: (value: string) => void;
+ *  remixUploadFileName?: string;
+ *  remixUploadPreviewUrl?: string;
+ *  onRemixUploadFile?: (file: File | null) => void;
+ *  onClearRemixUploadFile?: () => void;
  *  remixPrompt: string;
  *  onRemixPromptChange: (value: string) => void;
  *  remixInfluence: number;
@@ -602,6 +606,10 @@ export default function StudioGeneratePanel({
   simplePrompt, onSimplePromptChange,
   showMoreOptions, onToggleMoreOptions,
   remixSource, onRemixSourceChange,
+  remixUploadFileName = '',
+  remixUploadPreviewUrl = '',
+  onRemixUploadFile,
+  onClearRemixUploadFile,
   remixPrompt, onRemixPromptChange,
   remixInfluence, onRemixInfluenceChange,
   mashupTrackIds = [],
@@ -615,6 +623,7 @@ export default function StudioGeneratePanel({
   const [enhancingAdvanced, setEnhancingAdvanced] = useState(false);
   const [personaPickerOpen, setPersonaPickerOpen] = useState(false);
   const [remixSourcePickerOpen, setRemixSourcePickerOpen] = useState(false);
+  const remixUploadInputRef = useRef(null);
   const isMobile = useIsMobile();
 
   // Textarea row heights
@@ -1051,10 +1060,17 @@ export default function StudioGeneratePanel({
               {[
                 { label: 'Vocal', IconComp: Mic2, active: !isInstrumental },
                 { label: 'No Vocal', IconComp: Music, active: isInstrumental },
-                { label: 'Upload', IconComp: Plus, active: false },
+                { label: 'Upload', IconComp: Plus, active: !!remixUploadFileName },
               ].map(({ label, IconComp, active }) => (
                 <button key={label} type="button" aria-pressed={active}
-                  onClick={() => { if (label === 'Vocal') onInstrumentalChange(false); else if (label === 'No Vocal') onInstrumentalChange(true); }}
+                  onClick={() => {
+                    if (label === 'Vocal') onInstrumentalChange(false);
+                    else if (label === 'No Vocal') onInstrumentalChange(true);
+                    else {
+                      haptics.light();
+                      remixUploadInputRef.current?.click();
+                    }
+                  }}
                   className="flex-1 flex flex-col items-center gap-1 py-2.5 border rounded-lg transition-all text-[10px] font-bold"
                   style={active
                     ? { background: 'rgba(225,29,72,0.2)', borderColor: 'rgba(225,29,72,0.45)', color: '#fff' }
@@ -1064,6 +1080,41 @@ export default function StudioGeneratePanel({
                 </button>
               ))}
             </div>
+
+            <input
+              ref={remixUploadInputRef}
+              type="file"
+              accept="audio/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0] || null;
+                onRemixUploadFile?.(file);
+                event.target.value = '';
+              }}
+            />
+
+            {remixUploadFileName && (
+              <PanelSection label="Uploaded Source">
+                <div className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg border" style={{ ...fieldStyle, color: '#fff' }}>
+                  <Play className="h-4 w-4 text-white/55 flex-shrink-0" />
+                  <span className="text-xs truncate flex-1">{remixUploadFileName}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      haptics.selection();
+                      onClearRemixUploadFile?.();
+                    }}
+                    className="min-w-[32px] min-h-[32px] rounded-md border border-white/15 bg-white/[0.06] inline-flex items-center justify-center"
+                    aria-label="Remove uploaded source"
+                  >
+                    <X className="h-3.5 w-3.5 text-white/70" />
+                  </button>
+                </div>
+                {remixUploadPreviewUrl && (
+                  <audio controls className="w-full mt-2 h-9" src={remixUploadPreviewUrl} />
+                )}
+              </PanelSection>
+            )}
 
             <PanelSection label="Remix Source">
               {isMobile ? (

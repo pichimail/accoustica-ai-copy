@@ -91,6 +91,7 @@ export default function CreatePage() {
   const [simplePrompt, setSimplePrompt] = useState('');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [remixSource, setRemixSource] = useState('');
+  const [remixUploadFile, setRemixUploadFile] = useState(null);
   const [remixPrompt, setRemixPrompt] = useState('');
   const [remixInfluence, setRemixInfluence] = useState(55);
   const [mashupTrackIds, setMashupTrackIds] = useState([]);
@@ -127,6 +128,40 @@ export default function CreatePage() {
   }, [isGenerateOnlyMobile]);
 
   const _showGeneratePanelMobile = isGenerateOnlyMobile || mobilePanelOpen;
+
+  useEffect(() => {
+    return () => {
+      if (remixUploadFile?.__previewUrl) {
+        URL.revokeObjectURL(remixUploadFile.__previewUrl);
+      }
+    };
+  }, [remixUploadFile]);
+
+  const handleRemixUploadFile = useCallback((file) => {
+    if (!file) {
+      setRemixUploadFile(null);
+      return;
+    }
+    if (!String(file.type || '').startsWith('audio/')) {
+      toast.error('Please upload a valid audio file');
+      return;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    const normalized = Object.assign(file, { __previewUrl: previewUrl });
+    setRemixSource('');
+    setRemixUploadFile((prev) => {
+      if (prev?.__previewUrl) URL.revokeObjectURL(prev.__previewUrl);
+      return normalized;
+    });
+    haptics.selection();
+  }, []);
+
+  const clearRemixUploadFile = useCallback(() => {
+    setRemixUploadFile((prev) => {
+      if (prev?.__previewUrl) URL.revokeObjectURL(prev.__previewUrl);
+      return null;
+    });
+  }, []);
 
   const beginResize = useCallback((panel) => (event) => {
     event.preventDefault();
@@ -209,7 +244,7 @@ export default function CreatePage() {
     if (isAdvanced && lyrics.length > 4995) {toast.error('Lyrics must be 4995 chars or less');return;}
     if (isAdvanced && !lyrics.trim()) {toast.error(isInstrumental ? 'Please add an instrumental structure prompt' : 'Please add lyrics');return;}
     if (!isAdvanced && !isRemix && !isMashup && !finalPrompt) {toast.error('Please describe your music');return;}
-    if (isRemix && !remixSource) {toast.error('Choose a source track to remix');return;}
+    if (isRemix && !remixSource && !remixUploadFile) {toast.error('Choose or upload a source track to remix');return;}
     if (isMashup && mashupTrackIds.length !== 2) {toast.error('Choose exactly two ready tracks for a mashup');return;}
 
     try {
@@ -240,18 +275,28 @@ export default function CreatePage() {
           ...(vocalGender !== 'Auto' && { vocalGender }),
         });
       } else if (isRemix) {
-        const source = allTracks.find((track) => track.id === remixSource);
-        const sourceUrl = source?.audio_url || source?.stream_audio_url;
+        let source = allTracks.find((track) => String(track.id) === String(remixSource));
+        let sourceUrl = source?.audio_url || source?.stream_audio_url;
+        let sourceTitle = source?.title || 'Uploaded Source';
+        let sourceStyle = source?.style || 'AI remix';
+
+        if (remixUploadFile) {
+          const upload = await base44.integrations.Core.UploadFile({ file: remixUploadFile });
+          sourceUrl = upload?.file_url || upload?.file_uri || '';
+          sourceTitle = remixUploadFile.name?.replace(/\.[^/.]+$/, '') || 'Uploaded Source';
+          sourceStyle = styles || 'AI remix';
+        }
+
         if (!sourceUrl) throw new Error('Selected source track has no playable audio URL yet');
         const strictVoiceDirective = selectedPersonaId && strictVoiceClone ? ' strict voice clone, preserve identity timbre and articulation' : '';
         response = await base44.functions.invoke('uploadAndCoverAudio', {
           uploadUrl: sourceUrl,
-          prompt: remixPrompt || styles || `Remix ${source.title}`,
+          prompt: remixPrompt || styles || `Remix ${sourceTitle}`,
           customMode: true,
           instrumental: isInstrumental,
           model: 'V5_5',
-          style: `${styles || source.style || 'AI remix'}${strictVoiceDirective}`,
-          title: title || `${source.title} Remix`,
+          style: `${styles || sourceStyle || 'AI remix'}${strictVoiceDirective}`,
+          title: title || `${sourceTitle} Remix`,
           audioWeight: remixInfluence,
           ...(negativeTag.trim() && { negativeTags: negativeTag.trim() }),
           styleWeight,
@@ -298,6 +343,7 @@ export default function CreatePage() {
       // Reset form
       setSimplePrompt('');setTitle('');setLyrics('');
       setMashupTrackIds([]);
+      clearRemixUploadFile();
       queryClient.invalidateQueries({ queryKey: ['studioTracks'] });
     } catch (err) {
       haptics.error();
@@ -415,6 +461,10 @@ export default function CreatePage() {
             simplePrompt={simplePrompt} onSimplePromptChange={setSimplePrompt}
             showMoreOptions={showMoreOptions} onToggleMoreOptions={() => setShowMoreOptions((v) => !v)}
             remixSource={remixSource} onRemixSourceChange={setRemixSource}
+            remixUploadFileName={remixUploadFile?.name || ''}
+            remixUploadPreviewUrl={remixUploadFile?.__previewUrl || ''}
+            onRemixUploadFile={handleRemixUploadFile}
+            onClearRemixUploadFile={clearRemixUploadFile}
             remixPrompt={remixPrompt} onRemixPromptChange={setRemixPrompt}
             remixInfluence={remixInfluence} onRemixInfluenceChange={setRemixInfluence}
             mashupTrackIds={mashupTrackIds}
@@ -446,6 +496,10 @@ export default function CreatePage() {
           simplePrompt={simplePrompt} onSimplePromptChange={setSimplePrompt}
           showMoreOptions={showMoreOptions} onToggleMoreOptions={() => setShowMoreOptions((v) => !v)}
           remixSource={remixSource} onRemixSourceChange={setRemixSource}
+          remixUploadFileName={remixUploadFile?.name || ''}
+          remixUploadPreviewUrl={remixUploadFile?.__previewUrl || ''}
+          onRemixUploadFile={handleRemixUploadFile}
+          onClearRemixUploadFile={clearRemixUploadFile}
           remixPrompt={remixPrompt} onRemixPromptChange={setRemixPrompt}
           remixInfluence={remixInfluence} onRemixInfluenceChange={setRemixInfluence}
           mashupTrackIds={mashupTrackIds}

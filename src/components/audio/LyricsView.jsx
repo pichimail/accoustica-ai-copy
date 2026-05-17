@@ -4,7 +4,12 @@ import { MicVocal, Loader2, Clock, Plus, Minus, RotateCcw, ChevronDown, ChevronU
 import { cn } from '@/lib/utils';
 import { base44 } from '@/api/base44Client';
 
-// Parse "[mm:ss.xx] text" LRC format
+function toSeconds(value) {
+  if (value === null || value === undefined) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function parseLrc(lrcText) {
   if (!lrcText) return [];
   const lines = [];
@@ -15,67 +20,204 @@ function parseLrc(lrcText) {
     const seconds = parseFloat(match[2]);
     const time = minutes * 60 + seconds;
     const text = match[3].trim();
-    if (text) lines.push({ time, text });
+    if (text) {
+      lines.push({
+        time,
+        endTime: time + 3,
+        text,
+        words: [],
+      });
+    }
   }
   return lines.sort((a, b) => a.time - b.time);
 }
 
-// Parse plain text lyrics with even distribution
 function parsePlainLyrics(lyrics, duration) {
   if (!lyrics || !duration) return [];
   const lines = lyrics.split('\n').filter(l => l.trim() && !l.trim().startsWith('['));
   if (lines.length === 0) return [];
-  return lines.map((text, i) => ({
-    time: (duration / lines.length) * i,
-    text: text.trim(),
-  }));
+  return lines.map((text, i) => {
+    const time = (duration / lines.length) * i;
+    const nextTime = (duration / lines.length) * (i + 1);
+    return {
+      time,
+      endTime: nextTime,
+      text: text.trim(),
+      words: [],
+    };
+  });
 }
 
-// Merge API timestamped data (array of {text, startMs} or {word, start_ms})
-function parseApiData(data) {
-  if (!data) return [];
-  // Check for line-level timestamps
-  if (Array.isArray(data.lines)) {
-    return data.lines
-      .filter(l => l.text || l.content)
-      .map(l => ({ time: (l.startMs || l.start_ms || 0) / 1000, text: (l.text || l.content || '').trim() }))
-      .filter(l => l.text);
-  }
-  // Word-level: group into lines by newline markers or chunks
-  if (Array.isArray(data.words)) {
-    const lines = [];
-    let current = { time: 0, words: [] };
-    for (const w of data.words) {
-      if (w.word === '\n' || w.text === '\n') {
-        if (current.words.length) {
-          lines.push({ time: current.time, text: current.words.join(' ') });
-          current = { time: 0, words: [] };
-        }
-      } else {
-        const t = (w.startMs || w.start_ms || w.time || 0) / 1000;
-        if (!current.words.length) current.time = t;
-        current.words.push(w.word || w.text || '');
-      }
+function normalizeWordToken(word) {
+  const text = String(word?.word ?? word?.text ?? word?.token ?? '').trim();
+  if (!text) return null;
+
+  const startMs = toSeconds(word?.startMs) ?? toSeconds(word?.start_ms) ?? toSeconds(word?.timeMs);
+  const endMs = toSeconds(word?.endMs) ?? toSeconds(word?.end_ms);
+
+  const start =
+    toSeconds(word?.startS) ??
+    toSeconds(word?.start_s) ??
+    (startMs !== null ? startMs / 1000 : null) ??
+    toSeconds(word?.time) ??
+    0;
+
+  const end =
+    toSeconds(word?.endS) ??
+    toSeconds(word?.end_s) ??
+    (endMs !== null ? endMs / 1000 : null) ??
+    Math.max(start + 0.24, start);
+
+  return {
+    text,
+    start: Math.max(0, start),
+    end: Math.max(Math.max(0, start), end),
+  };
+}
+
+function joinWords(words) {
+  return words.reduce((line, curr, idx) => {
+    if (idx === 0) return curr.text;
+    if (/^[,.;!?)]/.test(curr.text)) return `${line}${curr.text}`;
+    if (/^'/.test(curr.text)) return `${line}${curr.text}`;
+    return `${line} ${curr.text}`;
+  }, '');
+}
+
+function buildKaraokeLinesFromWords(words) {
+  if (!words.length) return [];
+
+  const lines = [];
+  let current = [];
+
+  const flush = () => {
+    if (!current.length) return;
+    lines.push({
+      time: current[0].start,
+      endTime: current[current.length - 1].end,
+      text: joinWords(current),
+      words: current,
+    });
+    current = [];
+  };
+
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const prev = words[i - 1];
+    const gap = prev ? Math.max(0, word.start - prev.end) : 0;
+    const prevEndsSentence = prev ? /[.!?]$/.test(prev.text) : false;
+    const shouldBreak =
+      current.length >= 8 ||
+      gap >= 1.15 ||
+      (prevEndsSentence && gap >= 0.45);
+
+    if (current.length > 0 && shouldBreak) {
+      flush();
     }
-    if (current.words.length) lines.push({ time: current.time, text: current.words.join(' ') });
-    return lines.filter(l => l.text.trim());
+
+    current.push(word);
   }
-  return [];
+
+  flush();
+  return lines;
 }
 
-export default function LyricsView({ track, currentTime, onSeek }) {
+function normalizeLine(line) {
+  const text = String(line?.text ?? line?.content ?? '').trim();
+  if (!text) return null;
+
+  const startMs = toSeconds(line?.startMs) ?? toSeconds(line?.start_ms);
+  const endMs = toSeconds(line?.endMs) ?? toSeconds(line?.end_ms);
+
+  const time =
+    toSeconds(line?.time) ??
+    toSeconds(line?.startS) ??
+    toSeconds(line?.start_s) ??
+    (startMs !== null ? startMs / 1000 : null) ??
+    0;
+
+  const endTime =
+    toSeconds(line?.endS) ??
+    toSeconds(line?.end_s) ??
+    (endMs !== null ? endMs / 1000 : null) ??
+    Math.max(time + 3, time);
+
+  const words = Array.isArray(line?.words)
+    ? line.words.map(normalizeWordToken).filter(Boolean)
+    : [];
+
+  return {
+    time,
+    endTime: Math.max(endTime, time),
+    text,
+    words,
+  };
+}
+
+function parseApiData(data) {
+  if (!data) return { lines: [], hasWordTiming: false, source: 'none' };
+
+  if (Array.isArray(data.karaokeLines)) {
+    const lines = data.karaokeLines
+      .map(normalizeLine)
+      .filter(Boolean)
+      .sort((a, b) => a.time - b.time);
+
+    const hasWordTiming = lines.some(line => Array.isArray(line.words) && line.words.length > 0);
+    if (lines.length) return { lines, hasWordTiming, source: 'api' };
+  }
+
+  const alignedWordCandidates = Array.isArray(data.alignedWords)
+    ? data.alignedWords
+    : Array.isArray(data.words)
+      ? data.words
+      : [];
+
+  if (alignedWordCandidates.length) {
+    const words = alignedWordCandidates
+      .map(normalizeWordToken)
+      .filter(Boolean)
+      .sort((a, b) => a.start - b.start);
+
+    const lines = buildKaraokeLinesFromWords(words);
+    if (lines.length) {
+      return { lines, hasWordTiming: true, source: 'api' };
+    }
+  }
+
+  if (Array.isArray(data.lines)) {
+    const lines = data.lines
+      .map(normalizeLine)
+      .filter(Boolean)
+      .sort((a, b) => a.time - b.time);
+    if (lines.length) return { lines, hasWordTiming: false, source: 'api' };
+  }
+
+  return { lines: [], hasWordTiming: false, source: 'none' };
+}
+
+function getWordTokenPrefix(previous, current) {
+  if (!previous) return '';
+  if (/^[,.;!?)]/.test(current)) return '';
+  if (/^'/.test(current)) return '';
+  return ' ';
+}
+
+export default function LyricsView({ track, currentTime, onSeek, karaokeEnabled = true }) {
   const [lines, setLines] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [source, setSource] = useState('none'); // 'api' | 'lrc' | 'plain' | 'none'
-  const [offset, setOffset] = useState(0); // seconds, user-adjustable
+  const [source, setSource] = useState('none');
+  const [offset, setOffset] = useState(0);
   const [showOffsetPanel, setShowOffsetPanel] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  const [activeWordIdx, setActiveWordIdx] = useState(-1);
+  const [hasWordTiming, setHasWordTiming] = useState(false);
+
   const lyricsContainerRef = useRef(null);
   const hasAutoScrolled = useRef(false);
   const fetchedTrackId = useRef(null);
 
-  // ── FETCH LYRICS ──────────────────────────────────────────────────
   const fetchLyrics = useCallback(async () => {
     if (!track?.id) return;
     if (fetchedTrackId.current === track.id) return;
@@ -86,27 +228,28 @@ export default function LyricsView({ track, currentTime, onSeek }) {
     setLines([]);
     setSource('none');
     setOffset(0);
+    setHasWordTiming(false);
 
-    // 1. Try API timestamped lyrics first
     if (track.task_id && track.external_audio_id) {
       try {
         const res = await base44.functions.invoke('getTimestampedLyrics', {
           taskId: track.task_id,
           audioId: track.external_audio_id,
         });
-        const parsed = parseApiData(res?.data?.data || res?.data);
-        if (parsed.length > 0) {
-          setLines(parsed);
-          setSource('api');
+        const payload = res?.data?.data ?? res?.data ?? res;
+        const parsed = parseApiData(payload);
+        if (parsed.lines.length > 0) {
+          setLines(parsed.lines);
+          setSource(parsed.source);
+          setHasWordTiming(parsed.hasWordTiming);
           setLoading(false);
           return;
         }
       } catch (e) {
-        // fall through
+        setError('Unable to fetch synced lyrics from provider.');
       }
     }
 
-    // 2. Try LRC-formatted lyrics stored on the track
     if (track.lyrics && track.lyrics.includes('[')) {
       const parsed = parseLrc(track.lyrics);
       if (parsed.length > 0) {
@@ -117,7 +260,6 @@ export default function LyricsView({ track, currentTime, onSeek }) {
       }
     }
 
-    // 3. Fall back to plain lyrics with even distribution
     if (track.lyrics) {
       const duration = track.duration || 180;
       const parsed = parsePlainLyrics(track.lyrics, duration);
@@ -138,51 +280,84 @@ export default function LyricsView({ track, currentTime, onSeek }) {
     fetchLyrics();
   }, [fetchLyrics]);
 
-  // ── ACTIVE LINE SYNC ──────────────────────────────────────────────
   const adjustedTime = currentTime + offset;
 
   useEffect(() => {
     if (lines.length === 0) return;
+
     let idx = -1;
     for (let i = 0; i < lines.length; i++) {
-      if (adjustedTime >= lines[i].time) {
-        const next = lines[i + 1];
-        if (!next || adjustedTime < next.time) { idx = i; break; }
+      const line = lines[i];
+      const next = lines[i + 1];
+      const endBoundary = Number.isFinite(line.endTime)
+        ? line.endTime
+        : (next ? next.time : Number.POSITIVE_INFINITY);
+
+      if (adjustedTime >= line.time && adjustedTime < endBoundary) {
+        idx = i;
+        break;
       }
     }
-    // Fallback: last line whose time <= adjustedTime
+
     if (idx === -1) {
       for (let i = lines.length - 1; i >= 0; i--) {
-        if (adjustedTime >= lines[i].time) { idx = i; break; }
+        if (adjustedTime >= lines[i].time) {
+          idx = i;
+          break;
+        }
       }
     }
+
     setActiveIdx(idx);
   }, [adjustedTime, lines]);
 
-  // ── AUTO SCROLL ───────────────────────────────────────────────────
+  useEffect(() => {
+    const activeLine = lines[activeIdx];
+    if (!activeLine || !activeLine.words?.length || !karaokeEnabled) {
+      setActiveWordIdx(-1);
+      return;
+    }
+
+    let idx = -1;
+    for (let i = 0; i < activeLine.words.length; i++) {
+      const word = activeLine.words[i];
+      const next = activeLine.words[i + 1];
+      const endBoundary = Number.isFinite(word.end) ? word.end : (next ? next.start : activeLine.endTime);
+      if (adjustedTime >= word.start && adjustedTime < endBoundary) {
+        idx = i;
+        break;
+      }
+      if (adjustedTime >= word.end) {
+        idx = i;
+      }
+    }
+
+    setActiveWordIdx(idx);
+  }, [activeIdx, adjustedTime, lines, karaokeEnabled]);
+
   useEffect(() => {
     if (activeIdx < 0 || !lyricsContainerRef.current) return;
     const container = lyricsContainerRef.current;
     const el = container.querySelector(`[data-lyric-idx="${activeIdx}"]`);
     if (!el) return;
+
     const containerRect = container.getBoundingClientRect();
     const elRect = el.getBoundingClientRect();
     const elCenterRelative = elRect.top - containerRect.top + elRect.height / 2;
     const targetScrollTop = container.scrollTop + elCenterRelative - containerRect.height / 2;
+
     container.scrollTo({ top: targetScrollTop, behavior: hasAutoScrolled.current ? 'smooth' : 'auto' });
     hasAutoScrolled.current = true;
   }, [activeIdx]);
 
-  // ── OFFSET HELPERS ────────────────────────────────────────────────
   const nudgeOffset = (delta) => setOffset(v => Math.round((v + delta) * 10) / 10);
   const resetOffset = () => setOffset(0);
 
-  // ── RENDER ────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-3 text-white/30">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="text-sm">Loading lyrics…</p>
+        <p className="text-sm">Loading lyrics...</p>
       </div>
     );
   }
@@ -193,24 +368,30 @@ export default function LyricsView({ track, currentTime, onSeek }) {
         <MicVocal className="h-10 w-10" />
         <p className="text-sm font-medium">No lyrics available</p>
         <p className="text-xs text-white/15 text-center px-8">
-          {track?.is_instrumental ? 'This is an instrumental track.' : "Lyrics will appear here once they're generated."}
+          {track?.is_instrumental ? 'This is an instrumental track.' : "Lyrics will appear here once they are generated."}
         </p>
+        {error && <p className="text-[11px] text-amber-300/80 text-center px-8">{error}</p>}
       </div>
     );
   }
 
   return (
     <div className="h-full flex flex-col relative">
-      {/* Source badge + offset toggle */}
       <div className="flex items-center justify-between px-1 mb-2 flex-shrink-0">
-        <span className="text-[10px] uppercase tracking-widest font-semibold px-2 py-0.5 rounded-full"
-          style={{ background: source === 'api' ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)', color: source === 'api' ? '#22c55e' : 'rgba(255,255,255,0.3)' }}>
-          {source === 'api' ? '✦ Synced' : source === 'lrc' ? '♩ Timed' : '~ Estimated'}
+        <span
+          className="text-[10px] uppercase tracking-widest font-semibold px-2 py-0.5 rounded-full"
+          style={{
+            background: source === 'api' ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
+            color: source === 'api' ? '#22c55e' : 'rgba(255,255,255,0.3)',
+          }}
+        >
+          {source === 'api' ? 'Synced' : source === 'lrc' ? 'Timed' : 'Estimated'}
         </span>
+
         <button
           onClick={() => setShowOffsetPanel(v => !v)}
           className={cn(
-            'flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border transition-all',
+            'flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border transition-all min-h-[32px]',
             showOffsetPanel
               ? 'border-white/20 text-white/70 bg-white/10'
               : 'border-white/10 text-white/30 hover:text-white/60'
@@ -223,7 +404,6 @@ export default function LyricsView({ track, currentTime, onSeek }) {
         </button>
       </div>
 
-      {/* Offset adjustment panel */}
       <AnimatePresence>
         {showOffsetPanel && (
           <motion.div
@@ -240,8 +420,10 @@ export default function LyricsView({ track, currentTime, onSeek }) {
                   <Minus className="h-3 w-3" />
                 </button>
                 <button onClick={() => nudgeOffset(-0.5)} className="text-xs px-2 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 transition-all">-0.5</button>
-                <div className="px-2 h-7 flex items-center rounded-lg text-sm font-mono font-bold tabular-nums min-w-[52px] text-center justify-center"
-                  style={{ color: offset === 0 ? 'rgba(255,255,255,0.3)' : '#22c55e', background: 'rgba(255,255,255,0.05)' }}>
+                <div
+                  className="px-2 h-7 flex items-center rounded-lg text-sm font-mono font-bold tabular-nums min-w-[52px] text-center justify-center"
+                  style={{ color: offset === 0 ? 'rgba(255,255,255,0.3)' : '#22c55e', background: 'rgba(255,255,255,0.05)' }}
+                >
                   {offset > 0 ? `+${offset}s` : `${offset}s`}
                 </div>
                 <button onClick={() => nudgeOffset(0.5)} className="text-xs px-2 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 transition-all">+0.5</button>
@@ -259,7 +441,6 @@ export default function LyricsView({ track, currentTime, onSeek }) {
         )}
       </AnimatePresence>
 
-      {/* Scrollable lyrics */}
       <div
         ref={lyricsContainerRef}
         className="flex-1 overflow-y-auto"
@@ -269,12 +450,13 @@ export default function LyricsView({ track, currentTime, onSeek }) {
           {lines.map((line, i) => {
             const isActive = i === activeIdx;
             const dist = Math.abs(i - activeIdx);
+
             return (
               <motion.button
-                key={i}
+                key={`${line.time}-${i}`}
                 data-lyric-idx={i}
-                onClick={() => onSeek && onSeek(line.time - offset)}
-                className="w-full text-center px-3 py-1.5 rounded-xl transition-all cursor-pointer select-none leading-snug"
+                onClick={() => onSeek && onSeek(Math.max(0, line.time - offset))}
+                className="w-full text-center px-3 py-2 rounded-xl transition-all cursor-pointer select-none leading-snug min-h-[44px]"
                 animate={{
                   scale: isActive ? 1.04 : 1,
                   opacity: isActive ? 1 : Math.max(0.15, 1 - dist * 0.22),
@@ -295,7 +477,31 @@ export default function LyricsView({ track, currentTime, onSeek }) {
                     style={{ boxShadow: '0 0 8px rgba(34,197,94,0.8)' }}
                   />
                 )}
-                {line.text}
+
+                {isActive && karaokeEnabled && hasWordTiming && line.words?.length ? (
+                  <span>
+                    {line.words.map((word, wordIndex) => {
+                      const prefix = getWordTokenPrefix(line.words[wordIndex - 1], word.text);
+                      const isCurrentWord = wordIndex === activeWordIdx;
+                      const isPastWord = wordIndex < activeWordIdx;
+
+                      return (
+                        <span
+                          key={`${word.start}-${wordIndex}`}
+                          style={{
+                            color: isCurrentWord || isPastWord ? '#22c55e' : 'inherit',
+                            textShadow: isCurrentWord ? '0 0 16px rgba(34,197,94,0.75)' : 'none',
+                            transition: 'color 120ms linear',
+                          }}
+                        >
+                          {prefix}{word.text}
+                        </span>
+                      );
+                    })}
+                  </span>
+                ) : (
+                  line.text
+                )}
               </motion.button>
             );
           })}
