@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import {
-  Play, Pause, SkipBack, SkipForward,
+  Play, Pause, SkipBack, SkipForward, Rewind, FastForward, Maximize2,
   Share2, Download, Mic2, X, Music2,
   Shuffle, Repeat, Repeat1, Volume2, VolumeX,
 } from 'lucide-react';
@@ -13,6 +13,7 @@ import FullscreenPlayer from './FullscreenPlayer';
 import { toast } from 'sonner';
 import LyricsView from './LyricsView';
 import ShareTrackDialog from '@/components/collaboration/ShareTrackDialog';
+import { useNavigate } from 'react-router-dom';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Utilities
@@ -95,7 +96,17 @@ function VinylDisc({ src, isPlaying, onClick }) {
 // ─────────────────────────────────────────────────────────────────────────────
 //  Holographic Liquid Waveform Seekbar
 // ─────────────────────────────────────────────────────────────────────────────
-function HolographicWaveform({ audioSrc, currentTime, duration, onSeek, isPlaying }) {
+function HolographicWaveform({
+  audioSrc,
+  currentTime,
+  duration,
+  onSeek,
+  isPlaying,
+  bars = 180,
+  minBarWidth = 0.35,
+  barGap = 1.7,
+  radius = 0.8,
+}) {
   const canvasRef   = useRef(null);
   const rafRef      = useRef(null);
   const waveRef     = useRef(null);
@@ -116,7 +127,7 @@ function HolographicWaveform({ audioSrc, currentTime, duration, onSeek, isPlayin
   const decodeAudio = useCallback(async (src) => {
     if (!src || decodedRef.current === src) return;
     decodedRef.current = src;
-    const BARS = 220;
+    const BARS = bars;
     try {
       const AC  = new (window.AudioContext || window.webkitAudioContext)();
       const res = await fetch(src, { mode: 'cors' });
@@ -138,7 +149,7 @@ function HolographicWaveform({ audioSrc, currentTime, duration, onSeek, isPlayin
     } catch {
       waveRef.current = buildFallback(src, BARS);
     }
-  }, [buildFallback]);
+  }, [bars, buildFallback]);
 
   useEffect(() => { if (audioSrc) decodeAudio(audioSrc); }, [audioSrc, decodeAudio]);
 
@@ -171,7 +182,7 @@ function HolographicWaveform({ audioSrc, currentTime, duration, onSeek, isPlayin
       const pct   = duration > 0 ? Math.min(t / duration, 1) : 0;
       const headX = pct * W;
       const data  = waveRef.current;
-      const BARS  = data ? data.length : 220;
+      const BARS  = data ? data.length : bars;
       const phase = phaseRef.current;
 
       // Holographic shimmer sweep
@@ -190,7 +201,7 @@ function HolographicWaveform({ audioSrc, currentTime, duration, onSeek, isPlayin
         const ripple = isPlaying ? Math.sin(phase + i * 0.24) * 0.065 : 0;
         const barAmp = Math.max(0.06, Math.min(1, amp + ripple));
         const x      = (i / BARS) * W;
-        const barW   = Math.max(1.0, W / BARS - 1.1);
+        const barW   = Math.max(minBarWidth, W / BARS - barGap);
         const barH   = Math.max(2, barAmp * H * 0.88);
         const y      = (H - barH) / 2;
         const played = x + barW * 0.5 < headX;
@@ -216,7 +227,7 @@ function HolographicWaveform({ audioSrc, currentTime, duration, onSeek, isPlayin
           ctx.shadowBlur = 0;
         }
         ctx.beginPath();
-        ctx.roundRect(x, y, barW, barH, 1.4);
+        ctx.roundRect(x, y, barW, barH, radius);
         ctx.fill();
       }
 
@@ -236,7 +247,7 @@ function HolographicWaveform({ audioSrc, currentTime, duration, onSeek, isPlayin
 
     draw();
     return () => { cancelAnimationFrame(rafRef.current); ro.disconnect(); };
-  }, [currentTime, duration, isPlaying]);
+  }, [barGap, bars, currentTime, duration, isPlaying, minBarWidth, radius]);
 
   const getTime = (e) => {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -390,6 +401,7 @@ function RepeatIcon({ mode, className }) {
 //  Main Global Audio Player
 // ─────────────────────────────────────────────────────────────────────────────
 export default function GlobalAudioPlayer() {
+  const navigate = useNavigate();
   const {
     currentTrack, isPlaying, currentTime, duration, volume,
     audioRef, setCurrentTime, setDuration, setIsPlaying,
@@ -401,10 +413,12 @@ export default function GlobalAudioPlayer() {
   const [showShare,    setShowShare]    = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [showLyrics,   setShowLyrics]   = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
 
   const audioCallbackRef = useCallback((node) => {
     if (!node) return;
     audioRef.current = node;
+    node.playbackRate = playbackRate;
     node.addEventListener('timeupdate',     () => setCurrentTime(node.currentTime));
     node.addEventListener('loadedmetadata', () => {
       if (isFinite(node.duration) && !isNaN(node.duration)) setDuration(node.duration);
@@ -426,18 +440,42 @@ export default function GlobalAudioPlayer() {
     });
   }, []);  
 
-  if (!currentTrack || !playerVisible) {
-    return <audio ref={audioCallbackRef} crossOrigin="anonymous" preload="auto" style={{ display: 'none' }} />;
-  }
+  useEffect(() => {
+    if (!audioRef.current) return;
+    audioRef.current.playbackRate = playbackRate;
+  }, [audioRef, playbackRate]);
 
-  const audioSrc = currentTrack.__resolvedAudioSource || currentTrack.stream_audio_url || currentTrack.audio_url || '';
-  const coverImg = currentTrack.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=120&h=120&fit=crop';
+  const audioSrc = currentTrack?.__resolvedAudioSource || currentTrack?.stream_audio_url || currentTrack?.audio_url || '';
+  const coverImg = currentTrack?.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=120&h=120&fit=crop';
   const isMuted  = volume === 0;
+  const hasTrack = !!currentTrack;
+  const trackTitle = currentTrack?.title || 'Nothing playing';
+  const artistName = currentTrack?.created_by ? `Accoustica-${currentTrack.created_by.split('@')[0]}` : 'Select a track to start';
 
   const openFullscreen = () => {
+    if (!hasTrack) return;
     ensureAudioContext();
     resumeAudioContext();
     setIsFullscreen(true);
+  };
+
+  const cyclePlaybackRate = () => {
+    const audio = audioRef.current;
+    const rates = [1, 1.25, 1.5, 2];
+    const idx = rates.indexOf(playbackRate);
+    const next = rates[(idx + 1) % rates.length];
+    setPlaybackRate(next);
+    if (audio) audio.playbackRate = next;
+  };
+
+  const goToTrackInfo = () => {
+    if (!currentTrack?.id) return;
+    navigate(`/TrackInfo?id=${currentTrack.id}`);
+  };
+
+  const goToArtistInfo = () => {
+    if (!currentTrack?.created_by) return;
+    navigate(`/ArtistInfo?email=${encodeURIComponent(currentTrack.created_by)}`);
   };
 
   return (
@@ -470,8 +508,8 @@ export default function GlobalAudioPlayer() {
             transition={{ type: 'spring', damping: 30, stiffness: 260 }}
             className="fixed left-0 right-0 z-[100] flex flex-col select-none"
             style={{
-              bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--mobile-nav-reserve, 0px))',
-              height: 'clamp(64px, 10vh, 96px)',
+              bottom: 'env(safe-area-inset-bottom, 0px)',
+              height: 'clamp(70px, 10.5vh, 104px)',
               background: 'linear-gradient(180deg, rgba(7,7,13,0.94) 0%, rgba(4,4,9,0.98) 100%)',
               backdropFilter: 'blur(36px)',
               WebkitBackdropFilter: 'blur(36px)',
@@ -479,27 +517,46 @@ export default function GlobalAudioPlayer() {
               boxShadow: '0 -4px 32px rgba(0,0,0,0.55), 0 -1px 0 rgba(255,255,255,0.04)',
             }}
           >
-            {/* ── Holographic Waveform — top 36% ─────────────────────── */}
-            <div className="w-full flex-shrink-0" style={{ height: '36%', minHeight: 20 }}>
-              <HolographicWaveform
-                audioSrc={audioSrc}
-                currentTime={currentTime}
-                duration={duration}
-                onSeek={seek}
-                isPlaying={isPlaying}
-              />
+            {/* Centered slim waveform */}
+            <div className="w-full flex items-center justify-center px-2 pt-1.5 pb-1 flex-shrink-0">
+              <div className="w-[min(56vw,760px)] max-w-full h-[14px]">
+                <HolographicWaveform
+                  audioSrc={audioSrc}
+                  currentTime={currentTime}
+                  duration={duration}
+                  onSeek={seek}
+                  isPlaying={isPlaying}
+                  bars={150}
+                  minBarWidth={0.25}
+                  barGap={2.35}
+                  radius={0.55}
+                />
+              </div>
             </div>
 
-            {/* ── Controls row — bottom 64% ───────────────────────────── */}
-            <div className="flex items-center flex-1 min-h-0 px-2 sm:px-3 gap-1.5 sm:gap-2">
+            {/* Controls row */}
+            <div className="flex items-center flex-1 min-h-0 px-2 sm:px-3 gap-1.5 sm:gap-2 pb-1">
 
               {/* Vinyl disc → click opens fullscreen */}
               <VinylDisc src={coverImg} isPlaying={isPlaying} onClick={openFullscreen} />
 
               {/* Track info */}
-              <div className="hidden xs:flex flex-col min-w-0 flex-1 sm:flex-none sm:w-36 md:w-48 overflow-hidden">
-                <p className="text-white text-[11px] sm:text-xs font-semibold truncate leading-tight">{currentTrack.title}</p>
-                <p className="text-white/38 text-[9px] sm:text-[10px] truncate">
+              <div className="hidden xs:flex flex-col min-w-0 flex-1 sm:flex-none sm:w-40 md:w-52 overflow-hidden">
+                <button
+                  onClick={goToTrackInfo}
+                  disabled={!hasTrack}
+                  className="text-left text-white text-[11px] sm:text-xs font-semibold truncate leading-tight hover:text-green-300 transition-colors disabled:text-white/45 disabled:cursor-default"
+                >
+                  {trackTitle}
+                </button>
+                <button
+                  onClick={goToArtistInfo}
+                  disabled={!hasTrack}
+                  className="text-left text-white/38 text-[9px] sm:text-[10px] truncate hover:text-white/80 transition-colors disabled:cursor-default"
+                >
+                  {artistName}
+                </button>
+                <p className="text-white/28 text-[9px] sm:text-[10px] truncate">
                   {formatTime(currentTime)}<span className="mx-0.5 text-white/20">/</span>{formatTime(duration)}
                 </p>
               </div>
@@ -515,23 +572,33 @@ export default function GlobalAudioPlayer() {
               {/* Playback controls */}
               <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
                 <button
+                  onClick={() => seek(Math.max(0, currentTime - 10))}
+                  aria-label="Rewind 10 seconds"
+                  className="hidden sm:flex w-7 h-7 items-center justify-center rounded-full text-white/30 hover:text-white/75 hover:bg-white/5 transition-all"
+                  disabled={!hasTrack}
+                ><Rewind className="h-3 w-3" /></button>
+
+                <button
                   onClick={toggleShuffle}
                   aria-label="Shuffle" aria-pressed={isShuffle}
+                  disabled={!hasTrack}
                   className={cn(
-                    'hidden md:flex w-7 h-7 items-center justify-center rounded-full transition-all',
+                    'hidden md:flex w-7 h-7 items-center justify-center rounded-full transition-all disabled:opacity-35',
                     isShuffle ? 'text-green-400 bg-green-400/10' : 'text-white/28 hover:text-white/70 hover:bg-white/5',
                   )}
                 ><Shuffle className="h-3 w-3" /></button>
 
                 <button
                   onClick={playPrevious} aria-label="Previous track"
-                  className="w-7 h-7 flex items-center justify-center rounded-full text-white/45 hover:text-white transition-all hover:bg-white/5 active:scale-90"
+                  disabled={!hasTrack}
+                  className="w-7 h-7 flex items-center justify-center rounded-full text-white/45 hover:text-white transition-all hover:bg-white/5 active:scale-90 disabled:opacity-40"
                 ><SkipBack className="h-3.5 w-3.5" /></button>
 
                 <button
-                  onClick={() => { ensureAudioContext(); resumeAudioContext(); togglePlayPause(); }}
+                  onClick={() => { if (!hasTrack) return; ensureAudioContext(); resumeAudioContext(); togglePlayPause(); }}
                   aria-label={isPlaying ? 'Pause' : 'Play'}
-                  className="relative flex items-center justify-center rounded-full text-black font-bold flex-shrink-0 transition-all active:scale-90"
+                  disabled={!hasTrack}
+                  className="relative flex items-center justify-center rounded-full text-black font-bold flex-shrink-0 transition-all active:scale-90 disabled:opacity-40 disabled:cursor-default"
                   style={{
                     width: 'clamp(32px, 4.5vh, 42px)', height: 'clamp(32px, 4.5vh, 42px)',
                     background: 'linear-gradient(135deg, #22c55e 0%, #a855f7 55%, #ec4899 100%)',
@@ -543,47 +610,75 @@ export default function GlobalAudioPlayer() {
 
                 <button
                   onClick={playNext} aria-label="Next track"
-                  className="w-7 h-7 flex items-center justify-center rounded-full text-white/45 hover:text-white transition-all hover:bg-white/5 active:scale-90"
+                  disabled={!hasTrack}
+                  className="w-7 h-7 flex items-center justify-center rounded-full text-white/45 hover:text-white transition-all hover:bg-white/5 active:scale-90 disabled:opacity-40"
                 ><SkipForward className="h-3.5 w-3.5" /></button>
 
                 <button
                   onClick={toggleRepeat} aria-label={`Repeat: ${repeatMode}`}
+                  disabled={!hasTrack}
                   className={cn(
-                    'hidden md:flex w-7 h-7 items-center justify-center rounded-full transition-all',
+                    'hidden md:flex w-7 h-7 items-center justify-center rounded-full transition-all disabled:opacity-35',
                     repeatMode !== 'off' ? 'text-green-400 bg-green-400/10' : 'text-white/28 hover:text-white/70 hover:bg-white/5',
                   )}
                 ><RepeatIcon mode={repeatMode} className="h-3 w-3" /></button>
+
+                <button
+                  onClick={() => seek(Math.min(duration || currentTime + 10, currentTime + 10))}
+                  aria-label="Forward 10 seconds"
+                  className="hidden sm:flex w-7 h-7 items-center justify-center rounded-full text-white/30 hover:text-white/75 hover:bg-white/5 transition-all"
+                  disabled={!hasTrack}
+                ><FastForward className="h-3 w-3" /></button>
               </div>
 
               {/* Action buttons */}
               <div className="flex items-center gap-0 flex-shrink-0">
                 <button
-                  onClick={() => setShowLyrics(v => !v)} aria-label="Toggle lyrics" aria-pressed={showLyrics}
+                  onClick={() => hasTrack && setShowLyrics(v => !v)} aria-label="Toggle lyrics" aria-pressed={showLyrics} disabled={!hasTrack}
                   className={cn(
-                    'hidden sm:flex w-7 h-7 items-center justify-center rounded-full transition-all',
+                    'hidden sm:flex w-7 h-7 items-center justify-center rounded-full transition-all disabled:opacity-35',
                     showLyrics ? 'text-purple-400 bg-purple-400/12' : 'text-white/28 hover:text-white/65 hover:bg-white/5',
                   )}
                 ><Mic2 className="h-3 w-3" /></button>
 
                 <button
-                  onClick={() => setShowShare(v => !v)} aria-label="Share track"
-                  className="w-7 h-7 flex items-center justify-center rounded-full text-white/28 hover:text-white/65 hover:bg-white/5 transition-all"
+                  onClick={() => setShowShare(v => !v)} aria-label="Share track" disabled={!hasTrack}
+                  className="w-7 h-7 flex items-center justify-center rounded-full text-white/28 hover:text-white/65 hover:bg-white/5 transition-all disabled:opacity-35"
                 ><Share2 className="h-3 w-3" /></button>
 
                 <button
-                  onClick={() => setShowDownload(v => !v)} aria-label="Download track"
-                  className="hidden sm:flex w-7 h-7 items-center justify-center rounded-full text-white/28 hover:text-white/65 hover:bg-white/5 transition-all"
+                  onClick={() => setShowDownload(v => !v)} aria-label="Download track" disabled={!hasTrack}
+                  className="hidden sm:flex w-7 h-7 items-center justify-center rounded-full text-white/28 hover:text-white/65 hover:bg-white/5 transition-all disabled:opacity-35"
                 ><Download className="h-3 w-3" /></button>
+
+                <button
+                  onClick={cyclePlaybackRate}
+                  className="hidden lg:flex w-8 h-7 items-center justify-center rounded-full text-[10px] font-semibold text-white/55 hover:text-white hover:bg-white/7 transition-all"
+                  aria-label="Change playback speed"
+                  disabled={!hasTrack}
+                >
+                  {playbackRate}x
+                </button>
+
+                <button
+                  onClick={openFullscreen}
+                  className="hidden md:flex w-7 h-7 items-center justify-center rounded-full text-white/30 hover:text-white/75 hover:bg-white/5 transition-all"
+                  aria-label="Open fullscreen player"
+                  disabled={!hasTrack}
+                >
+                  <Maximize2 className="h-3 w-3" />
+                </button>
 
                 {/* Volume — desktop only */}
                 <div className="hidden lg:flex items-center gap-1.5 ml-1">
                   <button
                     onClick={() => changeVolume(isMuted ? 70 : 0)}
                     aria-label={isMuted ? 'Unmute' : 'Mute'}
-                    className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-white/70 transition-colors flex-shrink-0"
-                  >
-                    {isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
-                  </button>
+                      className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-white/70 transition-colors flex-shrink-0"
+                      disabled={!hasTrack}
+                    >
+                      {isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+                    </button>
                   <input
                     type="range" min={0} max={100} value={volume}
                     onChange={e => changeVolume(Number(e.target.value))}

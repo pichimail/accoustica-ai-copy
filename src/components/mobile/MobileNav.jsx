@@ -41,6 +41,7 @@ export default function MobileNav({ currentPageName, user }) {
       {/* ── NAV BAR ── */}
       <nav
         className="lg:hidden fixed bottom-0 left-0 right-0 z-40"
+        style={{ bottom: 'calc(var(--player-reserve, 0px) + env(safe-area-inset-bottom, 0px))' }}
         aria-label="Mobile navigation"
       >
         {/* Frosted glass bar */}

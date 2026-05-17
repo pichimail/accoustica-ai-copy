@@ -267,8 +267,8 @@ export default function Layout({ children, currentPageName }) {
 }
 
 function ReservedMain({ children, currentPageName, showSidebar, sidebarOpen }) {
-  const { currentTrack, playerVisible } = useAudioPlayer();
-  const hasVisiblePlayer = !!currentTrack && playerVisible;
+  const { playerVisible } = useAudioPlayer();
+  const hasVisiblePlayer = !!playerVisible;
   const hasMobileNav = currentPageName !== 'Home';
   // Player bar is exactly 10vh, clamped between 64-96px
   const playerReserve = hasVisiblePlayer ? 'clamp(64px, 10vh, 96px)' : '0px';
