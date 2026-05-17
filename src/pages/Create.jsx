@@ -66,6 +66,7 @@ export default function CreatePage() {
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search || '');
   const isGenerateOnlyMobile = params.get('panel') === 'generate';
+  const preselectedPersonaFromUrl = params.get('personaId');
   // ── User & plan ──
   const [user, setUser] = useState(null);
   useEffect(() => {base44.auth.me().then(setUser).catch(() => {});}, []);
@@ -171,6 +172,24 @@ export default function CreatePage() {
     }
   });
 
+  const { data: personas = [] } = useQuery({
+    queryKey: ['personas', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return [];
+      return base44.entities.Persona.filter({ created_by: user.email }, '-created_date', 100);
+    },
+    enabled: !!user?.email,
+  });
+
+  const selectedPersona = personas.find((p) => p.id === selectedPersonaId);
+  const selectedPersonaExternalId = selectedPersona?.persona_id || null;
+
+  useEffect(() => {
+    if (preselectedPersonaFromUrl) {
+      setSelectedPersonaId(preselectedPersonaFromUrl);
+    }
+  }, [preselectedPersonaFromUrl]);
+
   const filteredLibTracks = allTracks.filter((t) =>
   !libSearch || t.title?.toLowerCase().includes(libSearch.toLowerCase())
   );
@@ -238,7 +257,7 @@ export default function CreatePage() {
           styleWeight,
           weirdnessConstraint: clarityWeight,
           ...(vocalGender !== 'Auto' && { vocalGender }),
-          ...(selectedPersonaId && { personaId: selectedPersonaId })
+          ...(selectedPersonaExternalId && { personaId: selectedPersonaExternalId })
         });
       } else {
         const strictVoiceDirective = selectedPersonaId && strictVoiceClone ? ' strict voice clone, preserve identity timbre and articulation' : '';
@@ -254,7 +273,7 @@ export default function CreatePage() {
           styleWeight,
           weirdnessConstraint: clarityWeight,
           ...(vocalGender !== 'Auto' && { vocalGender }),
-          ...(selectedPersonaId && { personaId: selectedPersonaId })
+          ...(selectedPersonaId && { selectedPersonaId })
         } : {
           mode: 'simple',
           model: 'V5_5',

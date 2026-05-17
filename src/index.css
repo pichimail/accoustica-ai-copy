@@ -25,6 +25,23 @@ button, a, [role="button"] {
   touch-action: manipulation;
 }
 
+button,
+a,
+[role="button"],
+img,
+svg,
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input,
+textarea,
+.allow-select {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 @media (min-width: 1024px) {
   .app-shell-main {
     --mobile-nav-reserve: 0px !important;
@@ -183,5 +200,6 @@ button:focus-visible {
   }
   body {
     @apply bg-background text-foreground;
+    font-size: 14px;
   }
 }

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import { getPublicTrackUrl } from '@/lib/trackSharing';
+import PullToRefresh from '@/components/mobile/PullToRefresh';
 
 export default function SocialFeedPage() {
   const [user, setUser] = useState(null);
@@ -108,8 +109,18 @@ export default function SocialFeedPage() {
     toast.success('Public player link copied');
   };
 
+  const handleRefresh = async () => {
+    haptics.selection();
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['socialPublicTracks'] }),
+      queryClient.invalidateQueries({ queryKey: ['feedComments'] }),
+      queryClient.invalidateQueries({ queryKey: ['trackLikes'] }),
+    ]);
+  };
+
   return (
-    <main className="min-h-screen pb-36" style={{ background: '#020204', color: '#fff' }}>
+    <PullToRefresh onRefresh={handleRefresh}>
+      <main className="min-h-screen pb-36" style={{ background: '#020204', color: '#fff' }}>
       <header className="sticky top-0 z-30 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(2,2,4,0.92)', backdropFilter: 'blur(18px)' }}>
         <div className="px-4 md:px-6 py-4 max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end gap-4 md:justify-between">
@@ -179,7 +190,9 @@ export default function SocialFeedPage() {
           </div>
         }
       </section>
-    </main>);
+      </main>
+    </PullToRefresh>
+  );
 
 }
 

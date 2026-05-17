@@ -5,7 +5,10 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
-import VoiceClonePanel from './VoiceClonePanel';
+import { useQuery } from '@tanstack/react-query';
+import BottomSheet from '@/components/mobile/BottomSheet';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { haptics } from '@/components/utils/haptics';
 import PresetPromptsPanel from './PresetPromptsPanel';
 
 /**
@@ -610,6 +613,9 @@ export default function StudioGeneratePanel({
   const [showPresets, setShowPresets] = useState(false);
   const [generatingSimplePrompt, setGeneratingSimplePrompt] = useState(false);
   const [enhancingAdvanced, setEnhancingAdvanced] = useState(false);
+  const [personaPickerOpen, setPersonaPickerOpen] = useState(false);
+  const [remixSourcePickerOpen, setRemixSourcePickerOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   // Textarea row heights
   const [simpleRows, setSimpleRows] = useState(6);
@@ -617,6 +623,11 @@ export default function StudioGeneratePanel({
   const [lyricRows, setLyricRows] = useState(9);
   const [remixPromptRows, setRemixPromptRows] = useState(4);
   const [mashupPromptRows, setMashupPromptRows] = useState(4);
+
+  const { data: personas = [] } = useQuery({
+    queryKey: ['personas'],
+    queryFn: () => base44.entities.Persona.list('-created_date', 100),
+  });
 
   // Refs for drag state
   const simpleRowsRef = useRef(6);
@@ -635,6 +646,9 @@ export default function StudioGeneratePanel({
   mashupRowsRef.current = mashupPromptRows;
 
   const readyTracks = tracks.filter((t) => t.status === 'ready' && (t.audio_url || t.stream_audio_url));
+  const readyPersonas = personas.filter((p) => p.status === 'ready' && p.persona_id);
+  const selectedPersona = readyPersonas.find((p) => p.id === selectedPersonaId);
+  const selectedRemixTrack = readyTracks.find((t) => String(t.id) === String(remixSource));
   const simpleCount = simplePrompt.length;
   const stylesCount = styles.length;
   const lyricsCount = lyrics.length;
@@ -769,7 +783,7 @@ export default function StudioGeneratePanel({
   );
 
   return (
-    <div className="flex flex-col h-full overflow-hidden relative" style={{ background: '#0a0a0f', borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="flex flex-col h-full overflow-hidden relative" style={{ background: '#0a0a0f', borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
       {showPresets && (
         <div className="absolute inset-0 z-20">
           <PresetPromptsPanel onApply={handleApplyPreset} onClose={() => setShowPresets(false)} />
@@ -915,7 +929,65 @@ export default function StudioGeneratePanel({
             </PanelSection>
 
             <PanelSection label="Voice Persona">
-              <VoiceClonePanel selectedPersonaId={selectedPersonaId} onSelectPersona={onSelectPersona} />
+              <button
+                type="button"
+                onClick={() => {
+                  haptics.light();
+                  if (isMobile) {
+                    setPersonaPickerOpen(true);
+                    return;
+                  }
+                }}
+                className="w-full min-h-[44px] flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all hover:border-rose-500/40"
+                style={{ background: 'rgba(255,255,255,0.04)', borderColor: selectedPersona ? 'rgba(225,29,72,0.4)' : 'rgba(255,255,255,0.08)' }}
+              >
+                <Mic2 className="h-4 w-4 flex-shrink-0" style={{ color: selectedPersona ? '#e11d48' : 'rgba(255,255,255,0.35)' }} />
+                <span className={cn('flex-1 text-xs truncate', selectedPersona ? 'text-white font-semibold' : 'text-white/35')}>
+                  {selectedPersona ? selectedPersona.name : 'No voice persona (default)'}
+                </span>
+                <ChevronDown className="h-4 w-4 text-white/30" />
+              </button>
+
+              {!isMobile && (
+                <div className="mt-2 rounded-xl border overflow-hidden" style={{ background: 'rgba(14,14,22,0.98)', borderColor: 'rgba(255,255,255,0.1)' }}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectPersona?.(null)}
+                    className={cn('w-full min-h-[44px] flex items-center gap-2 px-3 py-2 text-xs text-left transition-all hover:bg-white/5', !selectedPersonaId && 'text-white')}
+                    style={{ color: !selectedPersonaId ? '#e11d48' : 'rgba(255,255,255,0.45)' }}
+                  >
+                    <Music className="h-3.5 w-3.5" />
+                    <span>Default Voice</span>
+                  </button>
+                  {readyPersonas.map((persona) => (
+                    <button
+                      key={persona.id}
+                      type="button"
+                      onClick={() => onSelectPersona?.(persona.id)}
+                      className="w-full min-h-[44px] flex items-center gap-2 px-3 py-2 text-xs text-left transition-all hover:bg-white/5"
+                      style={{ color: selectedPersonaId === persona.id ? '#e11d48' : 'rgba(255,255,255,0.75)' }}
+                    >
+                      <Mic2 className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="truncate">{persona.name}</span>
+                    </button>
+                  ))}
+                  {readyPersonas.length === 0 && (
+                    <div className="px-3 py-2 text-[11px] text-white/45">No ready personas yet. Create one in Voice Studio.</div>
+                  )}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  haptics.light();
+                  if (typeof window !== 'undefined') window.location.href = '/VoiceStudio';
+                }}
+                className="mt-2 min-h-[44px] w-full rounded-lg border border-white/15 bg-white/[0.04] text-white/80 text-xs font-semibold"
+              >
+                Open Voice Studio
+              </button>
+
               <label className="flex items-center gap-2 text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
                 <input type="checkbox" checked={!!strictVoiceClone} onChange={e => onStrictVoiceCloneChange?.(e.target.checked)} />
                 Strict voice match (best effort)
@@ -994,13 +1066,30 @@ export default function StudioGeneratePanel({
             </div>
 
             <PanelSection label="Remix Source">
-              <select value={remixSource} onChange={e => onRemixSourceChange(e.target.value)}
-                aria-label="Remix source track"
-                className={fieldClass('appearance-none')}
-                style={{ ...fieldStyle, color: remixSource ? '#fff' : 'rgba(255,255,255,0.35)' }}>
-                <option value="" style={{ background: '#0a0a0f' }}>Choose a generated or uploaded source</option>
-                {readyTracks.map(t => <option key={t.id} value={t.id} style={{ background: '#0a0a0f' }}>{t.title}</option>)}
-              </select>
+              {isMobile ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.light();
+                    setRemixSourcePickerOpen(true);
+                  }}
+                  className="w-full min-h-[44px] flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left"
+                  style={{ ...fieldStyle, color: remixSource ? '#fff' : 'rgba(255,255,255,0.35)' }}
+                >
+                  <span className="flex-1 truncate">
+                    {selectedRemixTrack?.title || 'Choose a generated or uploaded source'}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-white/35" />
+                </button>
+              ) : (
+                <select value={remixSource} onChange={e => onRemixSourceChange(e.target.value)}
+                  aria-label="Remix source track"
+                  className={fieldClass('appearance-none min-h-[44px]')}
+                  style={{ ...fieldStyle, color: remixSource ? '#fff' : 'rgba(255,255,255,0.35)' }}>
+                  <option value="" style={{ background: '#0a0a0f' }}>Choose a generated or uploaded source</option>
+                  {readyTracks.map(t => <option key={t.id} value={t.id} style={{ background: '#0a0a0f' }}>{t.title}</option>)}
+                </select>
+              )}
             </PanelSection>
 
             <PanelSection label="Target Style">
@@ -1096,6 +1185,75 @@ export default function StudioGeneratePanel({
             : <><Sparkles className="h-4 w-4" /> Generate</>}
         </button>
       </div>
+
+      <BottomSheet open={isMobile && personaPickerOpen} onClose={() => setPersonaPickerOpen(false)} title="Select Voice Persona">
+        <div className="space-y-2 pb-2">
+          <button
+            type="button"
+            onClick={() => {
+              onSelectPersona?.(null);
+              setPersonaPickerOpen(false);
+              haptics.selection();
+            }}
+            className="w-full min-h-[44px] rounded-xl border border-white/15 bg-white/[0.04] text-left px-3 text-sm"
+          >
+            Default Voice
+          </button>
+          {readyPersonas.map((persona) => (
+            <button
+              key={persona.id}
+              type="button"
+              onClick={() => {
+                onSelectPersona?.(persona.id);
+                setPersonaPickerOpen(false);
+                haptics.selection();
+              }}
+              className={cn(
+                'w-full min-h-[44px] rounded-xl border text-left px-3 text-sm',
+                selectedPersonaId === persona.id ? 'border-rose-500/45 bg-rose-500/15 text-rose-200' : 'border-white/15 bg-white/[0.04] text-white/85'
+              )}
+            >
+              {persona.name}
+            </button>
+          ))}
+          {readyPersonas.length === 0 && (
+            <p className="text-xs text-white/50">No ready personas yet. Create one in Voice Studio.</p>
+          )}
+        </div>
+      </BottomSheet>
+
+      <BottomSheet open={isMobile && remixSourcePickerOpen} onClose={() => setRemixSourcePickerOpen(false)} title="Select Remix Source">
+        <div className="space-y-2 pb-2">
+          <button
+            type="button"
+            onClick={() => {
+              onRemixSourceChange('');
+              setRemixSourcePickerOpen(false);
+              haptics.selection();
+            }}
+            className="w-full min-h-[44px] rounded-xl border border-white/15 bg-white/[0.04] text-left px-3 text-sm text-white/80"
+          >
+            Clear source
+          </button>
+          {readyTracks.map((track) => (
+            <button
+              key={track.id}
+              type="button"
+              onClick={() => {
+                onRemixSourceChange(track.id);
+                setRemixSourcePickerOpen(false);
+                haptics.selection();
+              }}
+              className={cn(
+                'w-full min-h-[44px] rounded-xl border text-left px-3 text-sm',
+                String(remixSource) === String(track.id) ? 'border-rose-500/45 bg-rose-500/15 text-rose-200' : 'border-white/15 bg-white/[0.04] text-white/85'
+              )}
+            >
+              {track.title}
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
     </div>
   );
 }

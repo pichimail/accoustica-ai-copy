@@ -101,6 +101,7 @@ Deno.serve(async (req) => {
             styleWeight,
             negativeTags,
             personaId,
+            selectedPersonaId,
         } = await req.json();
 
         const apiKey = Deno.env.get('SUNO_API_KEY');
@@ -129,6 +130,24 @@ Deno.serve(async (req) => {
         const finalModel = autoSelectModel(model, style, prompt);
 
         // Build API payload based on mode
+        let resolvedPersonaId = personaId;
+        let linkedBase44PersonaId: string | null = null;
+
+        if (selectedPersonaId) {
+            const selectedPersona = await base44.entities.Persona.get(selectedPersonaId);
+            if (!selectedPersona) {
+                return Response.json({ error: 'Selected persona not found' }, { status: 404, headers: corsHeaders });
+            }
+            if (selectedPersona.status !== 'ready') {
+                return Response.json({ error: 'Selected persona is not ready yet' }, { status: 400, headers: corsHeaders });
+            }
+            if (!selectedPersona.persona_id) {
+                return Response.json({ error: 'Selected persona has no external voice ID' }, { status: 400, headers: corsHeaders });
+            }
+            resolvedPersonaId = selectedPersona.persona_id;
+            linkedBase44PersonaId = selectedPersona.id;
+        }
+
         const payload = {
             customMode: resolvedCustomMode,
             instrumental: instrumental,
@@ -160,7 +179,7 @@ Deno.serve(async (req) => {
             // Add optional parameters
             const apiVocalGender = normalizeVocalGender(vocalGender);
             if (apiVocalGender) payload.vocalGender = apiVocalGender;
-            if (personaId) payload.personaId = personaId;
+            if (resolvedPersonaId) payload.personaId = resolvedPersonaId;
         }
 
         // Call Suno API to generate music
@@ -202,6 +221,7 @@ Deno.serve(async (req) => {
                         weirdnessConstraint: resolvedCustomMode ? finalWeirdness : undefined,
                         styleWeight: resolvedCustomMode ? finalStyleWeight : undefined,
                     }),
+                    persona_id: linkedBase44PersonaId || undefined,
                 })
             );
         }

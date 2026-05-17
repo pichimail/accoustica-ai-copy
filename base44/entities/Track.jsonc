@@ -126,6 +126,10 @@
     "modification_type": {
       "type": "string",
       "description": "Type of modification applied (remix, extend, vocal, instrumental, etc.)"
+    },
+    "persona_id": {
+      "type": "string",
+      "description": "Base44 Persona ID used for this track generation"
     }
   },
   "required": [

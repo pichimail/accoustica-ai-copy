@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const MORE_ITEMS = [
   { name: 'Insights', icon: BarChart3, page: 'Insights' },
+  { name: 'Voice', icon: Sparkles, page: 'VoiceStudio' },
   { name: 'Stems', icon: Disc, page: 'StemStudio' },
   { name: 'Remix', icon: GitBranch, page: 'RemixStudio' },
   { name: 'Feed', icon: MessageCircle, page: 'SocialFeed' },
@@ -60,7 +61,7 @@ export default function MobileNav({ currentPageName, user }) {
                     key="create"
                     to={`${createPageUrl('Create')}?panel=generate`}
                     onClick={() => haptics.medium()}
-                    className="flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[52px] group"
+                    className="no-select flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[52px] min-h-[44px] group"
                     aria-label="Create"
                   >
                     <div
@@ -82,7 +83,7 @@ export default function MobileNav({ currentPageName, user }) {
                   <button
                     key="more"
                     onClick={() => { haptics.light(); setShowMore(true); }}
-                    className="flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[52px]"
+                    className="no-select flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[52px] min-h-[44px]"
                     aria-label="More options"
                   >
                     <div className={cn(
@@ -107,7 +108,7 @@ export default function MobileNav({ currentPageName, user }) {
                   onClick={() => haptics.light()}
                   aria-label={link.label || link.name}
                   aria-current={isActive ? 'page' : undefined}
-                  className="flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[52px] group"
+                  className="no-select flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[52px] min-h-[44px] group"
                 >
                   <div className={cn(
                     'relative w-6 h-6 flex items-center justify-center transition-transform group-active:scale-90',
@@ -172,7 +173,7 @@ export default function MobileNav({ currentPageName, user }) {
                 <span className="text-white font-bold text-base">More</span>
                 <button
                   onClick={() => setShowMore(false)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center"
+                  className="no-select min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center"
                   style={{ background: 'rgba(255,255,255,0.08)' }}
                 >
                   <X className="h-4 w-4 text-white/60" />
@@ -188,6 +189,7 @@ export default function MobileNav({ currentPageName, user }) {
                       key={item.page}
                       to={createPageUrl(item.page)}
                       onClick={() => { setShowMore(false); haptics.light(); }}
+                      className="no-select"
                     >
                       <div
                         className={cn(

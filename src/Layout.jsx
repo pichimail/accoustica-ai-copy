@@ -50,6 +50,7 @@ export default function Layout({ children, currentPageName }) {
   { name: 'Home', icon: Home, page: 'Home', hideWhenAuth: true },
   { name: 'For You', icon: Sparkles, page: 'ForYou', requireAuth: true },
   { name: 'Create', icon: Plus, page: 'Create', requireAuth: true },
+  { name: 'Voice Studio', icon: Sparkles, page: 'VoiceStudio', requireAuth: true },
   { name: 'Library', icon: Library, page: 'Library', requireAuth: true },
   { name: 'Insights', icon: BarChart3, page: 'Insights', requireAuth: true },
   { name: 'Feed', icon: MessageCircle, page: 'SocialFeed' },

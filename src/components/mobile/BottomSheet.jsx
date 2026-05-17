@@ -72,7 +72,7 @@ export default function BottomSheet({ open, onClose, title, children, className 
                 <h2 className="text-lg font-bold text-white">{title}</h2>
                 <button
                   onClick={() => { haptics.light(); onClose(); }}
-                  className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                  className="no-select min-w-[44px] min-h-[44px] rounded-full hover:bg-white/10 transition-colors inline-flex items-center justify-center"
                 >
                   <X className="h-5 w-5 text-white/50" />
                 </button>

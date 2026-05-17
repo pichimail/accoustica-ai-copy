@@ -2,6 +2,18 @@
   "name": "Persona",
   "type": "object",
   "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "validating",
+        "generating",
+        "ready",
+        "failed"
+      ],
+      "default": "pending",
+      "description": "Current status of the voice persona generation"
+    },
     "persona_id": {
       "type": "string",
       "description": "Unique persona ID from Suno API"
@@ -16,21 +28,23 @@
     },
     "task_id": {
       "type": "string",
-      "description": "Original music task ID"
+      "description": "Current Kie.ai task ID"
     },
     "audio_id": {
       "type": "string",
-      "description": "Audio ID used to create the persona"
+      "description": "Kie reference to processed/uploaded audio or verify URL"
     },
     "track_id": {
       "type": "string",
       "description": "Associated track ID in the database"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Error details when persona creation fails"
     }
   },
   "required": [
-    "persona_id",
-    "name",
-    "description"
+    "name"
   ],
   "rls": {
     "create": {

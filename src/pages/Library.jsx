@@ -14,6 +14,7 @@ import MusicVideoGenerator from '@/components/video/MusicVideoGenerator';
 import VideoExportDialog from '@/components/video/VideoExportDialog';
 import BottomSheet from '@/components/mobile/BottomSheet';
 import { useIsMobile } from '@/hooks/use-mobile';
+import PullToRefresh from '@/components/mobile/PullToRefresh';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -104,7 +105,13 @@ export default function LibraryPage() {
     setBottomSheetTrack(null);
   };
 
+  const handleRefresh = async () => {
+    haptics.selection();
+    await queryClient.invalidateQueries({ queryKey: ['myTracks'] });
+  };
+
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen pb-36" style={{ background: '#0a0a0f' }}>
       {/* Sticky Header */}
       <div className="sticky top-0 z-30 px-4 pt-4 pb-3"
@@ -237,6 +244,7 @@ export default function LibraryPage() {
       <MusicVideoGenerator track={videoTrack} open={!!videoTrack} onClose={() => setVideoTrack(null)} />
       <VideoExportDialog track={exportVideoTrack} open={!!exportVideoTrack} onClose={() => setExportVideoTrack(null)} />
     </div>
+    </PullToRefresh>
   );
 }
 
