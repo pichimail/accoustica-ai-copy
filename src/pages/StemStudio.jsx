@@ -13,6 +13,7 @@ import {
   Upload, Mic, Music, Disc, Wand2, Play, Pause, Download,
   RefreshCw, Layers, GitBranch, Search, Volume2, VolumeX, Check,
   Clock, Sparkles, Scissors, BarChart3, Zap,
+  GripVertical, GripHorizontal,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -255,11 +256,14 @@ export default function StemStudioPage() {
   const queryClient = useQueryClient();
   const { playTrack } = useAudioPlayer();
   const fileRef = useRef(null);
+  const pageRef = useRef(null);
 
   // ── UI state ──
   const [activeTab, setActiveTab]     = useState('library'); // 'library' | 'remix'
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(340);
+  const [libraryTopRatio, setLibraryTopRatio] = useState(0.45);
 
   // ── Selection ──
   const [selectedTrack, setSelectedTrack]           = useState(null);
@@ -427,9 +431,40 @@ export default function StemStudioPage() {
     if (readySep) setSelectedSeparation(readySep);
   };
 
+  const beginSplitResize = (type) => (event) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startSidebar = sidebarWidth;
+    const startTopRatio = libraryTopRatio;
+    const mainHeight = pageRef.current?.querySelector('[data-stem-library-pane]')?.clientHeight || 800;
+
+    const onMove = (moveEvent) => {
+      if (type === 'sidebar') {
+        const dx = moveEvent.clientX - startX;
+        setSidebarWidth(Math.max(280, Math.min(460, startSidebar + dx)));
+      }
+      if (type === 'library-horizontal') {
+        const dy = moveEvent.clientY - startY;
+        setLibraryTopRatio((prev) => {
+          const next = startTopRatio + (dy / Math.max(mainHeight, 1));
+          return Math.max(0.24, Math.min(0.72, next));
+        });
+      }
+    };
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="h-full flex flex-col overflow-hidden" style={{ background: '#09090f' }}>
+    <div ref={pageRef} className="h-full flex flex-col overflow-hidden" style={{ background: '#09090f' }}>
 
       {/* ─ Sticky header ─ */}
       <header
@@ -479,9 +514,9 @@ export default function StemStudioPage() {
         <aside
           className={cn(
             'flex-shrink-0 flex flex-col border-r overflow-hidden transition-all duration-300',
-            sidebarOpen ? 'w-72' : 'w-0 border-r-0',
+            sidebarOpen ? 'w-full lg:w-[var(--stem-sidebar-width)]' : 'w-0 border-r-0',
           )}
-          style={{ borderColor: 'rgba(255,255,255,0.07)', background: 'rgba(10,10,16,0.9)' }}
+          style={{ borderColor: 'rgba(255,255,255,0.07)', background: 'rgba(10,10,16,0.9)', '--stem-sidebar-width': `${sidebarWidth}px` }}
           aria-label="Track selection"
         >
           <div className="flex flex-col h-full overflow-y-auto">
@@ -711,6 +746,17 @@ export default function StemStudioPage() {
           </div>
         </aside>
 
+        {sidebarOpen && (
+          <div
+            className="hidden lg:flex w-2 cursor-col-resize items-center justify-center border-r border-white/10 bg-white/[0.02] hover:bg-white/[0.07] transition-colors"
+            onPointerDown={beginSplitResize('sidebar')}
+            role="separator"
+            aria-label="Resize track list"
+          >
+            <GripVertical className="h-4 w-4 text-white/30" />
+          </div>
+        )}
+
         {/* ─ Main content ─ */}
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
@@ -750,146 +796,156 @@ export default function StemStudioPage() {
             {activeTab === 'library' && (
               <AnimatePresence mode="wait">
                 <motion.div key="library" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <div className="h-[calc(var(--content-available-height,100vh)-170px)] min-h-[460px] flex flex-col" data-stem-library-pane>
+                    <section className="overflow-y-auto pr-1.5" style={{ flexBasis: `${Math.round(libraryTopRatio * 100)}%` }}>
+                      {/* Processing pills */}
+                      {processingSeps.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-5">
+                          {processingSeps.map(sep => {
+                            const t = tracks.find(tr => tr.id === sep.track_id);
+                            return (
+                              <div key={sep.id}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-semibold"
+                                style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24' }}>
+                                <div className="w-3 h-3 rounded-full border-2 border-yellow-400 border-t-transparent animate-spin" />
+                                {t?.title || 'Track'} — separating…
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
 
-                  {/* Processing pills */}
-                  {processingSeps.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-5">
-                      {processingSeps.map(sep => {
-                        const t = tracks.find(tr => tr.id === sep.track_id);
-                        return (
-                          <div key={sep.id}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-semibold"
-                            style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24' }}>
-                            <div className="w-3 h-3 rounded-full border-2 border-yellow-400 border-t-transparent animate-spin" />
-                            {t?.title || 'Track'} — separating…
+                      {readySeparations.length === 0 ? (
+                        <EmptyState
+                          icon={GitBranch}
+                          title="No stems separated yet"
+                          description="Select a track from the left panel and click Separate Stems to begin."
+                        />
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 mb-4">
+                            <GitBranch className="h-4 w-4 text-cyan-400" />
+                            <h2 className="text-sm font-extrabold text-white">
+                              Separated Stems
+                              <span className="text-[10px] font-normal text-white/30 ml-2">
+                                ({readySeparations.length})
+                              </span>
+                            </h2>
                           </div>
-                        );
-                      })}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {readySeparations.map(sep => (
+                              <StemLibraryCard
+                                key={sep.id}
+                                separation={sep}
+                                track={tracks.find(t => t.id === sep.track_id)}
+                                onOpenMixer={handleOpenMixer}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </section>
+
+                    <div
+                      className="h-2 flex-shrink-0 mt-2 mb-2 rounded bg-white/[0.03] border border-white/10 cursor-row-resize flex items-center justify-center hover:bg-white/[0.08] transition-colors"
+                      onPointerDown={beginSplitResize('library-horizontal')}
+                      role="separator"
+                      aria-label="Resize separated list and new-track list"
+                    >
+                      <GripHorizontal className="h-3.5 w-3.5 text-white/30" />
                     </div>
-                  )}
 
-                  {/* Ready separations */}
-                  {readySeparations.length === 0 ? (
-                    <EmptyState
-                      icon={GitBranch}
-                      title="No stems separated yet"
-                      description="Select a track from the left panel and click Separate Stems to begin."
-                    />
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-2 mb-4">
-                        <GitBranch className="h-4 w-4 text-cyan-400" />
-                        <h2 className="text-sm font-extrabold text-white">
-                          Separated Stems
-                          <span className="text-[10px] font-normal text-white/30 ml-2">
-                            ({readySeparations.length})
-                          </span>
-                        </h2>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {readySeparations.map(sep => (
-                          <StemLibraryCard
-                            key={sep.id}
-                            separation={sep}
-                            track={tracks.find(t => t.id === sep.track_id)}
-                            onOpenMixer={handleOpenMixer}
-                          />
-                        ))}
-                      </div>
-                    </>
-                  )}
+                    <section className="flex-1 min-h-0 overflow-y-auto pr-1.5">
+                      {filteredTracks.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-4">
+                            <Zap className="h-4 w-4 text-violet-400" />
+                            <h2 className="text-sm font-extrabold text-white">
+                              Separate a New Track
+                              <span className="text-[10px] font-normal text-white/30 ml-2">
+                                ({filteredTracks.length})
+                              </span>
+                            </h2>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {filteredTracks.map((track, i) => {
+                              const trackSeps = trackSeparationMap[track.id] || [];
+                              const hasReady  = trackSeps.some(s => s.status === 'ready');
+                              const hasProc   = trackSeps.some(s => s.status === 'processing' || s.status === 'pending');
 
-                  {/* Separate new track */}
-                  {filteredTracks.length > 0 && (
-                    <div className="mt-8">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Zap className="h-4 w-4 text-violet-400" />
-                        <h2 className="text-sm font-extrabold text-white">
-                          Separate a New Track
-                          <span className="text-[10px] font-normal text-white/30 ml-2">
-                            ({filteredTracks.length})
-                          </span>
-                        </h2>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {filteredTracks.map((track, i) => {
-                          const trackSeps = trackSeparationMap[track.id] || [];
-                          const hasReady  = trackSeps.some(s => s.status === 'ready');
-                          const hasProc   = trackSeps.some(s => s.status === 'processing' || s.status === 'pending');
-
-                          return (
-                            <motion.div key={track.id}
-                              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: i * 0.025 }}
-                              className="rounded-xl border overflow-hidden group transition-all hover:border-violet-500/40"
-                              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
-                            >
-                              {/* Cover */}
-                              <div className="relative h-28 overflow-hidden">
-                                <img
-                                  src={track.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400'}
-                                  alt={track.title}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                />
-                                <div className="absolute inset-0"
-                                  style={{ background: 'linear-gradient(to top, rgba(9,9,15,0.95) 0%, transparent 60%)' }} />
-                                <button onClick={() => playTrack(track)}
-                                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                                  <Play className="h-4 w-4 text-slate-900 ml-0.5" />
-                                </button>
-                                {hasReady && (
-                                  <Badge className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 border-0"
-                                    style={{ background: 'rgba(34,197,94,0.25)', color: '#4ade80' }}>
-                                    <GitBranch className="h-2 w-2 mr-0.5" />
-                                    {trackSeps.filter(s => s.status === 'ready').length}
-                                  </Badge>
-                                )}
-                                {hasProc && (
-                                  <Badge className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 border-0 animate-pulse"
-                                    style={{ background: 'rgba(251,191,36,0.25)', color: '#fbbf24' }}>
-                                    <Clock className="h-2 w-2 mr-0.5" /> Processing
-                                  </Badge>
-                                )}
-                              </div>
-                              {/* Info + actions */}
-                              <div className="p-3">
-                                <p className="text-xs font-semibold text-white truncate mb-0.5">{track.title}</p>
-                                <p className="text-[10px] text-white/35 truncate mb-3">{track.style || '—'}</p>
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => {
-                                      haptics.medium();
-                                      selectTrack(track);
-                                      setSidebarOpen(true);
-                                      if (!hasReady && !hasProc) {
-                                        handleSeparateStems(track);
-                                      }
-                                    }}
-                                    disabled={hasProc}
-                                    className="flex-1 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all disabled:opacity-60"
-                                    style={{ background: 'linear-gradient(135deg,#06b6d4,#8b5cf6)', color: '#fff' }}>
-                                    <Scissors className="h-3 w-3" />
-                                    {hasReady ? 'Re-Separate' : hasProc ? 'Processing…' : 'Separate'}
-                                  </button>
-                                  {hasReady && (
-                                    <button
-                                      onClick={() => {
-                                        const sep = trackSeps.find(s => s.status === 'ready');
-                                        if (sep) handleOpenMixer(sep);
-                                      }}
-                                      className="py-1.5 px-2.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all"
-                                      style={{ background: 'rgba(168,85,247,0.15)', color: '#a78bfa', border: '1px solid rgba(168,85,247,0.3)' }}>
-                                      <Volume2 className="h-3 w-3" /> Mix
+                              return (
+                                <motion.div key={track.id}
+                                  initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: i * 0.025 }}
+                                  className="rounded-xl border overflow-hidden group transition-all hover:border-violet-500/40"
+                                  style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
+                                >
+                                  <div className="relative h-28 overflow-hidden">
+                                    <img
+                                      src={track.cover_image_url || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400'}
+                                      alt={track.title}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                    />
+                                    <div className="absolute inset-0"
+                                      style={{ background: 'linear-gradient(to top, rgba(9,9,15,0.95) 0%, transparent 60%)' }} />
+                                    <button onClick={() => playTrack(track)}
+                                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+                                      <Play className="h-4 w-4 text-slate-900 ml-0.5" />
                                     </button>
-                                  )}
-                                </div>
-                              </div>
-                            </motion.div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                                    {hasReady && (
+                                      <Badge className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 border-0"
+                                        style={{ background: 'rgba(34,197,94,0.25)', color: '#4ade80' }}>
+                                        <GitBranch className="h-2 w-2 mr-0.5" />
+                                        {trackSeps.filter(s => s.status === 'ready').length}
+                                      </Badge>
+                                    )}
+                                    {hasProc && (
+                                      <Badge className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 border-0 animate-pulse"
+                                        style={{ background: 'rgba(251,191,36,0.25)', color: '#fbbf24' }}>
+                                        <Clock className="h-2 w-2 mr-0.5" /> Processing
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="p-3">
+                                    <p className="text-xs font-semibold text-white truncate mb-0.5">{track.title}</p>
+                                    <p className="text-[10px] text-white/35 truncate mb-3">{track.style || '—'}</p>
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => {
+                                          haptics.medium();
+                                          selectTrack(track);
+                                          setSidebarOpen(true);
+                                          if (!hasReady && !hasProc) {
+                                            handleSeparateStems(track);
+                                          }
+                                        }}
+                                        disabled={hasProc}
+                                        className="flex-1 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all disabled:opacity-60"
+                                        style={{ background: 'linear-gradient(135deg,#06b6d4,#8b5cf6)', color: '#fff' }}>
+                                        <Scissors className="h-3 w-3" />
+                                        {hasReady ? 'Re-Separate' : hasProc ? 'Processing…' : 'Separate'}
+                                      </button>
+                                      {hasReady && (
+                                        <button
+                                          onClick={() => {
+                                            const sep = trackSeps.find(s => s.status === 'ready');
+                                            if (sep) handleOpenMixer(sep);
+                                          }}
+                                          className="py-1.5 px-2.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all"
+                                          style={{ background: 'rgba(168,85,247,0.15)', color: '#a78bfa', border: '1px solid rgba(168,85,247,0.3)' }}>
+                                          <Volume2 className="h-3 w-3" /> Mix
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </section>
+                  </div>
                 </motion.div>
               </AnimatePresence>
             )}

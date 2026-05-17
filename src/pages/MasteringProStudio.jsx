@@ -5,9 +5,11 @@ import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/components/utils/haptics';
+import { ensureAudioContext, getAudioAnalyser, resumeAudioContext } from '@/lib/audioContext';
+import { getTrackAudioSource } from '@/components/audio/AudioPlayerContext';
 import {
   Volume2, Play, Pause, Sliders, Zap, Download, Music,
-  RefreshCw, Check, BarChart3, Wand2, Search
+  RefreshCw, Check, BarChart3, Wand2, Search, GripVertical, GripHorizontal
 } from 'lucide-react';
 
 const EQ_BANDS = [
@@ -31,7 +33,7 @@ const MASTERING_PRESETS = [
   { name: 'Podcast', loudness: -16, stereoWidth: 50, bassBoost: -1, highBoost: 2, compression: 70 },
 ];
 
-function SpectrumVisualizer({ audioUrl, isPlaying, color = '#22c55e', label }) {
+function SpectrumVisualizer({ audioRef, isPlaying, color = '#22c55e', label, params = null }) {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
   const barsCount = 64;
@@ -40,16 +42,36 @@ function SpectrumVisualizer({ audioUrl, isPlaying, color = '#22c55e', label }) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    let frame = 0;
+    const freqData = new Uint8Array(256);
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let analyser = null;
+      if (audioRef?.current) {
+        analyser = getAudioAnalyser(audioRef.current);
+        if (analyser) {
+          analyser.getByteFrequencyData(freqData);
+        }
+      }
+
       const barW = canvas.width / barsCount;
       for (let i = 0; i < barsCount; i++) {
-        const freq = i / barsCount;
-        const base = Math.sin(freq * Math.PI * 3) * 0.4 + 0.5;
-        const anim = isPlaying ? Math.sin(frame * 0.08 + i * 0.3) * 0.3 + 0.7 : 0.4;
-        const h = base * anim * canvas.height * 0.85;
+        const fftIdx = Math.floor((i / barsCount) * freqData.length);
+        const raw = analyser ? freqData[fftIdx] / 255 : 0.08;
+        const idlePulse = 0.15 + Math.abs(Math.sin((Date.now() / 1000) + i * 0.15)) * 0.18;
+        let shaped = isPlaying ? raw : idlePulse;
+
+        if (params) {
+          const lowBand = i < barsCount * 0.28;
+          const highBand = i > barsCount * 0.65;
+          const stereoBias = 0.9 + (params.stereoWidth || 80) / 220;
+          shaped *= stereoBias;
+          if (lowBand) shaped *= 1 + ((params.bassBoost || 0) / 9);
+          if (highBand) shaped *= 1 + ((params.highBoost || 0) / 9);
+          shaped *= 1 + ((params.compression || 50) - 50) / 180;
+        }
+
+        const h = Math.max(2, Math.min(canvas.height * 0.92, shaped * canvas.height * 1.08));
         const gradient = ctx.createLinearGradient(0, canvas.height - h, 0, canvas.height);
         gradient.addColorStop(0, color + 'ff');
         gradient.addColorStop(1, color + '44');
@@ -59,12 +81,11 @@ function SpectrumVisualizer({ audioUrl, isPlaying, color = '#22c55e', label }) {
         ctx.roundRect(x, canvas.height - h, barW - 2, h, 2);
         ctx.fill();
       }
-      frame++;
       animRef.current = requestAnimationFrame(draw);
     };
     draw();
     return () => cancelAnimationFrame(animRef.current);
-  }, [isPlaying, color]);
+  }, [audioRef, isPlaying, color, params]);
 
   return (
     <div className="flex flex-col gap-1">
@@ -94,12 +115,7 @@ function EQGraph({ bands, onBandChange }) {
 
   const pathD = bands.map((b, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(b.gain)}`).join(' ');
 
-  const handleMouseDown = (i) => (e) => {
-    e.preventDefault();
-    setDragging(i);
-  };
-
-  const handleMouseMove = useCallback((e) => {
+  const handlePointerMove = useCallback((e) => {
     if (dragging === null || !svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
     const y = e.clientY - rect.top;
@@ -107,14 +123,23 @@ function EQGraph({ bands, onBandChange }) {
     onBandChange(dragging, Math.max(-12, Math.min(12, gain)));
   }, [dragging, midY, onBandChange]);
 
+  const handlePointerDown = (i) => (e) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    setDragging(i);
+  };
+
   useEffect(() => {
     if (dragging !== null) {
       const up = () => setDragging(null);
-      window.addEventListener('mouseup', up);
-      window.addEventListener('mousemove', handleMouseMove);
-      return () => { window.removeEventListener('mouseup', up); window.removeEventListener('mousemove', handleMouseMove); };
+      window.addEventListener('pointerup', up);
+      window.addEventListener('pointermove', handlePointerMove);
+      return () => {
+        window.removeEventListener('pointerup', up);
+        window.removeEventListener('pointermove', handlePointerMove);
+      };
     }
-  }, [dragging, handleMouseMove]);
+  }, [dragging, handlePointerMove]);
 
   return (
     <div className="w-full">
@@ -135,20 +160,28 @@ function EQGraph({ bands, onBandChange }) {
         {/* Gradient fill */}
         <defs>
           <linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#22c55e" stopOpacity="0.02" />
+            <stop offset="0%" stopColor="#fb923c" stopOpacity="0.45" />
+            <stop offset="100%" stopColor="#fb923c" stopOpacity="0.05" />
           </linearGradient>
+          <linearGradient id="eqLineGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#f97316" />
+            <stop offset="45%" stopColor="#fb923c" />
+            <stop offset="100%" stopColor="#fdba74" />
+          </linearGradient>
+          <filter id="eqGlow">
+            <feDropShadow dx="0" dy="0" stdDeviation="2.5" floodColor="#fb923c" floodOpacity="0.65" />
+          </filter>
         </defs>
         <path d={`${pathD} L ${width} ${midY} L 0 ${midY} Z`} fill="url(#eqGrad)" />
-        <path d={pathD} fill="none" stroke="#22c55e" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={pathD} fill="none" stroke="url(#eqLineGrad)" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" filter="url(#eqGlow)" />
         {/* Draggable points */}
         {bands.map((b, i) => (
           <g key={i}>
             <circle
               cx={getX(i)} cy={getY(b.gain)} r={6}
-              fill={dragging === i ? '#22c55e' : '#0d0d0d'}
-              stroke="#22c55e" strokeWidth={2}
-              onMouseDown={handleMouseDown(i)}
+              fill={dragging === i ? '#fdba74' : '#140d06'}
+              stroke="#fb923c" strokeWidth={2}
+              onPointerDown={handlePointerDown(i)}
               style={{ cursor: 'grab' }}
               role="slider"
               aria-label={`${b.label} EQ gain: ${b.gain.toFixed(1)}dB`}
@@ -170,8 +203,9 @@ function KnobControl({ label, value, min, max, unit = '', color = '#22c55e', onC
   const startY = useRef(null);
   const startVal = useRef(null);
 
-  const handleMouseDown = (e) => {
+  const handlePointerDown = (e) => {
     e.preventDefault();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
     startY.current = e.clientY;
     startVal.current = value;
     const handleMove = (ev) => {
@@ -180,11 +214,11 @@ function KnobControl({ label, value, min, max, unit = '', color = '#22c55e', onC
       onChange(Math.round(newVal * 10) / 10);
     };
     const handleUp = () => {
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
     };
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
   };
 
   const r = 22;
@@ -202,7 +236,7 @@ function KnobControl({ label, value, min, max, unit = '', color = '#22c55e', onC
       <svg
         width={60} height={60}
         ref={ref}
-        onMouseDown={handleMouseDown}
+        onPointerDown={handlePointerDown}
         style={{ cursor: 'ns-resize' }}
         aria-label={`${label} knob: ${value}${unit}`}
         role="img"
@@ -239,6 +273,13 @@ export default function MasteringProStudioPage() {
   const [activePreset, setActivePreset] = useState(null);
   const [compareMode, setCompareMode] = useState(false);
   const [showBefore, setShowBefore] = useState(false);
+  const [leftPaneWidth, setLeftPaneWidth] = useState(320);
+  const [topPaneRatio, setTopPaneRatio] = useState(0.44);
+  const [playhead, setPlayhead] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const rootRef = useRef(null);
+  const audioRef = useRef(null);
   const queryClient = useQueryClient();
 
   // Mastering params
@@ -258,6 +299,62 @@ export default function MasteringProStudioPage() {
   });
 
   const filteredTracks = tracks.filter(t => !search || t.title?.toLowerCase().includes(search.toLowerCase()));
+  const selectedSource = getTrackAudioSource(selectedTrack);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return undefined;
+
+    const onTimeUpdate = () => setPlayhead(audio.currentTime || 0);
+    const onLoadedMetadata = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
+    const onEnded = () => setIsPlaying(false);
+    const onPause = () => setIsPlaying(false);
+    const onPlay = () => setIsPlaying(true);
+    const onError = () => {
+      setIsPlaying(false);
+      toast.error('Unable to play this track audio');
+    };
+
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('ended', onEnded);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('error', onError);
+    return () => {
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('error', onError);
+    };
+  }, []);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const sourceToUse = showBefore || !masteredUrl ? selectedSource : (masteredUrl || selectedSource);
+    if (!sourceToUse) {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+      setIsPlaying(false);
+      return;
+    }
+    const shouldResume = isPlaying && audio.src;
+    const prevTime = audio.currentTime || 0;
+    if (audio.src !== sourceToUse) {
+      audio.src = sourceToUse;
+      audio.load();
+      audio.currentTime = prevTime;
+    }
+    if (shouldResume) {
+      ensureAudioContext();
+      resumeAudioContext();
+      audio.play().catch(() => setIsPlaying(false));
+    }
+  }, [selectedSource, masteredUrl, showBefore]);
 
   const applyPreset = (preset) => {
     setLoudness(preset.loudness);
@@ -270,14 +367,80 @@ export default function MasteringProStudioPage() {
     toast.success(`Preset "${preset.name}" applied`);
   };
 
+  const togglePlay = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const sourceToUse = showBefore || !masteredUrl ? selectedSource : (masteredUrl || selectedSource);
+    if (!sourceToUse) {
+      toast.error('Selected track has no playable audio URL');
+      return;
+    }
+
+    if (!audio.src || audio.src !== sourceToUse) {
+      audio.src = sourceToUse;
+      audio.load();
+    }
+
+    if (audio.paused) {
+      ensureAudioContext();
+      resumeAudioContext();
+      try {
+        await audio.play();
+      } catch (error) {
+        toast.error('Playback blocked or failed');
+        setIsPlaying(false);
+      }
+      return;
+    }
+
+    audio.pause();
+  };
+
+  const handleResizeStart = (type) => (event) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startLeft = leftPaneWidth;
+    const startTopRatio = topPaneRatio;
+    const rootHeight = rootRef.current?.querySelector('[data-master-right-pane]')?.clientHeight || 800;
+    const rootWidth = rootRef.current?.clientWidth || 1200;
+
+    const onMove = (moveEvent) => {
+      if (type === 'vertical') {
+        const dx = moveEvent.clientX - startX;
+        const desktopWidth = Math.max(260, Math.min(460, startLeft + dx));
+        setLeftPaneWidth(desktopWidth);
+      }
+      if (type === 'horizontal') {
+        const dy = moveEvent.clientY - startY;
+        const nextRatio = Math.max(0.26, Math.min(0.68, startTopRatio + (dy / Math.max(rootHeight, 1))));
+        setTopPaneRatio(nextRatio);
+      }
+      if (type === 'mobile-vertical') {
+        const dx = moveEvent.clientX - startX;
+        const desktopWidth = Math.max(260, Math.min(Math.max(320, rootWidth - 360), startLeft + dx));
+        setLeftPaneWidth(desktopWidth);
+      }
+    };
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
   const handleMaster = async () => {
     if (!selectedTrack) { toast.error('Select a track first'); return; }
+    if (!selectedSource) { toast.error('Selected track has no playable audio source'); return; }
     setIsMastering(true);
     haptics.medium();
     try {
       const res = await base44.functions.invoke('masterAudio', {
         trackId: selectedTrack.id,
-        audioUrl: selectedTrack.audio_url || selectedTrack.stream_audio_url,
+        audioUrl: selectedSource,
         targetLufs: loudness,
         loudnessTarget: loudness,
         stereoWidth,
@@ -287,7 +450,7 @@ export default function MasteringProStudioPage() {
         eqBands: eqBands.map(b => ({ freq: b.freq, gain: b.gain })),
       });
       if (res.data?.success) {
-        setMasteredUrl(res.data.processedUrl || res.data.masteredUrl || selectedTrack.audio_url || selectedTrack.stream_audio_url);
+        setMasteredUrl(res.data.processedUrl || res.data.masteredUrl || selectedSource);
         toast.success('Track mastered successfully!');
         haptics.success();
         // Update track tags
@@ -307,8 +470,26 @@ export default function MasteringProStudioPage() {
     setEqBands(prev => prev.map((b, idx) => idx === i ? { ...b, gain } : b));
   };
 
+  useEffect(() => {
+    setPlayhead(0);
+    setDuration(0);
+    setIsPlaying(false);
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.pause();
+    const source = getTrackAudioSource(selectedTrack);
+    if (source) {
+      audio.src = source;
+      audio.load();
+    } else {
+      audio.removeAttribute('src');
+      audio.load();
+    }
+  }, [selectedTrack?.id]);
+
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'radial-gradient(circle at 15% 0%, #11142a 0%, #06070e 45%, #030303 100%)', filter: 'contrast(1.24)' }} role="main" aria-label="Mastering Pro Studio">
+    <div ref={rootRef} className="h-full flex flex-col overflow-hidden" style={{ background: 'radial-gradient(circle at 15% 0%, #11142a 0%, #06070e 45%, #030303 100%)', filter: 'contrast(1.24)' }} role="main" aria-label="Mastering Pro Studio">
+      <audio ref={audioRef} preload="metadata" crossOrigin="anonymous" />
       {/* Header */}
       <header className="sticky top-0 z-30 flex-shrink-0 flex items-center justify-between px-4 lg:px-6 py-3 border-b" style={{ background: 'linear-gradient(135deg,rgba(5,5,10,0.97),rgba(12,18,38,0.95))', backdropFilter: 'blur(20px)', borderColor: 'rgba(255,255,255,0.12)' }}>
         <div className="flex items-center gap-3">
@@ -321,6 +502,13 @@ export default function MasteringProStudioPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {selectedTrack && (
+            <div className="hidden md:flex items-center gap-2 text-[11px] text-white/55 px-3 py-1.5 rounded-lg border border-white/10">
+              <span>{Math.floor(playhead / 60)}:{String(Math.floor(playhead % 60)).padStart(2, '0')}</span>
+              <span className="text-white/25">/</span>
+              <span>{Math.floor(duration / 60)}:{String(Math.floor(duration % 60)).padStart(2, '0')}</span>
+            </div>
+          )}
           {masteredUrl && (
             <a
               href={masteredUrl}
@@ -337,8 +525,12 @@ export default function MasteringProStudioPage() {
 
       <div className="flex flex-1 min-h-0 overflow-hidden flex-col lg:flex-row">
         {/* LEFT — Track selector */}
-        <aside className="w-full lg:w-64 flex-shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r overflow-y-auto" style={{ borderColor: 'rgba(255,255,255,0.07)', background: 'rgba(10,10,16,0.9)' }} aria-label="Track selection">
-          <div className="p-4">
+        <aside
+          className="w-full lg:w-[var(--master-left-width)] flex-shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r overflow-hidden"
+          style={{ borderColor: 'rgba(255,255,255,0.07)', background: 'rgba(10,10,16,0.9)', '--master-left-width': `${leftPaneWidth}px` }}
+          aria-label="Track selection"
+        >
+          <div className="p-4 border-b border-white/10">
             <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-white/30" />
               <input
@@ -350,7 +542,8 @@ export default function MasteringProStudioPage() {
                 aria-label="Search tracks"
               />
             </div>
-            <div className="space-y-1 max-h-[30vh] lg:max-h-full overflow-y-auto">
+          </div>
+          <div className="space-y-1 overflow-y-auto p-4 pt-2">
               {filteredTracks.map(t => (
                 <button
                   key={t.id}
@@ -374,12 +567,20 @@ export default function MasteringProStudioPage() {
               {!isLoading && filteredTracks.length === 0 && (
                 <p className="text-xs text-white/25 text-center py-6">No ready tracks found</p>
               )}
-            </div>
           </div>
         </aside>
 
+        <div
+          className="hidden lg:flex w-2 cursor-col-resize items-center justify-center border-r border-white/10 bg-white/[0.02] hover:bg-white/[0.07] transition-colors"
+          onPointerDown={handleResizeStart('vertical')}
+          role="separator"
+          aria-label="Resize track list pane"
+        >
+          <GripVertical className="h-4 w-4 text-white/30" />
+        </div>
+
         {/* CENTER — Mastering controls */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-5" aria-label="Mastering controls">
+        <main className="flex-1 min-h-0 flex flex-col p-4 lg:p-5 gap-2 overflow-hidden" data-master-right-pane aria-label="Mastering controls">
           {!selectedTrack ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
               <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)' }}>
@@ -388,77 +589,95 @@ export default function MasteringProStudioPage() {
               <p className="text-white/30 text-sm">Select a track to master</p>
             </div>
           ) : (
-            <>
-              {/* Track info */}
-              <div className="flex items-center gap-4 p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
-                  {selectedTrack.cover_image_url
-                    ? <img src={selectedTrack.cover_image_url} alt={selectedTrack.title} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.07)' }}><Music className="h-6 w-6 text-white/30" /></div>
-                  }
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              <section className="overflow-y-auto space-y-4 pr-0.5" style={{ flexBasis: `${Math.round(topPaneRatio * 100)}%` }}>
+                {/* Track info */}
+                <div className="flex items-center gap-4 p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
+                    {selectedTrack.cover_image_url
+                      ? <img src={selectedTrack.cover_image_url} alt={selectedTrack.title} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.07)' }}><Music className="h-6 w-6 text-white/30" /></div>
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-base font-bold text-white truncate">{selectedTrack.title}</h2>
+                    <p className="text-xs text-white/40">{selectedTrack.style || 'No style'} • {Math.floor((selectedTrack.duration || duration || 0) / 60)}:{String(Math.floor((selectedTrack.duration || duration || 0) % 60)).padStart(2,'0')}</p>
+                  </div>
+                  <button
+                    onClick={togglePlay}
+                    className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 border border-white/15"
+                    style={{ background: isPlaying ? 'rgba(59,130,246,0.36)' : 'rgba(255,255,255,0.1)' }}
+                    aria-label={isPlaying ? 'Pause preview' : 'Play preview'}
+                  >
+                    {isPlaying ? <Pause className="h-4 w-4 text-white" /> : <Play className="h-4 w-4 text-white ml-0.5" />}
+                  </button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-base font-bold text-white truncate">{selectedTrack.title}</h2>
-                  <p className="text-xs text-white/40">{selectedTrack.style || 'No style'} • {Math.floor((selectedTrack.duration || 0) / 60)}:{String(Math.floor((selectedTrack.duration || 0) % 60)).padStart(2,'0')}</p>
-                </div>
-                <button
-                  onClick={() => setIsPlaying(p => !p)}
-                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: isPlaying ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.1)' }}
-                  aria-label={isPlaying ? 'Pause preview' : 'Play preview'}
-                >
-                  {isPlaying ? <Pause className="h-4 w-4 text-white" /> : <Play className="h-4 w-4 text-white ml-0.5" />}
-                </button>
-              </div>
 
-              {/* Before/After Visualizer */}
-              <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-blue-400" /> Spectrum Comparison
+                {/* Before/After Visualizer */}
+                <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4 text-blue-400" /> Spectrum Comparison
+                    </h3>
+                    {masteredUrl && (
+                      <div className="flex rounded-lg overflow-hidden border border-white/10">
+                        <button
+                          onClick={() => setShowBefore(true)}
+                          className={cn('px-3 py-1 text-xs font-bold transition-colors', showBefore ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70')}
+                          aria-pressed={showBefore}
+                        >Before</button>
+                        <button
+                          onClick={() => setShowBefore(false)}
+                          className={cn('px-3 py-1 text-xs font-bold transition-colors', !showBefore ? 'text-black' : 'text-white/40 hover:text-white/70')}
+                          style={!showBefore ? { background: '#22c55e' } : {}}
+                          aria-pressed={!showBefore}
+                        >After</button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <SpectrumVisualizer audioRef={audioRef} isPlaying={isPlaying} color="#3b82f6" label="Original" />
+                    <SpectrumVisualizer
+                      audioRef={audioRef}
+                      isPlaying={isPlaying}
+                      color="#22c55e"
+                      label={masteredUrl ? 'Mastered' : 'Preview (adjust below)'}
+                      params={{ bassBoost, highBoost, stereoWidth, compression }}
+                    />
+                  </div>
+                </div>
+
+                {/* Presets */}
+                <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                    <Wand2 className="h-4 w-4 text-purple-400" /> Mastering Presets
                   </h3>
-                  {masteredUrl && (
-                    <div className="flex rounded-lg overflow-hidden border border-white/10">
+                  <div className="flex flex-wrap gap-2">
+                    {MASTERING_PRESETS.map(p => (
                       <button
-                        onClick={() => setShowBefore(true)}
-                        className={cn('px-3 py-1 text-xs font-bold transition-colors', showBefore ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70')}
-                        aria-pressed={showBefore}
-                      >Before</button>
-                      <button
-                        onClick={() => setShowBefore(false)}
-                        className={cn('px-3 py-1 text-xs font-bold transition-colors', !showBefore ? 'text-black' : 'text-white/40 hover:text-white/70')}
-                        style={!showBefore ? { background: '#22c55e' } : {}}
-                        aria-pressed={!showBefore}
-                      >After</button>
-                    </div>
-                  )}
+                        key={p.name}
+                        onClick={() => applyPreset(p)}
+                        className={cn('px-3 py-1.5 rounded-lg text-xs font-bold transition-all min-h-[44px]', activePreset === p.name ? 'text-black' : 'text-white/60 hover:text-white border border-white/10 hover:border-white/20')}
+                        style={activePreset === p.name ? { background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', color: '#fff' } : { background: 'rgba(255,255,255,0.05)' }}
+                        aria-pressed={activePreset === p.name}
+                      >{p.name}</button>
+                    ))}
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <SpectrumVisualizer audioUrl={selectedTrack.audio_url} isPlaying={isPlaying && (showBefore || !masteredUrl)} color="#3b82f6" label="Original" />
-                  <SpectrumVisualizer audioUrl={masteredUrl || selectedTrack.audio_url} isPlaying={isPlaying && (!showBefore || !masteredUrl)} color="#22c55e" label={masteredUrl ? 'Mastered' : 'Preview (adjust below)'} />
-                </div>
+              </section>
+
+              <div
+                className="h-2 flex-shrink-0 mt-2 mb-1 rounded bg-white/[0.03] border border-white/10 cursor-row-resize flex items-center justify-center hover:bg-white/[0.08] transition-colors"
+                onPointerDown={handleResizeStart('horizontal')}
+                role="separator"
+                aria-label="Resize mastering sections"
+              >
+                <GripHorizontal className="h-3.5 w-3.5 text-white/30" />
               </div>
 
-              {/* Presets */}
-              <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                  <Wand2 className="h-4 w-4 text-purple-400" /> Mastering Presets
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {MASTERING_PRESETS.map(p => (
-                    <button
-                      key={p.name}
-                      onClick={() => applyPreset(p)}
-                      className={cn('px-3 py-1.5 rounded-lg text-xs font-bold transition-all', activePreset === p.name ? 'text-black' : 'text-white/60 hover:text-white border border-white/10 hover:border-white/20')}
-                      style={activePreset === p.name ? { background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', color: '#fff' } : { background: 'rgba(255,255,255,0.05)' }}
-                      aria-pressed={activePreset === p.name}
-                    >{p.name}</button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Main Controls */}
-              <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <section className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-0.5">
+                {/* Main Controls */}
+                <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
                 <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
                   <Sliders className="h-4 w-4 text-blue-400" /> Mastering Parameters
                 </h3>
@@ -553,7 +772,8 @@ export default function MasteringProStudioPage() {
                   </a>
                 </motion.div>
               )}
-            </>
+              </section>
+            </div>
           )}
         </main>
       </div>

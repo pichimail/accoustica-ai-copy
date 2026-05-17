@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/components/utils/haptics';
+import { ensureAudioContext, resumeAudioContext } from '@/lib/audioContext';
+import { getTrackAudioSource } from '@/components/audio/AudioPlayerContext';
 import {
   Play, Pause, SkipBack, SkipForward, RotateCcw, FastForward,
   RefreshCw, Save, ChevronDown, Plus, X,
@@ -100,6 +102,7 @@ export default function SongEditorPage() {
   const [editMode, setEditMode] = useState('replace');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
   const [bpm, setBpm] = useState(68);
   const [zoom, setZoom] = useState(1);
   const [selectedSection, setSelectedSection] = useState(null);
@@ -169,6 +172,7 @@ export default function SongEditorPage() {
   }, [selectedTrack]);
 
   const totalDuration = Math.max(1, sections.reduce((s, sec) => s + sec.duration, 0));
+  const timelineDuration = Math.max(1, audioDuration || 0, totalDuration);
 
   useEffect(() => {
     if (selectedTrack) {
@@ -187,26 +191,78 @@ export default function SongEditorPage() {
   }, [selectedSection]);
 
   useEffect(() => {
-    if (!isPlaying) return;
-    const timer = setInterval(() => {
-      setCurrentTime((prev) => {
-        const next = prev + 0.2;
-        return next >= totalDuration ? 0 : next;
-      });
-    }, 200);
-    return () => clearInterval(timer);
-  }, [isPlaying, totalDuration]);
-
-  useEffect(() => {
-    if (audioRef.current && selectedTrack) {
-      audioRef.current.src = masteredUrl || selectedTrack.stream_audio_url || selectedTrack.audio_url || '';
+    if (audioRef.current) {
+      const source = masteredUrl || getTrackAudioSource(selectedTrack);
+      audioRef.current.pause();
+      audioRef.current.src = source || '';
+      audioRef.current.load();
+      setCurrentTime(0);
+      setIsPlaying(false);
     }
-  }, [selectedTrack, masteredUrl]);
+  }, [selectedTrack?.id, masteredUrl]);
 
   const formatTime = (s) => {
     const m = Math.floor(s / 60);
     const sec = (s % 60).toFixed(2);
     return `${String(m).padStart(2, '0')}:${String(Math.floor(sec)).padStart(2, '0')}.${String(Math.round((sec % 1) * 100)).padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return undefined;
+
+    const onTime = () => setCurrentTime(audio.currentTime || 0);
+    const onLoaded = () => setAudioDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    const onEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+
+    audio.addEventListener('timeupdate', onTime);
+    audio.addEventListener('loadedmetadata', onLoaded);
+    audio.addEventListener('durationchange', onLoaded);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('ended', onEnded);
+    return () => {
+      audio.removeEventListener('timeupdate', onTime);
+      audio.removeEventListener('loadedmetadata', onLoaded);
+      audio.removeEventListener('durationchange', onLoaded);
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('ended', onEnded);
+    };
+  }, []);
+
+  const seekAudio = (nextTime) => {
+    const audio = audioRef.current;
+    const target = Math.max(0, Math.min(audioDuration || totalDuration, nextTime));
+    setCurrentTime(target);
+    if (audio) {
+      audio.currentTime = target;
+    }
+  };
+
+  const toggleAudioPlay = async () => {
+    const audio = audioRef.current;
+    if (!audio || !audio.src) {
+      toast.error('Selected track has no playable audio');
+      return;
+    }
+    if (audio.paused) {
+      ensureAudioContext();
+      resumeAudioContext();
+      try {
+        await audio.play();
+      } catch (error) {
+        toast.error('Playback failed');
+        setIsPlaying(false);
+      }
+      return;
+    }
+    audio.pause();
   };
 
   const pollTaskStatus = async (taskId, label = 'Generation') => {
@@ -672,7 +728,7 @@ export default function SongEditorPage() {
                   <div className="absolute top-0 left-0 right-0 h-6 flex items-end px-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
                     {Array.from({ length: 12 }).map((_, i) => (
                       <div key={i} className="flex-1 text-[9px] text-white/60 border-l border-white/20 pl-0.5">
-                        {String(Math.floor(i * totalDuration / 12 / 60)).padStart(2, '0')}:{String(Math.floor((i * totalDuration / 12) % 60)).padStart(2, '0')}
+                        {String(Math.floor(i * timelineDuration / 12 / 60)).padStart(2, '0')}:{String(Math.floor((i * timelineDuration / 12) % 60)).padStart(2, '0')}
                       </div>
                     ))}
                   </div>
@@ -687,7 +743,7 @@ export default function SongEditorPage() {
                       />
                     ))}
                   </div>
-                  <div className="absolute top-0 bottom-0 w-0.5 z-20 pointer-events-none" style={{ left: `${(currentTime / totalDuration) * 100}%`, background: '#00ffd0', boxShadow: '0 0 10px #00ffd0' }}>
+                  <div className="absolute top-0 bottom-0 w-0.5 z-20 pointer-events-none" style={{ left: `${(currentTime / timelineDuration) * 100}%`, background: '#00ffd0', boxShadow: '0 0 10px #00ffd0' }}>
                     <div className="w-3 h-3 rounded-full -ml-1 -mt-0.5" style={{ background: '#00ffd0', boxShadow: '0 0 10px #00ffd0' }} />
                   </div>
                 </div>
@@ -711,7 +767,7 @@ export default function SongEditorPage() {
                   />
                   <div className="absolute top-0 bottom-0 w-2 bg-cyan-300/90 cursor-ew-resize" style={{ left: `calc(${(selectionStart / totalDuration) * 100}% - 4px)` }} onPointerDown={beginSelectionDrag('start')} />
                   <div className="absolute top-0 bottom-0 w-2 bg-cyan-300/90 cursor-ew-resize" style={{ left: `calc(${(selectionEnd / totalDuration) * 100}% - 4px)` }} onPointerDown={beginSelectionDrag('end')} />
-                  <div className="absolute top-0 bottom-0 w-0.5" style={{ left: `${(currentTime / totalDuration) * 100}%`, background: '#00ffd0' }} />
+                  <div className="absolute top-0 bottom-0 w-0.5" style={{ left: `${(currentTime / timelineDuration) * 100}%`, background: '#00ffd0' }} />
                 </div>
               </div>
             </div>
@@ -823,11 +879,11 @@ export default function SongEditorPage() {
           ) : <span className="text-[11px] text-white/45">No track loaded</span>}
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setCurrentTime((t) => Math.max(0, t - 10))} className="p-1 rounded hover:bg-white/10 text-white/65 transition-colors" aria-label="Skip back"><SkipBack className="h-4 w-4" /></button>
-          <button className="p-1 rounded hover:bg-white/10 text-white/65 transition-colors" aria-label="Step back" onClick={() => setCurrentTime((t) => Math.max(0, t - 5))}><RefreshCw className="h-4 w-4" /></button>
-          <button className="w-9 h-9 rounded-full flex items-center justify-center transition-all" style={{ background: 'rgba(255,255,255,0.18)' }} onClick={() => setIsPlaying((p) => !p)} aria-label={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? <Pause className="h-4 w-4 text-white" /> : <Play className="h-4 w-4 text-white ml-0.5" />}</button>
-          <button onClick={() => setCurrentTime((t) => Math.min(totalDuration, t + 5))} className="p-1 rounded hover:bg-white/10 text-white/65 transition-colors" aria-label="Fast forward"><FastForward className="h-4 w-4" /></button>
-          <button onClick={() => setCurrentTime((t) => Math.min(totalDuration, t + 10))} className="p-1 rounded hover:bg-white/10 text-white/65 transition-colors" aria-label="Skip forward"><SkipForward className="h-4 w-4" /></button>
+          <button onClick={() => seekAudio(currentTime - 10)} className="p-1 rounded hover:bg-white/10 text-white/65 transition-colors" aria-label="Skip back"><SkipBack className="h-4 w-4" /></button>
+          <button className="p-1 rounded hover:bg-white/10 text-white/65 transition-colors" aria-label="Step back" onClick={() => seekAudio(currentTime - 5)}><RefreshCw className="h-4 w-4" /></button>
+          <button className="w-9 h-9 rounded-full flex items-center justify-center transition-all" style={{ background: 'rgba(255,255,255,0.18)' }} onClick={toggleAudioPlay} aria-label={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? <Pause className="h-4 w-4 text-white" /> : <Play className="h-4 w-4 text-white ml-0.5" />}</button>
+          <button onClick={() => seekAudio(currentTime + 5)} className="p-1 rounded hover:bg-white/10 text-white/65 transition-colors" aria-label="Fast forward"><FastForward className="h-4 w-4" /></button>
+          <button onClick={() => seekAudio(currentTime + 10)} className="p-1 rounded hover:bg-white/10 text-white/65 transition-colors" aria-label="Skip forward"><SkipForward className="h-4 w-4" /></button>
         </div>
         <div className="flex items-center gap-2 font-mono text-sm text-white"><span>{formatTime(currentTime)}</span></div>
         <div className="flex items-center gap-1 ml-auto">
