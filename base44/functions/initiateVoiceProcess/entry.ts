@@ -1,11 +1,44 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const SUNO_API_BASE = 'https://api.kie.ai/api/v1';
+const KIE_API_BASES = ['https://kie.ai/suno-api', 'https://api.kie.ai/api/v1', 'https://kie.ai'];
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, content-type, x-base44-token',
 };
+
+async function postWithFallback(
+  apiKey: string,
+  paths: string[],
+  body: Record<string, unknown>,
+) {
+  let lastError: unknown = null;
+
+  for (const base of KIE_API_BASES) {
+    for (const rawPath of paths) {
+      const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+      try {
+        const response = await fetch(`${base}${path}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data?.code === 200) {
+          return data;
+        }
+        lastError = data;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+  }
+
+  return lastError || { code: 500, msg: 'All Kie/Suno endpoints failed' };
+}
 
 function getString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -78,22 +111,19 @@ Deno.serve(async (req) => {
     const callbackRoot = Deno.env.get('BASE44_FUNCTION_URL') || '';
     const callbackUrl = callbackRoot ? `${callbackRoot}/sunoVoiceValidateCallback` : undefined;
 
-    const validateResponse = await fetch(`${SUNO_API_BASE}/voice/validate`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        voiceUrl: finalAudioUrl,
-        vocalStartS: 0,
-        vocalEndS: 10,
-        language,
-        ...(callbackUrl ? { callBackUrl: callbackUrl } : {}),
-      }),
+    const validateData = await postWithFallback(apiKey, [
+      '/suno-voice-validate',
+      '/voice/validate',
+    ], {
+      voiceUrl: finalAudioUrl,
+      audioUrl: finalAudioUrl,
+      file_url: finalAudioUrl,
+      vocalStartS: 0,
+      vocalEndS: 10,
+      language,
+      ...(callbackUrl ? { callbackUrl } : {}),
+      ...(callbackUrl ? { callBackUrl: callbackUrl } : {}),
     });
-
-    const validateData = await validateResponse.json();
 
     if (validateData?.code !== 200 || !validateData?.data?.taskId) {
       return Response.json({

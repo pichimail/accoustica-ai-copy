@@ -129,7 +129,7 @@
     },
     "persona_id": {
       "type": "string",
-      "description": "Base44 Persona ID used for this track generation"
+      "description": "External Suno/Kie persona ID used for this track generation"
     }
   },
   "required": [

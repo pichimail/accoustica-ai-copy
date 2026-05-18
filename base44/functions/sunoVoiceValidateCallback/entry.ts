@@ -1,12 +1,26 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+function pickTaskId(payload: any): string {
+  return String(payload?.taskId || payload?.task_id || payload?.data?.taskId || payload?.data?.task_id || '').trim();
+}
+
+function pickStatus(payload: any): string {
+  return String(payload?.status || payload?.data?.status || '').toLowerCase();
+}
+
+function pickPhrase(payload: any): string | null {
+  const value = payload?.verifyPhrase || payload?.verify_phrase || payload?.data?.verifyPhrase || payload?.data?.verify_phrase || payload?.data?.phrase;
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const payload = await req.json();
 
-    const taskId = payload?.data?.taskId;
-    const status = String(payload?.data?.status || '').toLowerCase();
+    const taskId = pickTaskId(payload);
+    const status = pickStatus(payload);
+    const phrase = pickPhrase(payload);
 
     if (!taskId) {
       return Response.json({ status: 'ignored' }, { status: 200 });
@@ -27,6 +41,7 @@ Deno.serve(async (req) => {
     } else {
       await base44.asServiceRole.entities.Persona.update(persona.id, {
         status: 'validating',
+        verification_phrase: phrase || persona.verification_phrase || null,
         error_message: null,
       });
     }

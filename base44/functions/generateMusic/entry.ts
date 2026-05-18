@@ -1,11 +1,44 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const SUNO_API_BASE = 'https://api.kie.ai/api/v1';
+const KIE_API_BASES = ['https://kie.ai/suno-api', 'https://api.kie.ai/api/v1', 'https://kie.ai'];
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'authorization, content-type, x-base44-token',
 };
+
+async function postWithFallback(
+    apiKey: string,
+    paths: string[],
+    body: Record<string, unknown>,
+) {
+    let lastError: unknown = null;
+
+    for (const base of KIE_API_BASES) {
+        for (const rawPath of paths) {
+            const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+            try {
+                const response = await fetch(`${base}${path}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(body),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (response.ok && data?.code === 200) {
+                    return data;
+                }
+                lastError = data;
+            } catch (error) {
+                lastError = error;
+            }
+        }
+    }
+
+    return lastError || { code: 500, msg: 'All Kie/Suno endpoints failed' };
+}
 
 const STYLE_AVOID_MAP = [
     { match: /lo-?fi|ambient|soft|acoustic|folk|ballad|dreamy|ethereal/i, avoid: 'harsh distortion, aggressive metal, over-compressed drums, noisy clipping', weirdness: 42, styleWeight: 78 },
@@ -131,7 +164,6 @@ Deno.serve(async (req) => {
 
         // Build API payload based on mode
         let resolvedPersonaId = personaId;
-        let linkedBase44PersonaId: string | null = null;
 
         if (selectedPersonaId) {
             const selectedPersona = await base44.entities.Persona.get(selectedPersonaId);
@@ -145,7 +177,6 @@ Deno.serve(async (req) => {
                 return Response.json({ error: 'Selected persona has no external voice ID' }, { status: 400, headers: corsHeaders });
             }
             resolvedPersonaId = selectedPersona.persona_id;
-            linkedBase44PersonaId = selectedPersona.id;
         }
 
         const payload = {
@@ -161,6 +192,7 @@ Deno.serve(async (req) => {
                 return Response.json({ error: 'Prompt is required' }, { status: 400, headers: corsHeaders });
             }
             payload.prompt = prompt;
+            if (resolvedPersonaId) payload.personaId = resolvedPersonaId;
         } else {
             // Custom mode per Kie/Suno: style is required, title can be synthesized by the app.
             if (!style || !style.trim()) {
@@ -183,16 +215,10 @@ Deno.serve(async (req) => {
         }
 
         // Call Suno API to generate music
-        const response = await fetch(`${SUNO_API_BASE}/generate`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-        });
-
-        const data = await response.json();
+        const data = await postWithFallback(apiKey, [
+            '/generate-music',
+            '/generate',
+        ], payload);
 
         if (data.code !== 200) {
             console.error('Suno API error:', data);
@@ -221,7 +247,7 @@ Deno.serve(async (req) => {
                         weirdnessConstraint: resolvedCustomMode ? finalWeirdness : undefined,
                         styleWeight: resolvedCustomMode ? finalStyleWeight : undefined,
                     }),
-                    persona_id: linkedBase44PersonaId || undefined,
+                    persona_id: resolvedPersonaId || undefined,
                 })
             );
         }

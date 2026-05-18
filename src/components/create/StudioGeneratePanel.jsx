@@ -9,6 +9,12 @@ import { useQuery } from '@tanstack/react-query';
 import BottomSheet from '@/components/mobile/BottomSheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { haptics } from '@/components/utils/haptics';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import PresetPromptsPanel from './PresetPromptsPanel';
 
 /**
@@ -938,52 +944,62 @@ export default function StudioGeneratePanel({
             </PanelSection>
 
             <PanelSection label="Voice Persona">
-              <button
-                type="button"
-                onClick={() => {
-                  haptics.light();
-                  if (isMobile) {
+              {isMobile ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.light();
                     setPersonaPickerOpen(true);
-                    return;
-                  }
-                }}
-                className="w-full min-h-[44px] flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all hover:border-rose-500/40"
-                style={{ background: 'rgba(255,255,255,0.04)', borderColor: selectedPersona ? 'rgba(225,29,72,0.4)' : 'rgba(255,255,255,0.08)' }}
-              >
-                <Mic2 className="h-4 w-4 flex-shrink-0" style={{ color: selectedPersona ? '#e11d48' : 'rgba(255,255,255,0.35)' }} />
-                <span className={cn('flex-1 text-xs truncate', selectedPersona ? 'text-white font-semibold' : 'text-white/35')}>
-                  {selectedPersona ? selectedPersona.name : 'No voice persona (default)'}
-                </span>
-                <ChevronDown className="h-4 w-4 text-white/30" />
-              </button>
-
-              {!isMobile && (
-                <div className="mt-2 rounded-xl border overflow-hidden" style={{ background: 'rgba(14,14,22,0.98)', borderColor: 'rgba(255,255,255,0.1)' }}>
-                  <button
-                    type="button"
-                    onClick={() => onSelectPersona?.(null)}
-                    className={cn('w-full min-h-[44px] flex items-center gap-2 px-3 py-2 text-xs text-left transition-all hover:bg-white/5', !selectedPersonaId && 'text-white')}
-                    style={{ color: !selectedPersonaId ? '#e11d48' : 'rgba(255,255,255,0.45)' }}
-                  >
-                    <Music className="h-3.5 w-3.5" />
-                    <span>Default Voice</span>
-                  </button>
-                  {readyPersonas.map((persona) => (
+                  }}
+                  className="w-full min-h-[44px] flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all hover:border-rose-500/40"
+                  style={{ background: 'rgba(255,255,255,0.04)', borderColor: selectedPersona ? 'rgba(225,29,72,0.4)' : 'rgba(255,255,255,0.08)' }}
+                >
+                  <Mic2 className="h-4 w-4 flex-shrink-0" style={{ color: selectedPersona ? '#e11d48' : 'rgba(255,255,255,0.35)' }} />
+                  <span className={cn('flex-1 text-xs truncate', selectedPersona ? 'text-white font-semibold' : 'text-white/35')}>
+                    {selectedPersona ? selectedPersona.name : 'No voice persona (default)'}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-white/30" />
+                </button>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <button
-                      key={persona.id}
                       type="button"
-                      onClick={() => onSelectPersona?.(persona.id)}
-                      className="w-full min-h-[44px] flex items-center gap-2 px-3 py-2 text-xs text-left transition-all hover:bg-white/5"
-                      style={{ color: selectedPersonaId === persona.id ? '#e11d48' : 'rgba(255,255,255,0.75)' }}
+                      onClick={() => haptics.light()}
+                      className="w-full min-h-[44px] flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all hover:border-rose-500/40"
+                      style={{ background: 'rgba(255,255,255,0.04)', borderColor: selectedPersona ? 'rgba(225,29,72,0.4)' : 'rgba(255,255,255,0.08)' }}
                     >
-                      <Mic2 className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span className="truncate">{persona.name}</span>
+                      <Mic2 className="h-4 w-4 flex-shrink-0" style={{ color: selectedPersona ? '#e11d48' : 'rgba(255,255,255,0.35)' }} />
+                      <span className={cn('flex-1 text-xs truncate', selectedPersona ? 'text-white font-semibold' : 'text-white/35')}>
+                        {selectedPersona ? selectedPersona.name : 'No voice persona (default)'}
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-white/30" />
                     </button>
-                  ))}
-                  {readyPersonas.length === 0 && (
-                    <div className="px-3 py-2 text-[11px] text-white/45">No ready personas yet. Create one in Voice Studio.</div>
-                  )}
-                </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    className="w-[var(--radix-dropdown-menu-trigger-width)] bg-[#0e0e16] border border-white/15 text-white"
+                  >
+                    <DropdownMenuItem
+                      onClick={() => onSelectPersona?.(null)}
+                      className={cn('min-h-[44px] text-xs', !selectedPersonaId ? 'text-rose-300' : 'text-white/85')}
+                    >
+                      <Music className="h-3.5 w-3.5 mr-2" /> Default Voice
+                    </DropdownMenuItem>
+                    {readyPersonas.map((persona) => (
+                      <DropdownMenuItem
+                        key={persona.id}
+                        onClick={() => onSelectPersona?.(persona.id)}
+                        className={cn('min-h-[44px] text-xs', selectedPersonaId === persona.id ? 'text-rose-300' : 'text-white/85')}
+                      >
+                        <Mic2 className="h-3.5 w-3.5 mr-2" /> {persona.name}
+                      </DropdownMenuItem>
+                    ))}
+                    {readyPersonas.length === 0 && (
+                      <div className="px-2 py-2 text-[11px] text-white/45">No ready personas yet. Create one in Voice Studio.</div>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
 
               <button

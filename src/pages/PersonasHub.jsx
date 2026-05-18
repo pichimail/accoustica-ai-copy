@@ -1,236 +1,191 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { User, Users, Plus, Search, Sparkles, Music, Trash2 } from 'lucide-react';
-import { motion } from 'framer-motion';
-import PersonaCreator from '@/components/audio/PersonaCreator';
 import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';
+import PullToRefresh from '@/components/mobile/PullToRefresh';
+import { CheckCircle2, Loader2, Mic, Plus, RefreshCw, Search, Trash2, XCircle } from 'lucide-react';
+
+function statusChip(status) {
+  if (status === 'ready') return { label: 'Ready', className: 'text-emerald-200 border-emerald-400/35 bg-emerald-500/15' };
+  if (status === 'failed') return { label: 'Failed', className: 'text-red-200 border-red-400/35 bg-red-500/15' };
+  if (status === 'generating') return { label: 'Generating', className: 'text-amber-200 border-amber-400/35 bg-amber-500/15' };
+  return { label: 'Validating', className: 'text-sky-200 border-sky-400/35 bg-sky-500/15' };
+}
 
 export default function PersonasHubPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showCreator, setShowCreator] = useState(false);
-  const [selectedPersona, setSelectedPersona] = useState(null);
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
 
   const { data: personas = [], isLoading } = useQuery({
-    queryKey: ['personas'],
-    queryFn: () => base44.entities.Persona.list('-created_date'),
+    queryKey: ['personas-hub'],
+    queryFn: () => base44.entities.Persona.list('-created_date', 150),
   });
 
-  const { data: tracks = [] } = useQuery({
-    queryKey: ['tracks'],
-    queryFn: () => base44.entities.Track.list('-created_date'),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (personaId) => base44.entities.Persona.delete(personaId),
+  const refreshMutation = useMutation({
+    mutationFn: async (persona) => base44.functions.invoke('checkPersonaStatus', { personaId: persona.id }),
     onSuccess: () => {
-      queryClient.invalidateQueries(['personas']);
-      toast.success('Persona deleted successfully!');
-      haptics.success();
+      queryClient.invalidateQueries({ queryKey: ['personas-hub'] });
     },
   });
 
-  const filteredPersonas = personas.filter(persona =>
-    persona.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    persona.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const deleteMutation = useMutation({
+    mutationFn: async (personaId) => base44.functions.invoke('deletePersona', { personaId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['personas-hub'] });
+      toast.success('Persona deleted');
+      haptics.success();
+    },
+    onError: (error) => {
+      toast.error(error?.message || 'Failed to delete persona');
+      haptics.error();
+    },
+  });
 
-  const handleDelete = (persona) => {
-    if (confirm(`Are you sure you want to delete "${persona.name}"?`)) {
-      haptics.medium();
-      deleteMutation.mutate(persona.id);
-    }
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return personas;
+    return personas.filter((persona) => (
+      String(persona.name || '').toLowerCase().includes(q)
+      || String(persona.status || '').toLowerCase().includes(q)
+      || String(persona.description || '').toLowerCase().includes(q)
+    ));
+  }, [personas, search]);
+
+  const handleRefresh = async () => {
+    haptics.selection();
+    await queryClient.invalidateQueries({ queryKey: ['personas-hub'] });
   };
 
+  const readyCount = personas.filter((persona) => persona.status === 'ready' && persona.persona_id).length;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/25">
-              <Users className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white">AI Personas Hub</h1>
-              <p className="text-slate-400 text-sm">Create and manage your musical AI personas</p>
-            </div>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <div className="bg-slate-800/40 backdrop-blur-xl rounded-xl p-4 border border-slate-700/50">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-amber-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">{personas.length}</p>
-                  <p className="text-xs text-slate-400">Active Personas</p>
-                </div>
+    <PullToRefresh onRefresh={handleRefresh}>
+      <main className="min-h-screen bg-[#0a0a0f] text-white pb-36">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-5 space-y-4">
+          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 md:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h1 className="text-xl md:text-2xl font-extrabold">Personas Hub</h1>
+                <p className="text-sm text-white/55">Premium voice persona management and quick track generation routing.</p>
               </div>
-            </div>
-
-            <div className="bg-slate-800/40 backdrop-blur-xl rounded-xl p-4 border border-slate-700/50">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                  <Music className="h-5 w-5 text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">{tracks.length}</p>
-                  <p className="text-xs text-slate-400">Source Tracks</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-slate-800/40 backdrop-blur-xl rounded-xl p-4 border border-slate-700/50">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-                  <Sparkles className="h-5 w-5 text-green-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">∞</p>
-                  <p className="text-xs text-slate-400">Unlimited Creation</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Search and Create Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-6 flex flex-col md:flex-row gap-4"
-        >
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search personas..."
-              className="pl-10 bg-slate-800/50 border-slate-700 text-white"
-            />
-          </div>
-          <Button
-            onClick={() => {
-              haptics.medium();
-              setShowCreator(true);
-            }}
-            className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create New Persona
-          </Button>
-        </motion.div>
-
-        {/* Personas Grid */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="h-12 w-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : filteredPersonas.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center py-20 bg-slate-800/20 rounded-xl border border-slate-700/50"
-          >
-            <Users className="h-16 w-16 text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-400 mb-2">
-              {searchQuery ? 'No personas found' : 'No personas yet'}
-            </p>
-            <p className="text-sm text-slate-500 mb-4">
-              {searchQuery ? 'Try a different search term' : 'Create your first AI musical persona'}
-            </p>
-            {!searchQuery && (
-              <Button
+              <button
+                type="button"
                 onClick={() => {
                   haptics.medium();
-                  setShowCreator(true);
+                  navigate('/VoiceStudio');
                 }}
-                className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
+                className="min-h-[44px] px-4 rounded-xl border border-emerald-500/40 bg-emerald-500/15 text-emerald-200 text-sm font-semibold inline-flex items-center justify-center gap-2"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Persona
-              </Button>
-            )}
-          </motion.div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredPersonas.map((persona, index) => {
-              const sourceTrack = tracks.find(t => t.id === persona.track_id);
-              return (
-                <motion.div
-                  key={persona.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="group bg-slate-800/40 backdrop-blur-xl rounded-xl border border-slate-700/50 overflow-hidden hover:border-amber-500/50 transition-all"
-                >
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/25">
-                        <User className="h-7 w-7 text-white" />
-                      </div>
-                      <button
-                        onClick={() => handleDelete(persona)}
-                        className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                <Plus className="h-4 w-4" /> Create Persona
+              </button>
+            </div>
 
-                    <h3 className="text-xl font-bold text-white mb-2">{persona.name}</h3>
-                    <p className="text-sm text-slate-400 mb-4 line-clamp-2">{persona.description}</p>
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+                <p className="text-xs text-white/45">Total</p>
+                <p className="text-lg font-bold">{personas.length}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+                <p className="text-xs text-white/45">Ready</p>
+                <p className="text-lg font-bold text-emerald-300">{readyCount}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+                <p className="text-xs text-white/45">In Progress</p>
+                <p className="text-lg font-bold text-sky-300">{personas.filter((p) => p.status !== 'ready' && p.status !== 'failed').length}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+                <p className="text-xs text-white/45">Failed</p>
+                <p className="text-lg font-bold text-red-300">{personas.filter((p) => p.status === 'failed').length}</p>
+              </div>
+            </div>
 
-                    {sourceTrack && (
-                      <div className="flex items-center gap-2 mb-4 p-2 bg-slate-900/50 rounded-lg">
-                        <Music className="h-4 w-4 text-amber-400 flex-shrink-0" />
+            <div className="relative mt-4">
+              <Search className="h-4 w-4 text-white/35 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search personas..."
+                className="w-full min-h-[44px] rounded-xl pl-10 pr-3 text-sm bg-white/[0.05] border border-white/15 placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+              />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 md:p-5">
+            {isLoading ? (
+              <div className="py-10 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-white/45" /></div>
+            ) : filtered.length === 0 ? (
+              <div className="py-10 text-center">
+                <Mic className="h-8 w-8 mx-auto text-white/25 mb-2" />
+                <p className="text-sm text-white/50">No personas found.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filtered.map((persona) => {
+                  const chip = statusChip(persona.status);
+                  const canRefresh = persona.status !== 'ready' && persona.status !== 'failed';
+                  const refreshingThis = refreshMutation.isPending && refreshMutation.variables?.id === persona.id;
+                  const deletingThis = deleteMutation.isPending && deleteMutation.variables === persona.id;
+
+                  return (
+                    <article key={persona.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg border border-white/15 bg-white/[0.05] flex items-center justify-center flex-shrink-0">
+                          {persona.status === 'failed' ? <XCircle className="h-4 w-4 text-red-300" /> : <CheckCircle2 className="h-4 w-4 text-emerald-300" />}
+                        </div>
+
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs text-slate-500">Source Track</p>
-                          <p className="text-sm text-white truncate">{sourceTrack.title}</p>
+                          <p className="text-sm font-bold truncate">{persona.name || 'Untitled Persona'}</p>
+                          <span className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] ${chip.className}`}>{chip.label}</span>
+                          {persona.persona_id && <p className="mt-1 text-[11px] text-white/45 truncate">Suno ID: {persona.persona_id}</p>}
+                          {persona.error_message && <p className="mt-1 text-xs text-red-300/85 line-clamp-2">{persona.error_message}</p>}
                         </div>
                       </div>
-                    )}
 
-                    <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">
-                      <Sparkles className="h-3 w-3 mr-1" />
-                      AI Persona
-                    </Badge>
+                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/Create?panel=generate&personaId=${encodeURIComponent(persona.id)}`)}
+                          disabled={persona.status !== 'ready'}
+                          className="min-h-[44px] rounded-lg border border-emerald-500/35 bg-emerald-500/15 text-emerald-200 text-sm font-semibold disabled:opacity-45"
+                        >
+                          Use in Song
+                        </button>
 
-                    <div className="mt-4 pt-4 border-t border-slate-700/50">
-                      <p className="text-xs text-slate-500">
-                        Created {new Date(persona.created_date).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                        <button
+                          type="button"
+                          onClick={() => refreshMutation.mutate(persona)}
+                          disabled={!canRefresh || refreshMutation.isPending}
+                          className="min-h-[44px] rounded-lg border border-white/15 bg-white/[0.05] text-white/80 text-sm font-semibold disabled:opacity-45 inline-flex items-center justify-center gap-2"
+                        >
+                          {refreshingThis ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                          Refresh
+                        </button>
 
-      {/* Persona Creator Modal */}
-      <PersonaCreator
-        open={showCreator}
-        onClose={() => setShowCreator(false)}
-        onSuccess={() => {
-          queryClient.invalidateQueries(['personas']);
-          setShowCreator(false);
-        }}
-      />
-    </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            haptics.medium();
+                            deleteMutation.mutate(persona.id);
+                          }}
+                          disabled={deleteMutation.isPending}
+                          className="min-h-[44px] rounded-lg border border-red-500/35 bg-red-500/15 text-red-200 text-sm font-semibold disabled:opacity-45 inline-flex items-center justify-center gap-2"
+                        >
+                          {deletingThis ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          Delete
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+      </main>
+    </PullToRefresh>
   );
 }
