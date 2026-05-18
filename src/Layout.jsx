@@ -270,9 +270,10 @@ function ReservedMain({ children, currentPageName, showSidebar, sidebarOpen }) {
   const { playerVisible } = useAudioPlayer();
   const hasVisiblePlayer = !!playerVisible;
   const hasMobileNav = currentPageName !== 'Home';
-  // Player bar is exactly 10vh, clamped between 64-96px
-  const playerReserve = hasVisiblePlayer ? 'clamp(64px, 10vh, 96px)' : '0px';
-  const mobileNavReserve = hasMobileNav ? '72px' : '0px';
+  // Updated player bar height: clamp(70px, 10.5vh, 104px)
+  const playerReserve = hasVisiblePlayer ? 'clamp(70px, 10.5vh, 104px)' : '0px';
+  // Updated mobile nav height: clamp(60px, 8vh, 80px)
+  const mobileNavReserve = hasMobileNav ? 'clamp(60px, 8vh, 80px)' : '0px';
 
   useEffect(() => {
     const root = document.documentElement;

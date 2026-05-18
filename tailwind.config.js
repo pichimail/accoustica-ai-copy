@@ -7,6 +7,9 @@ module.exports = {
   		screens: {
   			xs: '480px',
   		},
+  		zIndex: {
+  			'35': '35',
+  		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',

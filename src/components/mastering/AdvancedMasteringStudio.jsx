@@ -53,7 +53,8 @@ export default function AdvancedMasteringStudio({ open, onClose, track, onSucces
     setIsAnalyzing(true);
     haptics.light();
     try {
-      const response = await base44.integrations.Core.InvokeLLM({
+      const { llmService } = await import('@/services/llmService');
+      const response = await llmService.invoke({
         prompt: `Analyze this music track and suggest optimal mastering settings:
         Genre: ${track.style}
         Title: ${track.title}

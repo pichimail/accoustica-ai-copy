@@ -91,9 +91,39 @@ Deno.serve(async (req) => {
       },
     };
 
-    // Use AI to generate mastering report
-    const llmResult = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a professional audio mastering engineer. Analyze this track metadata and provide a mastering report.
+    // Use AI to generate mastering report - using OpenRouter with fallback to OpenAI
+    const apiKey = Deno.env.get('OPENROUTER_API_KEY') || Deno.env.get('OPENAI_API_KEY');
+    const isOpenRouter = !!Deno.env.get('OPENROUTER_API_KEY');
+    
+    if (!apiKey) {
+      throw new Error('No LLM API key configured (OPENROUTER_API_KEY or OPENAI_API_KEY)');
+    }
+
+    const url = isOpenRouter 
+      ? 'https://openrouter.ai/api/v1/chat/completions'
+      : 'https://api.openai.com/v1/chat/completions';
+
+    const model = isOpenRouter
+      ? Deno.env.get('OPENROUTER_MODEL') || 'openrouter/auto'
+      : Deno.env.get('OPENAI_MODEL') || 'gpt-4-turbo-preview';
+
+    const llmResponse = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        ...(isOpenRouter && { 'HTTP-Referer': 'https://accoustica-ai.app' }),
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a professional audio mastering engineer. Respond with valid JSON.',
+          },
+          {
+            role: 'user',
+            content: `You are a professional audio mastering engineer. Analyze this track metadata and provide a mastering report.
 Track: "${trackData?.title || 'Unknown Track'}"
 Style: "${trackData?.style || 'Unknown'}"
 Applied mastering chain:
@@ -102,16 +132,17 @@ Applied mastering chain:
 - Loudness normalization to ${masteringProfile.loudnessNormalization.targetLUFS} LUFS
 - Stereo enhancement: ${masteringProfile.stereoEnhancement.midSide}
 
-Provide a brief, professional mastering report (2-3 sentences) on what was done and expected result.`,
-      response_json_schema: {
-        type: 'object',
-        properties: {
-          report: { type: 'string' },
-          quality_score: { type: 'number' },
-          recommendations: { type: 'array', items: { type: 'string' } },
-        },
-      },
+Provide a response as JSON with fields: report (brief professional summary), quality_score (number 1-10), recommendations (array of strings).`,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+      }),
     });
+
+    const llmData = await llmResponse.json();
+    const content = llmData.choices[0]?.message?.content || '{}';
+    const llmResult = JSON.parse(content);
 
     // Update track record with mastering metadata
     if (trackId) {

@@ -709,7 +709,8 @@ export default function StudioGeneratePanel({
     const shouldEnhance = currentPrompt.length > 0;
     setGeneratingSimplePrompt(true);
     try {
-      const response = await base44.integrations.Core.InvokeLLM({
+      const { llmService } = await import('@/services/llmService');
+      const response = await llmService.invoke({
         prompt: shouldEnhance
           ? `Enhance this music-generation prompt while preserving the user's intent. Make it more specific with mood, arrangement, instrumentation, and sonic texture. Keep it under ${SIMPLE_PROMPT_MAX} characters. Return plain text only.\n\nPrompt: ${currentPrompt}`
           : `Create one vivid music-generation prompt under ${SIMPLE_PROMPT_MAX} characters. Blend one unexpected hook, clear mood, instrumentation, and section flow cues. No markdown.`,
@@ -738,7 +739,8 @@ export default function StudioGeneratePanel({
         return;
       }
 
-      const response = await base44.integrations.Core.InvokeLLM({
+      const { llmService } = await import('@/services/llmService');
+      const response = await llmService.invoke({
         prompt: `Enhance these music generation inputs with stronger clarity and detail. Return JSON with keys styles and lyrics only.\nstyles: ${styles || 'none'}\nlyrics: ${lyrics || 'none'}\nLimit styles to ${STYLE_MAX} chars and lyrics to ${LYRICS_MAX} chars.`,
         add_context_from_internet: false,
         response_json_schema: {

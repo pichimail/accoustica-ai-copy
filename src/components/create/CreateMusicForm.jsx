@@ -120,7 +120,8 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
 
     setGeneratingLyrics(true);
     try {
-      const response = await base44.integrations.Core.InvokeLLM({
+      const { llmService } = await import('@/services/llmService');
+      const response = await llmService.invoke({
         prompt: `Generate song lyrics that match this song description: "${prompt}". 
         Style: ${style || 'Any style'}
         Make them creative, emotional, and suitable for the described theme and style. 
@@ -141,7 +142,8 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
   const handleRandomDescription = async () => {
     setGeneratingRandom(true);
     try {
-      const response = await base44.integrations.Core.InvokeLLM({
+      const { llmService } = await import('@/services/llmService');
+      const response = await llmService.invoke({
         prompt: `Generate a short, creative song concept for AI music generation (like Suno.com style). Just describe the type of song, mood, and style in 1-2 sentences. NO LYRICS. Examples: "An upbeat pop song with electronic beats and summer vibes" or "A melancholic jazz ballad with piano and soft vocals". Return only the description.`,
         add_context_from_internet: false,
       });
@@ -163,7 +165,8 @@ export default function CreateMusicForm({ onSubmit, isLoading, disabled, limitRe
 
     setGeneratingLyrics(true);
     try {
-      const response = await base44.integrations.Core.InvokeLLM({
+      const { llmService } = await import('@/services/llmService');
+      const response = await llmService.invoke({
         prompt: `Improve this song description to be more creative and detailed for AI music generation: "${prompt}". 
         Keep it concise but evocative. Return only the improved description.`,
         add_context_from_internet: false,

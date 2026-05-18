@@ -51,7 +51,8 @@ export default function SongStructureBuilder({ onApply, genre = 'pop' }) {
   const generateAISuggestion = async () => {
     setGenerating(true);
     try {
-      const response = await base44.integrations.Core.InvokeLLM({
+      const { llmService } = await import('@/services/llmService');
+      const response = await llmService.invoke({
         prompt: `Suggest an optimal song structure for a ${genre} song. Provide a JSON array with sections like: [{"type": "Intro", "duration": 8}, {"type": "Verse", "duration": 16}, ...]. Keep it between 6-10 sections total. Return ONLY the JSON array.`,
         response_json_schema: {
           type: "object",

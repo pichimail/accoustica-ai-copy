@@ -368,7 +368,7 @@ function LyricsOverlay({ track, currentTime, onSeek, onClose }) {
       transition={{ type: 'spring', damping: 30, stiffness: 320 }}
       className="fixed left-0 right-0 z-[98] overflow-hidden"
       style={{
-        bottom: 'calc(clamp(64px, 10vh, 96px) + var(--mobile-nav-reserve, 0px) + env(safe-area-inset-bottom, 0px))',
+        bottom: `calc(clamp(60px, 8vh, 80px) + clamp(70px, 10.5vh, 104px) + var(--mobile-nav-reserve, 0px) + env(safe-area-inset-bottom, 0px))`,
         maxHeight: '42vh',
         background: 'rgba(8,8,15,0.97)',
         borderTop: '1px solid rgba(255,255,255,0.08)',
@@ -497,7 +497,7 @@ export default function GlobalAudioPlayer() {
         )}
       </AnimatePresence>
 
-      {/* ══ PLAYER BAR — exactly 10 vh (clamped 64-96px) ════════════════════ */}
+      {/* ══ PLAYER BAR — positioned above mobile nav, with z-index below it ════════════════════ */}
       <AnimatePresence>
         {!isFullscreen && (
           <motion.div
@@ -506,9 +506,9 @@ export default function GlobalAudioPlayer() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: '110%', opacity: 0 }}
             transition={{ type: 'spring', damping: 30, stiffness: 260 }}
-            className="fixed left-0 right-0 z-[100] flex flex-col select-none"
+            className="fixed left-0 right-0 z-35 flex flex-col select-none"
             style={{
-              bottom: 'env(safe-area-inset-bottom, 0px)',
+              bottom: `calc(clamp(60px, 8vh, 80px) + env(safe-area-inset-bottom, 0px))`,
               height: 'clamp(70px, 10.5vh, 104px)',
               background: 'linear-gradient(180deg, rgba(7,7,13,0.94) 0%, rgba(4,4,9,0.98) 100%)',
               backdropFilter: 'blur(36px)',

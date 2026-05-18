@@ -22,7 +22,8 @@ export default function MusicTheoryAssistant({ open, onClose, track, onApplyFixe
     setIsAnalyzing(true);
     haptics.light();
     try {
-      const response = await base44.integrations.Core.InvokeLLM({
+      const { llmService } = await import('@/services/llmService');
+      const response = await llmService.invoke({
         prompt: `Analyze this music track from a music theory perspective:
         Title: ${track.title}
         Genre: ${track.style}
@@ -92,7 +93,8 @@ export default function MusicTheoryAssistant({ open, onClose, track, onApplyFixe
     try {
       const fixesPrompt = analysis.issues.map(issue => issue.fix).join('. ');
       
-      const response = await base44.integrations.Core.InvokeLLM({
+      const { llmService } = await import('@/services/llmService');
+      const response = await llmService.invoke({
         prompt: `Generate an improved version prompt for this track, applying these music theory fixes:
         Original: ${track.prompt}
         Fixes needed: ${fixesPrompt}

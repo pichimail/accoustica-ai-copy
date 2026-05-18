@@ -25,7 +25,8 @@ export default function AICollaborationPanel({ track }) {
 
     setGenerating(true);
     try {
-      const response = await base44.integrations.Core.InvokeLLM({
+      const { llmService } = await import('@/services/llmService');
+      const response = await llmService.invoke({
         prompt: `You are a professional songwriter. Based on this request: "${lyricsPrompt}", generate creative lyrics suggestions. Provide 3 different variations that are unique and emotionally resonant. Format as JSON array with fields: lyrics (string), style (string), mood (string).`,
         response_json_schema: {
           type: 'object',
@@ -57,7 +58,8 @@ export default function AICollaborationPanel({ track }) {
   const generateFeedback = async () => {
     setGenerating(true);
     try {
-      const response = await base44.integrations.Core.InvokeLLM({
+      const { llmService } = await import('@/services/llmService');
+      const response = await llmService.invoke({
         prompt: `Analyze this music track for a collaborative session: Title: "${track.title}", Style: "${track.style}", Prompt: "${track.prompt}". Provide constructive feedback on: 1) Track structure and arrangement, 2) Genre/style consistency, 3) Areas for improvement, 4) Strengths. Be specific and actionable.`,
         add_context_from_internet: false,
       });
@@ -74,7 +76,8 @@ export default function AICollaborationPanel({ track }) {
   const generateSessionSummary = async () => {
     setGenerating(true);
     try {
-      const response = await base44.integrations.Core.InvokeLLM({
+      const { llmService } = await import('@/services/llmService');
+      const response = await llmService.invoke({
         prompt: `Create a session summary for this collaborative music project: Track: "${track.title}", Style: "${track.style}". Generate: 1) Session overview, 2) Key decisions made, 3) Action items for next session, 4) Technical notes. Format professionally.`,
         response_json_schema: {
           type: 'object',

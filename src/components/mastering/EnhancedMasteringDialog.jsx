@@ -57,7 +57,8 @@ export default function EnhancedMasteringDialog({ track, open, onClose, onSucces
       setReferenceFile(file_url);
 
       // Analyze reference track with AI
-      const analysis = await base44.integrations.Core.InvokeLLM({
+      const { llmService } = await import('@/services/llmService');
+      const analysis = await llmService.invoke({
         prompt: `Analyze this audio file and provide mastering settings. Return a JSON with: loudness (dB from -6 to 6), eq_adjust (dB from -6 to 6), compression (0-100), stereo_width (50-150), bass_boost (dB from -6 to 6), high_boost (dB from -6 to 6). Base your analysis on the sonic characteristics of professional mastering.`,
         file_urls: file_url,
         response_json_schema: {

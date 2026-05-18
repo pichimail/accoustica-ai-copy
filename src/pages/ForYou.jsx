@@ -448,7 +448,8 @@ export default function ForYouPage() {
       const userStyles = [...new Set(userTracks.map(t => t.style).filter(Boolean))];
       const pool = trending.slice(0, 40);
       if (!userStyles.length) { setAiPicks(pool.slice(0, 10)); return; }
-      const res = await base44.integrations.Core.InvokeLLM({
+      const { llmService } = await import('@/services/llmService');
+      const res = await llmService.invoke({
         prompt: `User creates music in styles: ${userStyles.join(', ')}. From these track IDs pick the 10 best matching ones: ${pool.map(t => t.id).join(',')}`,
         response_json_schema: {
           type: 'object',
