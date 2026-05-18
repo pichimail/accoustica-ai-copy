@@ -99,7 +99,7 @@ export function AudioPlayerProvider({ children }) {
   const [repeatMode, setRepeatMode] = useState('off');
   const [isShuffle, setIsShuffle] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [playerVisible, setPlayerVisible] = useState(true);
+  const [playerVisible, setPlayerVisible] = useState(false);
   const [audioSettings, setAudioSettings] = useState(null);
 
   // audioRef is populated by GlobalAudioPlayer's callback ref

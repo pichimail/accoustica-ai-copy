@@ -21,6 +21,10 @@ import {
   GitBranch, Volume2, Wand2, Mic2, Film, UserCheck, SortAsc, Hash, DollarSign, Layers, Sparkles, Radio, HardDrive, Terminal, Flag, Boxes
 } from 'lucide-react';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
+import AdminLLMSettings from '@/components/admin/AdminLLMSettings';
+import AdminLLMStatus from '@/components/admin/AdminLLMStatus';
+import AdminLLMMetrics from '@/components/admin/AdminLLMMetrics';
+import AdminLLMErrorLog from '@/components/admin/AdminLLMErrorLog';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell
@@ -64,10 +68,15 @@ const DEFAULT_FLAGS = [
   { id: 'api_access',            name: 'API Access',            desc: 'Allow users to access platform via REST API',                           category: 'limits',     icon: Terminal,    defaultOn: false },
   { id: 'early_access',          name: 'Early Access Features', desc: 'Opt in to experimental unreleased features',                           category: 'limits',     icon: Flag,        defaultOn: false },
   { id: 'analytics',             name: 'Creator Analytics',     desc: 'Detailed playback, share and engagement insights per track',            category: 'limits',     icon: BarChart3,   defaultOn: true  },
+  // LLM/AI Features
+  { id: 'llm_enabled',           name: 'LLM Integration',       desc: 'Enable LLM API integration for enhanced features',                      category: 'llm',        icon: Zap,         defaultOn: true  },
+  { id: 'llm_provider_switching', name: 'Provider Switching',   desc: 'Allow automatic fallback between LLM providers',                       category: 'llm',        icon: GitBranch,   defaultOn: true  },
+  { id: 'lyrics_generation_llm', name: 'LLM Lyrics Gen',        desc: 'Advanced lyrics generation powered by LLM',                             category: 'llm',        icon: Music,       defaultOn: true  },
+  { id: 'music_theory_llm',      name: 'Music Theory AI',       desc: 'AI-powered music theory analysis and suggestions',                      category: 'llm',        icon: Wand2,       defaultOn: true  },
 ];
 
-const FLAG_CATEGORIES = ['all', 'studio', 'generation', 'social', 'audio', 'limits'];
-const FLAG_CAT_COLORS = { studio: ROSE, generation: PURPLE, social: BLUE, audio: GREEN, limits: AMBER };
+const FLAG_CATEGORIES = ['all', 'studio', 'generation', 'social', 'audio', 'limits', 'llm'];
+const FLAG_CAT_COLORS = { studio: ROSE, generation: PURPLE, social: BLUE, audio: GREEN, limits: AMBER, llm: '#38bdf8' };
 
 // Default plans seeded on first load if none exist
 const SEED_PLANS = [
@@ -247,21 +256,21 @@ function OverviewTab({ users, tracks, plans }) {
   const fmt = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard label="Total Users"   value={users.length}       sub={activeUsers + ' active'}                          icon={Users}      accent={BLUE}   />
         <StatCard label="Total Tracks"  value={tracks.length}      sub={publicTracks + ' public · ' + genTracks + ' live'} icon={Music}      accent={ROSE}   />
         <StatCard label="Ready Tracks"  value={tracks.filter(t => t.status === 'ready').length} sub={Math.round(tracks.filter(t => t.status === 'ready').length / Math.max(1, tracks.length) * 100) + '% success rate'} icon={CheckCircle2} accent={GREEN} />
         <StatCard label="Est. MRR"      value={'$' + totalRevenue} sub={plans.length + ' active plans'}                   icon={DollarSign} accent={AMBER}  />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 rounded-2xl p-4" style={{ background: BG2, border: '1px solid ' + BORD }}>
-          <p className="font-semibold text-sm mb-4 flex items-center gap-2" style={{ color: TEXT }}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 rounded-2xl p-3 sm:p-4" style={{ background: BG2, border: '1px solid ' + BORD }}>
+          <p className="font-semibold text-xs sm:text-sm mb-3 sm:mb-4 flex items-center gap-2" style={{ color: TEXT }}>
             <Activity className="h-4 w-4" style={{ color: ROSE }} /> Activity — Last 7 Days
           </p>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={chartData}>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={chartData} margin={{ left: -20, right: 0, top: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="gt" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor={ROSE}  stopOpacity={0.3} />
@@ -273,8 +282,8 @@ function OverviewTab({ users, tracks, plans }) {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="date" stroke={TEXT3} tick={{ fontSize: 11, fill: TEXT3 }} />
-              <YAxis stroke={TEXT3} tick={{ fontSize: 11, fill: TEXT3 }} />
+              <XAxis dataKey="date" stroke={TEXT3} tick={{ fontSize: 10, fill: TEXT3 }} />
+              <YAxis stroke={TEXT3} tick={{ fontSize: 10, fill: TEXT3 }} />
               <Tooltip {...TTSTYLE} />
               <Area type="monotone" dataKey="tracks" name="Tracks" stroke={ROSE}  fill="url(#gt)" strokeWidth={2} />
               <Area type="monotone" dataKey="users"  name="Users"  stroke={GREEN} fill="url(#gu)" strokeWidth={2} />
@@ -282,13 +291,13 @@ function OverviewTab({ users, tracks, plans }) {
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-2xl p-4" style={{ background: BG2, border: '1px solid ' + BORD }}>
-          <p className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: TEXT }}>
+        <div className="rounded-2xl p-3 sm:p-4" style={{ background: BG2, border: '1px solid ' + BORD }}>
+          <p className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3 flex items-center gap-2" style={{ color: TEXT }}>
             <Crown className="h-4 w-4" style={{ color: AMBER }} /> Plan Distribution
           </p>
-          <ResponsiveContainer width="100%" height={150}>
+          <ResponsiveContainer width="100%" height={140}>
             <PieChart>
-              <Pie data={planDist} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="value" paddingAngle={3}>
+              <Pie data={planDist} cx="50%" cy="50%" innerRadius={35} outerRadius={60} dataKey="value" paddingAngle={2}>
                 {planDist.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
               </Pie>
               <Tooltip {...TTSTYLE} />
@@ -308,20 +317,20 @@ function OverviewTab({ users, tracks, plans }) {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid lg:grid-cols-2 gap-3 sm:gap-4">
         <div className="rounded-2xl overflow-hidden" style={{ background: BG2, border: '1px solid ' + BORD }}>
-          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid ' + BORD }}>
-            <p className="font-semibold text-sm" style={{ color: TEXT }}>Recent Tracks</p>
+          <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3" style={{ borderBottom: '1px solid ' + BORD }}>
+            <p className="font-semibold text-xs sm:text-sm" style={{ color: TEXT }}>Recent Tracks</p>
             <Pill color={ROSE}>{tracks.length}</Pill>
           </div>
           {recentTracks.map(t => (
-            <div key={t.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.03] transition-colors" style={{ borderBottom: '1px solid ' + BORD2 }}>
-              <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                {t.cover_image_url ? <img src={t.cover_image_url} className="w-full h-full object-cover" alt="" /> : <Music className="h-3.5 w-3.5 m-auto mt-2" style={{ color: TEXT3 }} />}
+            <div key={t.id} className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 hover:bg-white/[0.03] transition-colors text-xs sm:text-sm" style={{ borderBottom: '1px solid ' + BORD2 }}>
+              <div className="w-7 sm:w-8 h-7 sm:h-8 rounded-lg overflow-hidden flex-shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                {t.cover_image_url ? <img src={t.cover_image_url} className="w-full h-full object-cover" alt="" /> : <Music className="h-3 sm:h-3.5 w-3 sm:w-3.5 m-auto mt-1.5" style={{ color: TEXT3 }} />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold truncate" style={{ color: TEXT }}>{t.title}</p>
-                <p className="text-[10px]" style={{ color: TEXT3 }}>{t.created_by?.split('@')[0]} · {fmt(t.created_date)}</p>
+                <p className="font-semibold truncate" style={{ color: TEXT }}>{t.title}</p>
+                <p className="text-[9px] sm:text-[10px] line-clamp-1" style={{ color: TEXT3 }}>{t.created_by?.split('@')[0]} · {fmt(t.created_date)}</p>
               </div>
               <Pill color={t.status === 'ready' ? GREEN : t.status === 'failed' ? ROSE : AMBER}>{t.status}</Pill>
             </div>
@@ -330,20 +339,20 @@ function OverviewTab({ users, tracks, plans }) {
         </div>
 
         <div className="rounded-2xl overflow-hidden" style={{ background: BG2, border: '1px solid ' + BORD }}>
-          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid ' + BORD }}>
-            <p className="font-semibold text-sm" style={{ color: TEXT }}>Recent Signups</p>
+          <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3" style={{ borderBottom: '1px solid ' + BORD }}>
+            <p className="font-semibold text-xs sm:text-sm" style={{ color: TEXT }}>Recent Signups</p>
             <Pill color={BLUE}>{users.length}</Pill>
           </div>
           {recentUsers.map(u => {
             const plan = plans.find(p => p.id === u.plan_id);
             return (
-              <div key={u.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.03] transition-colors" style={{ borderBottom: '1px solid ' + BORD2 }}>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0" style={{ background: BLUE + '22', color: BLUE }}>
+              <div key={u.id} className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 hover:bg-white/[0.03] transition-colors text-xs sm:text-sm" style={{ borderBottom: '1px solid ' + BORD2 }}>
+                <div className="w-7 sm:w-8 h-7 sm:h-8 rounded-full flex items-center justify-center font-bold text-[9px] sm:text-xs flex-shrink-0" style={{ background: BLUE + '22', color: BLUE }}>
                   {(u.full_name?.[0] || u.email?.[0] || '?').toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold truncate" style={{ color: TEXT }}>{u.full_name || u.email}</p>
-                  <p className="text-[10px]" style={{ color: TEXT3 }}>{fmt(u.created_date)}</p>
+                  <p className="font-semibold truncate" style={{ color: TEXT }}>{u.full_name || u.email}</p>
+                  <p className="text-[9px] sm:text-[10px]" style={{ color: TEXT3 }}>{fmt(u.created_date)}</p>
                 </div>
                 <Pill color={AMBER}>{plan?.name || 'Free'}</Pill>
               </div>
@@ -353,19 +362,19 @@ function OverviewTab({ users, tracks, plans }) {
         </div>
       </div>
 
-      <div className="rounded-2xl p-4" style={{ background: BG2, border: '1px solid ' + BORD }}>
-        <p className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: TEXT }}>
+      <div className="rounded-2xl p-3 sm:p-4" style={{ background: BG2, border: '1px solid ' + BORD }}>
+        <p className="font-semibold text-xs sm:text-sm mb-3 sm:mb-4 flex items-center gap-2" style={{ color: TEXT }}>
           <BarChart3 className="h-4 w-4" style={{ color: PURPLE }} /> Track Status Breakdown
         </p>
-        <div className="flex rounded-xl overflow-hidden h-4">
+        <div className="flex rounded-xl overflow-hidden h-3 sm:h-4">
           {statusDist.map((s, i) => (
             <div key={s.name} title={s.name + ': ' + s.value} style={{ width: (s.value / Math.max(1, tracks.length) * 100) + '%', background: CHART_COLORS[i % CHART_COLORS.length] }} />
           ))}
         </div>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+        <div className="flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1 mt-2">
           {statusDist.map((s, i) => (
-            <div key={s.name} className="flex items-center gap-1 text-[11px]">
-              <div className="w-2 h-2 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+            <div key={s.name} className="flex items-center gap-1 text-[10px] sm:text-[11px]">
+              <div className="w-1.5 h-1.5 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
               <span style={{ color: TEXT2 }}>{s.name}</span>
               <span className="font-bold" style={{ color: TEXT }}>{s.value}</span>
             </div>
@@ -1303,16 +1312,344 @@ function SystemTab({ tracks, users }) {
 }
 
 // ─────────────────────────────────────────────
+// LLM Admin Dashboard (with sub-tabs)
+// ─────────────────────────────────────────────
+const LLM_TABS = [
+  { id: 'settings', label: 'Settings',   icon: Settings,     Component: AdminLLMSettings },
+  { id: 'status',   label: 'Health',     icon: Activity,     Component: AdminLLMStatus },
+  { id: 'metrics',  label: 'Metrics',    icon: BarChart3,    Component: AdminLLMMetrics },
+  { id: 'errors',   label: 'Error Log',  icon: AlertTriangle, Component: AdminLLMErrorLog },
+];
+
+function AdminLLMDashboard({ users }) {
+  const [activeLLMTab, setActiveLLMTab] = useState('settings');
+
+  return (
+    <div className="space-y-6">
+      {/* LLM Sub-tabs */}
+      <div className="flex gap-1 p-1 rounded-2xl overflow-x-auto" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid ' + BORD }}>
+        {LLM_TABS.map(tab => {
+          const Icon = tab.icon;
+          const active = activeLLMTab === tab.id;
+          return (
+            <motion.button
+              key={tab.id}
+              onClick={() => setActiveLLMTab(tab.id)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0"
+              style={{
+                background: active ? BLUE + '22' : 'transparent',
+                color: active ? BLUE : TEXT2,
+                border: '1px solid ' + (active ? BLUE + '44' : 'transparent'),
+              }}
+            >
+              <Icon className="h-4 w-4" />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* LLM Tab Content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeLLMTab}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.15 }}
+        >
+          {LLM_TABS.map(tab => {
+            if (activeLLMTab !== tab.id) return null;
+            const Component = tab.Component;
+            return <Component key={tab.id} users={users} />;
+          })}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Creator Analytics Tab (expanded from Insights)
+// ─────────────────────────────────────────────
+function CreatorAnalyticsTab({ tracks, users }) {
+  const [selectedCreator, setSelectedCreator] = useState(null);
+  const [timeRange, setTimeRange] = useState('7d');
+
+  const topCreators = useMemo(() => {
+    const map = {};
+    tracks.forEach(t => { if (t.created_by) map[t.created_by] = (map[t.created_by] || 0) + 1; });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).map(([email, count]) => ({
+      email,
+      count,
+      user: users.find(u => u.email === email),
+      tracks: tracks.filter(t => t.created_by === email),
+    }));
+  }, [tracks, users]);
+
+  const creatorStats = useMemo(() => topCreators.map(c => ({
+    ...c,
+    publicTracks: c.tracks.filter(t => t.is_public).length,
+    totalDuration: c.tracks.reduce((a, t) => a + (t.duration || 0), 0),
+    avgDuration: Math.round(c.tracks.reduce((a, t) => a + (t.duration || 0), 0) / Math.max(1, c.tracks.length)),
+    readyTracks: c.tracks.filter(t => t.status === 'ready').length,
+    failedTracks: c.tracks.filter(t => t.status === 'failed').length,
+    totalLikes: c.tracks.reduce((a, t) => a + (t.total_likes || 0), 0),
+    totalPlays: c.tracks.reduce((a, t) => a + (t.total_plays || 0), 0),
+  })), [topCreators]);
+
+  const styleFreq = useMemo(() => {
+    const map = {};
+    tracks.forEach(t => {
+      (t.style || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean).forEach(tag => { map[tag] = (map[tag] || 0) + 1; });
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([style, count]) => ({ style, count }));
+  }, [tracks]);
+
+  const publicRatio = tracks.length > 0 ? Math.round(tracks.filter(t => t.is_public).length / tracks.length * 100) : 0;
+  const instrRatio = tracks.length > 0 ? Math.round(tracks.filter(t => t.is_instrumental).length / tracks.length * 100) : 0;
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard label="Public Ratio"   value={publicRatio + '%'} sub="of all tracks"            icon={Globe}    accent={GREEN}  />
+        <StatCard label="Instrumental"   value={instrRatio + '%'}  sub="no vocals"                icon={Music}    accent={PURPLE} />
+        <StatCard label="Top Creators"   value={creatorStats.length}  sub="unique creators"      icon={Users}    accent={BLUE}   />
+        <StatCard label="Total Engagment" value={(creatorStats.reduce((a, c) => a + c.totalPlays, 0) || 0).toLocaleString()} sub="total plays" icon={Play} accent={AMBER} />
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 rounded-2xl p-4" style={{ background: BG2, border: '1px solid ' + BORD }}>
+          <p className="font-semibold text-sm mb-4 flex items-center gap-2" style={{ color: TEXT }}>
+            <Star className="h-4 w-4" style={{ color: AMBER }} /> Top Creators by Track Count
+          </p>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={creatorStats.slice(0, 8)}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+              <XAxis dataKey="email" tickFormatter={v => v?.split('@')[0]} angle={-45} textAnchor="end" height={80} stroke={TEXT3} tick={{ fontSize: 11, fill: TEXT3 }} />
+              <YAxis stroke={TEXT3} tick={{ fontSize: 11, fill: TEXT3 }} />
+              <Tooltip {...TTSTYLE} />
+              <Bar dataKey="count" fill={ROSE} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="rounded-2xl p-4" style={{ background: BG2, border: '1px solid ' + BORD }}>
+          <p className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: TEXT }}>
+            <Users className="h-4 w-4" style={{ color: BLUE }} /> Creator Stats
+          </p>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {creatorStats.slice(0, 6).map((c, i) => (
+              <button key={c.email} onClick={() => setSelectedCreator(c)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
+                style={{ background: selectedCreator?.email === c.email ? BLUE + '22' : 'rgba(255,255,255,0.02)', border: '1px solid ' + (selectedCreator?.email === c.email ? BLUE + '44' : BORD2) }}>
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold truncate" style={{ color: TEXT }}>{c.email?.split('@')[0]}</p>
+                    <p className="text-[10px]" style={{ color: TEXT3 }}>{c.count} tracks</p>
+                  </div>
+                  <span className="text-xs font-bold flex-shrink-0" style={{ color: BLUE }}>{i + 1}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="rounded-2xl p-4" style={{ background: BG2, border: '1px solid ' + BORD }}>
+          <p className="font-semibold text-sm mb-4 flex items-center gap-2" style={{ color: TEXT }}>
+            <Music className="h-4 w-4" style={{ color: PURPLE }} /> Top Style Tags
+          </p>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={styleFreq} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+              <XAxis type="number" stroke={TEXT3} tick={{ fontSize: 11, fill: TEXT3 }} />
+              <YAxis type="category" dataKey="style" width={100} tickFormatter={v => v.length > 14 ? v.slice(0, 14) + '…' : v} stroke={TEXT3} tick={{ fontSize: 11, fill: TEXT3 }} />
+              <Tooltip {...TTSTYLE} formatter={v => [v, 'Count']} />
+              <Bar dataKey="count" fill={PURPLE} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="rounded-2xl p-4" style={{ background: BG2, border: '1px solid ' + BORD }}>
+          <p className="font-semibold text-sm mb-3 flex items-center gap-2" style={{ color: TEXT }}>
+            <Activity className="h-4 w-4" style={{ color: GREEN }} /> Library Composition
+          </p>
+          <div className="space-y-4">
+            {[
+              { label: 'Public vs Private', a: { label: 'Public', val: tracks.filter(t => t.is_public).length, color: GREEN }, b: { label: 'Private', val: tracks.filter(t => !t.is_public).length, color: TEXT3 } },
+              { label: 'Vocal vs Instrumental', a: { label: 'Vocal', val: tracks.filter(t => !t.is_instrumental).length, color: PURPLE }, b: { label: 'Instrumental', val: tracks.filter(t => t.is_instrumental).length, color: BLUE } },
+              { label: 'Ready vs Processing', a: { label: 'Ready', val: tracks.filter(t => t.status === 'ready').length, color: GREEN }, b: { label: 'Other', val: tracks.filter(t => t.status !== 'ready').length, color: AMBER } },
+            ].map(({ label, a, b }) => {
+              const total = a.val + b.val;
+              const pA = total > 0 ? Math.round(a.val / total * 100) : 0;
+              return (
+                <div key={label} className="space-y-1.5">
+                  <p className="text-xs font-semibold" style={{ color: TEXT2 }}>{label}</p>
+                  <div className="flex rounded-lg overflow-hidden h-2">
+                    <div style={{ width: pA + '%', background: a.color }} />
+                    <div style={{ width: (100 - pA) + '%', background: 'rgba(255,255,255,0.08)' }} />
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span style={{ color: a.color }}>{a.label} {a.val}</span>
+                    <span style={{ color: TEXT3 }}>{b.label} {b.val}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {selectedCreator && (
+        <div className="rounded-2xl p-4" style={{ background: BLUE + '08', border: '1px solid ' + BLUE + '22' }}>
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <p className="font-semibold text-sm mb-1" style={{ color: BLUE }}>Creator Profile: {selectedCreator.email}</p>
+              <p className="text-xs" style={{ color: TEXT3 }}>Detailed analytics for this creator</p>
+            </div>
+            <button onClick={() => setSelectedCreator(null)} className="w-6 h-6 rounded flex items-center justify-center hover:bg-white/10">
+              <X className="h-4 w-4" style={{ color: TEXT2 }} />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { label: 'Total Tracks', value: selectedCreator.count, icon: Music },
+              { label: 'Public', value: selectedCreator.publicTracks, icon: Globe },
+              { label: 'Total Plays', value: (selectedCreator.totalPlays || 0).toLocaleString(), icon: Play },
+              { label: 'Total Likes', value: (selectedCreator.totalLikes || 0).toLocaleString(), icon: Star },
+            ].map(s => (
+              <div key={s.label} className="px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid ' + BORD2 }}>
+                <p className="text-[10px] font-semibold" style={{ color: TEXT3 }}>{s.label}</p>
+                <p className="text-sm font-bold mt-0.5" style={{ color: TEXT }}>{s.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Audit Logs Tab
+// ─────────────────────────────────────────────
+function AuditLogsTab({ tracks, users }) {
+  const [filterType, setFilterType] = useState('all');
+  const [filterUser, setFilterUser] = useState('all');
+  const [search, setSearch] = useState('');
+
+  const auditEvents = useMemo(() => {
+    const events = [];
+    
+    // User registration events
+    users.slice(-20).forEach(u => {
+      events.push({
+        id: 'user-' + u.id,
+        type: 'user_created',
+        action: 'User registered',
+        user: u.email,
+        timestamp: u.created_date,
+        details: `${u.full_name || 'User'} signed up`,
+        icon: Users,
+        color: GREEN,
+      });
+    });
+
+    // Track generation events
+    tracks.slice(-30).forEach(t => {
+      events.push({
+        id: 'track-gen-' + t.id,
+        type: 'track_generated',
+        action: 'Track created',
+        user: t.created_by,
+        timestamp: t.created_date,
+        details: `"${t.title}" - ${t.style || 'Custom'}`,
+        icon: Music,
+        color: BLUE,
+      });
+    });
+
+    // Track deletion would be here
+    // Suspension events would be here
+
+    return events
+      .filter(e => (filterType === 'all' || e.type === filterType) && (filterUser === 'all' || e.user === filterUser))
+      .filter(e => !search || e.action.toLowerCase().includes(search.toLowerCase()) || e.details.toLowerCase().includes(search.toLowerCase()))
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 100);
+  }, [tracks, users, filterType, filterUser, search]);
+
+  const fmt = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+  const eventTypes = ['user_created', 'track_generated', 'user_updated', 'track_deleted'];
+  const uniqueUsers = [...new Set([...users.map(u => u.email), ...tracks.map(t => t.created_by)].filter(Boolean))].sort().slice(0, 20);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: TEXT3 }} />
+          <DarkInput value={search} onChange={e => setSearch(e.target.value)} placeholder="Search logs…" className="pl-9" />
+        </div>
+        <DarkSelect value={filterType} onChange={setFilterType} options={[{ value: 'all', label: 'All events' }, { value: 'user_created', label: 'User registration' }, { value: 'track_generated', label: 'Track creation' }, { value: 'user_updated', label: 'User updates' }]} />
+        <DarkSelect value={filterUser} onChange={setFilterUser} options={[{ value: 'all', label: 'All users' }, ...uniqueUsers.map(u => ({ value: u, label: u.split('@')[0] }))]} />
+        <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold flex-shrink-0" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid ' + BORD, color: TEXT2 }}>
+          {auditEvents.length} events
+        </div>
+      </div>
+
+      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid ' + BORD }}>
+        {auditEvents.length === 0 ? (
+          <EmptyState icon={AlertTriangle} message="No audit logs match your filters" />
+        ) : (
+          <div className="divide-y" style={{ divideColor: BORD2 }}>
+            {auditEvents.map(e => {
+              const Icon = e.icon;
+              return (
+                <div key={e.id} className="p-4 hover:bg-white/[0.025] transition-colors">
+                  <div className="flex items-start gap-3 sm:gap-4">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: e.color + '18' }}>
+                      <Icon className="h-4 w-4" style={{ color: e.color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <div>
+                          <p className="text-sm font-semibold" style={{ color: TEXT }}>{e.action}</p>
+                          <p className="text-xs mt-0.5" style={{ color: TEXT3 }}>{e.details}</p>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span style={{ color: TEXT3 }}>{e.user?.split('@')[0] || '—'}</span>
+                          <span style={{ color: TEXT3 }}>{fmt(e.timestamp)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Main page export
 // ─────────────────────────────────────────────
 const PAGE_TABS = [
-  { id: 'overview', label: 'Overview',      icon: LayoutDashboard },
-  { id: 'users',    label: 'Users',         icon: Users           },
-  { id: 'tracks',   label: 'Tracks',        icon: Music           },
-  { id: 'plans',    label: 'Plans',         icon: Crown           },
-  { id: 'flags',    label: 'Feature Flags', icon: Flag            },
-  { id: 'insights', label: 'Insights',      icon: BarChart3       },
-  { id: 'system',   label: 'System',        icon: Settings        },
+  { id: 'overview',    label: 'Overview',           icon: LayoutDashboard },
+  { id: 'users',       label: 'Users',              icon: Users           },
+  { id: 'tracks',      label: 'Content',            icon: Music           },
+  { id: 'analytics',   label: 'Analytics',          icon: BarChart3       },
+  { id: 'flags',       label: 'Feature Flags',      icon: Flag            },
+  { id: 'plans',       label: 'Packages',           icon: Crown           },
+  { id: 'llm',         label: 'LLM Settings',       icon: Zap             },
+  { id: 'audit',       label: 'Audit Logs',         icon: Clock           },
+  { id: 'creators',    label: 'Creator Analytics',  icon: Star            },
+  { id: 'system',      label: 'Settings',           icon: Settings        },
 ];
 
 export default function AdminDashboardPage() {
@@ -1339,38 +1676,38 @@ export default function AdminDashboardPage() {
   return (
     <div className="min-h-screen" style={{ background: BG }}>
       {/* Sticky top bar */}
-      <div className="sticky top-0 z-40 flex items-center justify-between px-5 py-3" style={{ background: BG + 'f5', borderBottom: '1px solid ' + BORD, backdropFilter: 'blur(12px)' }}>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: ROSE + '22' }}>
+      <div className="sticky top-0 z-40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 px-4 sm:px-5 py-3" style={{ background: BG + 'f5', borderBottom: '1px solid ' + BORD, backdropFilter: 'blur(12px)' }}>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: ROSE + '22' }}>
             <Crown className="h-5 w-5" style={{ color: ROSE }} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="font-extrabold text-base" style={{ color: TEXT }}>Admin Console</p>
             <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: TEXT3 }}>Accoustica AI</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={refetchAll} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10" title="Refresh">
+        <div className="flex items-center gap-2 ml-auto">
+          <button onClick={refetchAll} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors" title="Refresh">
             <RefreshCw className="h-4 w-4" style={{ color: TEXT2 }} />
           </button>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold" style={{ background: GREEN + '18', color: GREEN, border: '1px solid ' + GREEN + '33' }}>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold flex-shrink-0" style={{ background: GREEN + '18', color: GREEN, border: '1px solid ' + GREEN + '33' }}>
             <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: GREEN }} /> Live
           </div>
-          <p className="text-xs hidden md:block" style={{ color: TEXT3 }}>{user?.email}</p>
+          <p className="text-xs hidden lg:block" style={{ color: TEXT3 }}>{user?.email}</p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Tab nav */}
-        <div className="flex gap-1 p-1 rounded-2xl mb-6 overflow-x-auto" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid ' + BORD }}>
+      <div className="max-w-full lg:max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        {/* Tab nav - Responsive scrolling */}
+        <div className="flex gap-1 p-1 rounded-2xl mb-5 sm:mb-6 overflow-x-auto -mx-3 sm:-mx-4 px-3 sm:px-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid ' + BORD }}>
           {PAGE_TABS.map(tab => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
             return (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0"
+                className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0"
                 style={{ background: active ? ROSE + '22' : 'transparent', color: active ? ROSE : TEXT2, border: '1px solid ' + (active ? ROSE + '44' : 'transparent') }}>
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4 flex-shrink-0" />
                 <span className="hidden sm:inline">{tab.label}</span>
               </button>
             );
@@ -1380,13 +1717,16 @@ export default function AdminDashboardPage() {
         {/* Tab content */}
         <AnimatePresence mode="wait">
           <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
-            {activeTab === 'overview' && <OverviewTab users={users} tracks={tracks} plans={plans} />}
-            {activeTab === 'users'    && <UsersTab    users={users} plans={plans} isLoading={usersLoading} />}
-            {activeTab === 'tracks'   && <TracksTab   tracks={tracks} isLoading={tracksLoading} />}
-            {activeTab === 'plans'    && <PlansTab    plans={plans} users={users} isLoading={plansLoading} />}
-            {activeTab === 'flags'    && <FeatureFlagsTab users={users} />}
-            {activeTab === 'insights' && <InsightsTab tracks={tracks} users={users} />}
-            {activeTab === 'system'   && <SystemTab   tracks={tracks} users={users} />}
+            {activeTab === 'overview'  && <OverviewTab users={users} tracks={tracks} plans={plans} />}
+            {activeTab === 'users'     && <UsersTab    users={users} plans={plans} isLoading={usersLoading} />}
+            {activeTab === 'tracks'    && <TracksTab   tracks={tracks} isLoading={tracksLoading} />}
+            {activeTab === 'analytics' && <CreatorAnalyticsTab tracks={tracks} users={users} />}
+            {activeTab === 'flags'     && <FeatureFlagsTab users={users} />}
+            {activeTab === 'plans'     && <PlansTab    plans={plans} users={users} isLoading={plansLoading} />}
+            {activeTab === 'llm'       && <AdminLLMDashboard users={users} />}
+            {activeTab === 'audit'     && <AuditLogsTab tracks={tracks} users={users} />}
+            {activeTab === 'creators'  && <CreatorAnalyticsTab tracks={tracks} users={users} />}
+            {activeTab === 'system'    && <SystemTab   tracks={tracks} users={users} />}
           </motion.div>
         </AnimatePresence>
       </div>

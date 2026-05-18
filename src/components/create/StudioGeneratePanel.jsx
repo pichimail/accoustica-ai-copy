@@ -1231,8 +1231,8 @@ export default function StudioGeneratePanel({
 
       {/* Generate button footer */}
       <div
-        className="flex-shrink-0 md:static fixed left-0 right-0 z-30 px-4 pb-4 pt-3 border-t"
-        style={{ bottom: 'var(--mobile-nav-reserve, 0px)', borderColor: 'rgba(255,255,255,0.08)', background: '#0a0a0f', backdropFilter: 'blur(8px)' }}
+        className="flex-shrink-0 md:static fixed left-0 right-0 z-[45] px-4 pb-4 pt-3 border-t"
+        style={{ bottom: 'var(--fixed-action-bottom, var(--bottom-chrome-reserve, 0px))', borderColor: 'rgba(255,255,255,0.08)', background: '#0a0a0f', backdropFilter: 'blur(8px)' }}
       >
         <button
           type="button"

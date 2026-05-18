@@ -267,43 +267,54 @@ export default function Layout({ children, currentPageName }) {
 }
 
 function ReservedMain({ children, currentPageName, showSidebar, sidebarOpen }) {
-  const { playerVisible } = useAudioPlayer();
-  const hasVisiblePlayer = !!playerVisible;
+  const { playerVisible, currentTrack } = useAudioPlayer();
+  const hasVisiblePlayer = !!playerVisible && !!currentTrack;
   const hasMobileNav = currentPageName !== 'Home';
-  // Updated player bar height: clamp(70px, 10.5vh, 104px)
-  const playerReserve = hasVisiblePlayer ? 'clamp(70px, 10.5vh, 104px)' : '0px';
-  // Updated mobile nav height: clamp(60px, 8vh, 80px)
-  const mobileNavReserve = hasMobileNav ? 'clamp(60px, 8vh, 80px)' : '0px';
+  const playerReserve = hasVisiblePlayer ? 'var(--active-player-height)' : '0px';
+  const mobileNavReserve = hasMobileNav ? 'var(--active-mobile-nav-height)' : '0px';
+  const topbarReserve = currentPageName === 'Home' ? '0px' : 'var(--active-mobile-topbar-height)';
+  const desktopSidebarReserve = showSidebar ? (sidebarOpen ? '16rem' : '5rem') : '0px';
+  const bottomChromeReserve = 'calc(var(--player-reserve) + var(--mobile-nav-reserve) + env(safe-area-inset-bottom, 0px))';
 
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--player-reserve', playerReserve);
     root.style.setProperty('--mobile-nav-reserve', mobileNavReserve);
+    root.style.setProperty('--topbar-reserve', topbarReserve);
+    root.style.setProperty('--desktop-sidebar-reserve', desktopSidebarReserve);
+    root.style.setProperty('--bottom-chrome-reserve', bottomChromeReserve);
+    root.style.setProperty('--player-bottom', 'calc(var(--mobile-nav-reserve) + env(safe-area-inset-bottom, 0px))');
+    root.style.setProperty('--fixed-action-bottom', 'var(--bottom-chrome-reserve)');
     root.style.setProperty(
       '--content-available-height',
-      'calc(100vh - var(--player-reserve) - var(--mobile-nav-reserve) - env(safe-area-inset-bottom, 0px))'
+      'calc(var(--app-viewport-height, 100vh) - var(--topbar-reserve) - var(--bottom-chrome-reserve))'
     );
     return () => {
       root.style.removeProperty('--player-reserve');
       root.style.removeProperty('--mobile-nav-reserve');
+      root.style.removeProperty('--topbar-reserve');
+      root.style.removeProperty('--desktop-sidebar-reserve');
+      root.style.removeProperty('--bottom-chrome-reserve');
+      root.style.removeProperty('--player-bottom');
+      root.style.removeProperty('--fixed-action-bottom');
       root.style.removeProperty('--content-available-height');
     };
-  }, [playerReserve, mobileNavReserve]);
+  }, [bottomChromeReserve, desktopSidebarReserve, mobileNavReserve, playerReserve, topbarReserve]);
 
   return (
     <main
       className={cn(
         "app-shell-main flex-1 min-h-0 overflow-y-auto lg:transition-all lg:duration-300 relative z-10",
-        currentPageName === 'Home' ? "pt-0" : "pt-14 lg:pt-0",
         showSidebar && (sidebarOpen ? "lg:ml-64" : "lg:ml-20")
       )}
       style={{
         '--player-reserve': playerReserve,
         '--mobile-nav-reserve': mobileNavReserve,
-        '--content-available-height': 'calc(100vh - var(--player-reserve) - var(--mobile-nav-reserve) - env(safe-area-inset-bottom, 0px))',
-        paddingBottom: currentPageName === 'Home'
-          ? 'calc(var(--player-reserve) + env(safe-area-inset-bottom, 0px))'
-          : 'calc(var(--player-reserve) + var(--mobile-nav-reserve) + env(safe-area-inset-bottom, 0px))',
+        '--topbar-reserve': topbarReserve,
+        '--bottom-chrome-reserve': bottomChromeReserve,
+        '--content-available-height': 'calc(var(--app-viewport-height, 100vh) - var(--topbar-reserve) - var(--bottom-chrome-reserve))',
+        paddingTop: 'var(--topbar-reserve)',
+        paddingBottom: 'var(--bottom-chrome-reserve)',
       }}
     >
       {children}

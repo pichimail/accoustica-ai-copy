@@ -2,6 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --app-viewport-height: 100dvh;
+  --mobile-topbar-height: calc(64px + env(safe-area-inset-top, 0px));
+  --mobile-nav-height: clamp(68px, 8vh, 80px);
+  --mobile-player-height: clamp(82px, 11vh, 96px);
+  --desktop-player-height: clamp(64px, 7vh, 84px);
+  --active-mobile-topbar-height: var(--mobile-topbar-height);
+  --active-mobile-nav-height: var(--mobile-nav-height);
+  --active-player-height: var(--mobile-player-height);
+  --desktop-sidebar-reserve: 0px;
+  --topbar-reserve: 0px;
+  --player-reserve: 0px;
+  --mobile-nav-reserve: 0px;
+  --bottom-chrome-reserve: calc(var(--player-reserve) + var(--mobile-nav-reserve) + env(safe-area-inset-bottom, 0px));
+  --content-available-height: calc(var(--app-viewport-height) - var(--topbar-reserve) - var(--bottom-chrome-reserve));
+  --player-bottom: calc(var(--mobile-nav-reserve) + env(safe-area-inset-bottom, 0px));
+  --fixed-action-bottom: var(--bottom-chrome-reserve);
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --active-mobile-topbar-height: 0px;
+    --active-mobile-nav-height: 0px;
+    --active-player-height: var(--desktop-player-height);
+  }
+}
+
+@supports not (height: 100dvh) {
+  :root {
+    --app-viewport-height: 100vh;
+  }
+}
+
+.fixed-with-desktop-sidebar {
+  left: 0;
+}
+
+@media (min-width: 1024px) {
+  .fixed-with-desktop-sidebar {
+    left: var(--desktop-sidebar-reserve, 0px);
+  }
+}
+
 /* Hide all scrollbars globally — scrolling still works via touch/mouse */
 * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
 *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }

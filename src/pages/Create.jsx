@@ -480,7 +480,7 @@ export default function CreatePage() {
       {/* ════ MOBILE: single column — always shows generate panel ════ */}
       <div
         className="md:hidden flex flex-col overflow-hidden"
-        style={{ background: '#0a0a0f', height: 'calc(var(--content-available-height, calc(100vh - 128px)) - 3.5rem)' }}
+        style={{ background: '#0a0a0f', height: 'var(--content-available-height, calc(100vh - 128px))' }}
       >
         <StudioGeneratePanel
           tab={tab} onTabChange={setTab}

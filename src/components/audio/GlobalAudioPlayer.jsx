@@ -366,9 +366,9 @@ function LyricsOverlay({ track, currentTime, onSeek, onClose }) {
     <motion.div
       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
       transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-      className="fixed left-0 right-0 z-[98] overflow-hidden"
+      className="fixed fixed-with-desktop-sidebar right-0 z-[55] overflow-hidden"
       style={{
-        bottom: `calc(clamp(60px, 8vh, 80px) + clamp(70px, 10.5vh, 104px) + var(--mobile-nav-reserve, 0px) + env(safe-area-inset-bottom, 0px))`,
+        bottom: 'calc(var(--bottom-chrome-reserve, 0px) + 8px)',
         maxHeight: '42vh',
         background: 'rgba(8,8,15,0.97)',
         borderTop: '1px solid rgba(255,255,255,0.08)',
@@ -499,17 +499,17 @@ export default function GlobalAudioPlayer() {
 
       {/* ══ PLAYER BAR — positioned above mobile nav, with z-index below it ════════════════════ */}
       <AnimatePresence>
-        {!isFullscreen && (
+        {!isFullscreen && playerVisible && hasTrack && (
           <motion.div
             key="player-bar"
             initial={{ y: '110%', opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: '110%', opacity: 0 }}
             transition={{ type: 'spring', damping: 30, stiffness: 260 }}
-            className="fixed left-0 right-0 z-35 flex flex-col select-none"
+            className="fixed fixed-with-desktop-sidebar right-0 z-[50] flex flex-col select-none"
             style={{
-              bottom: `calc(clamp(60px, 8vh, 80px) + env(safe-area-inset-bottom, 0px))`,
-              height: 'clamp(70px, 10.5vh, 104px)',
+              bottom: 'var(--player-bottom, calc(var(--mobile-nav-reserve, 0px) + env(safe-area-inset-bottom, 0px)))',
+              height: 'var(--player-reserve, var(--active-player-height))',
               background: 'linear-gradient(180deg, rgba(7,7,13,0.94) 0%, rgba(4,4,9,0.98) 100%)',
               backdropFilter: 'blur(36px)',
               WebkitBackdropFilter: 'blur(36px)',

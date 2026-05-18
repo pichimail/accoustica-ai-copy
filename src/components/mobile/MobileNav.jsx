@@ -38,17 +38,17 @@ export default function MobileNav({ currentPageName, user }) {
 
   return (
     <>
-      {/* ── NAV BAR — Fixed at bottom above music player ── */}
+      {/* ── NAV BAR ── */}
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-40"
-        style={{ 
-          bottom: `env(safe-area-inset-bottom, 0px)`,
-          height: 'clamp(60px, 8vh, 80px)',
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-[60]"
+        style={{
+          height: 'calc(var(--mobile-nav-reserve, var(--mobile-nav-height)) + env(safe-area-inset-bottom, 0px))',
         }}
         aria-label="Mobile navigation"
       >
         {/* Frosted glass bar */}
         <div
+          className="h-full"
           style={{
             background: 'rgba(8,8,14,0.85)',
             backdropFilter: 'blur(28px)',
