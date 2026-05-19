@@ -100,13 +100,23 @@ export default function SocialFeedPage() {
   };
 
   const handleShare = async (track) => {
+    haptics.light();
     const url = getPublicTrackUrl(track);
     if (navigator.share) {
-      await navigator.share({ title: track.title, text: track.seo_description || track.style || 'Listen on Accoustica', url });
-      return;
+      try {
+        await navigator.share({ title: track.title, text: track.seo_description || track.style || 'Listen on Accoustica', url });
+        return;
+      } catch (err) {
+        // NotAllowedError or AbortError — fall through to clipboard
+        if (err.name === 'AbortError') return; // user cancelled, no toast needed
+      }
     }
-    await navigator.clipboard.writeText(url);
-    toast.success('Public player link copied');
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copied to clipboard');
+    } catch {
+      toast.error('Could not copy link');
+    }
   };
 
   const handleRefresh = async () => {
