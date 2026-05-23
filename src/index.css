@@ -56,13 +56,12 @@ html, body {
 }
 
 /* Hide all scrollbars globally — scrolling still works via touch/mouse */
-* { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+* { -ms-overflow-style: none !important; }
 *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
 
 /* Smooth, fluid scrolling for main app containers */
 .app-shell-main,
 .smooth-scroll-y {
-  -webkit-overflow-scrolling: touch !important;
   scroll-behavior: smooth;
   overflow-x: hidden;
   overscroll-behavior-y: contain;
@@ -97,15 +96,15 @@ a,
 img,
 svg,
 .no-select {
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
 }
 
 input,
 textarea,
 .allow-select {
-  user-select: text;
   -webkit-user-select: text;
+  user-select: text;
 }
 
 @media (min-width: 1024px) {
