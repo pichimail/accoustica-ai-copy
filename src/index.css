@@ -59,13 +59,14 @@ html, body {
 * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
 *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
 
-/* CRITICAL: Enable smooth, fluid scrolling on main content */
+/* Smooth, fluid scrolling for main app containers */
 .app-shell-main,
-[class*="overflow-y-auto"] {
+.smooth-scroll-y {
   -webkit-overflow-scrolling: touch !important;
   scroll-behavior: smooth;
-  overflow-y: scroll !important;
-  overflow-x: hidden !important;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
   will-change: scroll-position;
   -webkit-user-select: text;
   user-select: text;

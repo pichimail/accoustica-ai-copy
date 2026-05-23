@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/components/utils/haptics';
@@ -23,7 +24,7 @@ export default function BottomSheet({ open, onClose, title, children, className 
     startY.current = null;
   };
 
-  return (
+  const content = (
     <AnimatePresence>
       {open && (
         <>
@@ -34,7 +35,7 @@ export default function BottomSheet({ open, onClose, title, children, className 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[130] bg-black/60 backdrop-blur-sm"
             onClick={() => { haptics.light(); onClose(); }}
           />
 
@@ -49,11 +50,12 @@ export default function BottomSheet({ open, onClose, title, children, className 
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
             className={cn(
-              'fixed bottom-0 left-0 right-0 z-[120] flex flex-col rounded-t-3xl border-t focus:outline-none',
+              'fixed left-0 right-0 z-[140] flex flex-col rounded-t-3xl border-t focus:outline-none smooth-scroll-y',
               className
             )}
             style={{
-              maxHeight: '90vh',
+              bottom: 'var(--bottom-chrome-reserve, 0px)',
+              maxHeight: 'min(90vh, calc(var(--app-viewport-height, 100vh) - var(--topbar-reserve, 0px) - var(--bottom-chrome-reserve, 0px) - 8px))',
               background: 'rgba(12,12,20,0.99)',
               borderColor: 'rgba(255,255,255,0.1)',
               backdropFilter: 'blur(32px)',
@@ -80,7 +82,10 @@ export default function BottomSheet({ open, onClose, title, children, className 
             )}
 
             {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 safe-bottom">
+            <div
+              className="flex-1 overflow-y-auto px-5 py-4 safe-bottom smooth-scroll-y"
+              style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))' }}
+            >
               {children}
             </div>
           </motion.div>
@@ -88,4 +93,7 @@ export default function BottomSheet({ open, onClose, title, children, className 
       )}
     </AnimatePresence>
   );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(content, document.body);
 }

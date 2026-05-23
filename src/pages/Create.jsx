@@ -488,7 +488,7 @@ export default function CreatePage() {
 
       {/* ════ MOBILE: single column — always shows generate panel ════ */}
       <div
-        className="md:hidden flex flex-col overflow-hidden"
+        className="md:hidden flex flex-col overflow-y-auto smooth-scroll-y"
         style={{ background: '#0a0a0f', height: 'var(--content-available-height, calc(100vh - 128px))' }}
       >
         <StudioGeneratePanel

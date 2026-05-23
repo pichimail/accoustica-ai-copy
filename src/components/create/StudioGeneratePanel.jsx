@@ -515,20 +515,20 @@ function PanelSlider({ label, value, onChange, hideLabel = false }) {
  */
 function VocalModeRow({ isInstrumental, onChange }) {
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-1.5 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
       <button type="button" aria-pressed={!isInstrumental} onClick={() => onChange(false)}
-        className="flex-1 py-2 border rounded-lg text-[10px] font-bold transition-all"
+        className="flex-1 h-8 px-2 border rounded-md text-[10px] font-semibold transition-all inline-flex items-center justify-center gap-1.5"
         style={!isInstrumental
-          ? { background: 'rgba(225,29,72,0.2)', borderColor: 'rgba(225,29,72,0.4)', color: '#fff' }
-          : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.45)' }}>
-        <Mic2 className="h-3.5 w-3.5 mx-auto mb-0.5" />Vocal
+          ? { background: 'rgba(225,29,72,0.14)', borderColor: 'rgba(225,29,72,0.28)', color: 'rgba(255,255,255,0.92)' }
+          : { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.52)' }}>
+        <Mic2 className="h-3 w-3" />Vocal
       </button>
       <button type="button" aria-pressed={isInstrumental} onClick={() => onChange(true)}
-        className="flex-1 py-2 border rounded-lg text-[10px] font-bold transition-all"
+        className="flex-1 h-8 px-2 border rounded-md text-[10px] font-semibold transition-all inline-flex items-center justify-center gap-1.5"
         style={isInstrumental
-          ? { background: 'rgba(225,29,72,0.2)', borderColor: 'rgba(225,29,72,0.4)', color: '#fff' }
-          : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.45)' }}>
-        <Music className="h-3.5 w-3.5 mx-auto mb-0.5" />Instrumental
+          ? { background: 'rgba(225,29,72,0.14)', borderColor: 'rgba(225,29,72,0.28)', color: 'rgba(255,255,255,0.92)' }
+          : { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.52)' }}>
+        <Music className="h-3 w-3" />Instrumental
       </button>
     </div>
   );

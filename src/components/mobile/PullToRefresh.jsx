@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { RefreshCw } from 'lucide-react';
 import { haptics } from '@/components/utils/haptics';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function PullToRefresh({ onRefresh, children }) {
+  const isMobile = useIsMobile();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const y = useMotionValue(0);
   const pullProgress = useTransform(y, [0, 80], [0, 1]);
@@ -17,6 +19,11 @@ export default function PullToRefresh({ onRefresh, children }) {
       setIsRefreshing(false);
     }
   };
+
+  // Mobile drag interception can block vertical page scrolling, so disable it on mobile.
+  if (isMobile) {
+    return <div className="relative">{children}</div>;
+  }
 
   return (
     <div className="relative">
