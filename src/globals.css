@@ -1,6 +1,5 @@
 /* Hide ALL scrollbars globally but keep scrolling working */
 * {
-  scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }
 *::-webkit-scrollbar {
@@ -18,8 +17,6 @@
 /* Smooth momentum scrolling */
 .scroll-smooth-ios,
 .scroll-smooth-mobile {
-  -webkit-overflow-scrolling: touch;
-  overflow-scrolling: touch;
   scroll-behavior: smooth;
 }
 
@@ -29,7 +26,6 @@
   .scroll-smooth-mobile,
   .app-shell-main,
   [class*="overflow-y-auto"] {
-    -webkit-overflow-scrolling: touch !important;
     scroll-behavior: smooth;
   }
 }
@@ -42,7 +38,6 @@ button, a, [role="button"] {
 
 /* Enable smooth scrolling on all scrollable elements */
 *[style*="overflow-y"] {
-  -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
 }
 
@@ -57,8 +52,8 @@ button, a, [role="button"] {
 /* Glass card */
 .glass-card {
   background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -109,6 +104,6 @@ input:focus, textarea:focus {
 
 /* Disable text selection on controls */
 .no-select {
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
 }
