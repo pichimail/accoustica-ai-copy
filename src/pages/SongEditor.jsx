@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { haptics } from '@/components/utils/haptics';
 import { ensureAudioContext, resumeAudioContext } from '@/lib/audioContext';
 import { getTrackAudioSource } from '@/components/audio/AudioPlayerContext';
+import SubtleSplitter from '@/components/ui/SubtleSplitter';
 import {
   Play, Pause, SkipBack, SkipForward, RotateCcw, FastForward,
   RefreshCw, Save, ChevronDown, Plus, X,
@@ -89,12 +90,6 @@ function SectionBlock({ section, isSelected, onSelect, zoom = 1 }) {
   );
 }
 
-function SplitterHandle({ label, horizontal = false, onPointerDown }) {
-  if (horizontal) {
-    return <div role="separator" aria-label={label} onPointerDown={onPointerDown} className="h-2 cursor-row-resize bg-white/10 hover:bg-white/25 transition-colors" />;
-  }
-  return <div role="separator" aria-label={label} onPointerDown={onPointerDown} className="w-2 cursor-col-resize bg-white/10 hover:bg-white/25 transition-colors" />;
-}
 
 export default function SongEditorPage() {
   const [user, setUser] = useState(null);
@@ -656,7 +651,11 @@ export default function SongEditorPage() {
         )}
 
         {leftPanelOpen && selectedTrack && (editMode === 'replace' || editMode === 'extend') && (
-          <SplitterHandle label="Resize left panel" onPointerDown={beginResize('left')} />
+          <SubtleSplitter
+            orientation="vertical"
+            label="Resize left panel"
+            onPointerDown={beginResize('left')}
+          />
         )}
 
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -814,7 +813,11 @@ export default function SongEditorPage() {
 
           {selectedTrack && (editMode === 'replace' || editMode === 'extend') && showBottomPanel && (
             <>
-              <SplitterHandle label="Resize bottom edit panel" horizontal onPointerDown={beginResize('bottom')} />
+              <SubtleSplitter
+                orientation="horizontal"
+                label="Resize bottom edit panel"
+                onPointerDown={beginResize('bottom')}
+              />
               <div className="flex-shrink-0 flex border-t" style={{ borderColor: 'rgba(255,255,255,0.12)', background: '#07080f', height: bottomPanelHeight, maxHeight: 420 }}>
                 <div className="p-3 overflow-y-auto" style={{ width: `${stylePanelWidth}%` }}>
                   <span className="text-[10px] font-extrabold tracking-widest text-white/55 uppercase block mb-2">STYLES</span>
@@ -824,14 +827,22 @@ export default function SongEditorPage() {
                     <textarea value={excludeStyles} onChange={(e) => setExcludeStyles(e.target.value)} placeholder="Describe styles to avoid..." className="w-full h-16 text-[10px] rounded-lg p-2 resize-none" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.14)', color: '#fff' }} aria-label="Excluded styles" />
                   </div>
                 </div>
-                <SplitterHandle label="Resize style panel" onPointerDown={beginResize('style')} />
+                <SubtleSplitter
+                  orientation="vertical"
+                  label="Resize style panel"
+                  onPointerDown={beginResize('style')}
+                />
                 {editMode === 'replace' && (
                   <>
                     <div className="p-3 overflow-y-auto" style={{ width: `${lyricsPanelWidth}%` }}>
                       <span className="text-[10px] font-extrabold tracking-widest text-white/55 uppercase block mb-2">{selectedSection ? `EDIT: ${selectedSection.type}` : 'SELECT A SECTION'}</span>
                       <textarea value={lyrics} onChange={(e) => setLyrics(e.target.value)} placeholder="Edit lyrics for selected section..." className="w-full h-[80%] text-[10px] rounded-lg p-2 resize-none" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.14)', color: '#fff' }} aria-label="Section lyrics editor" />
                     </div>
-                    <SplitterHandle label="Resize lyrics panel" onPointerDown={beginResize('lyrics')} />
+                    <SubtleSplitter
+                      orientation="vertical"
+                      label="Resize lyrics panel"
+                      onPointerDown={beginResize('lyrics')}
+                    />
                   </>
                 )}
                 <div className="p-3 overflow-y-auto flex-1 min-w-[180px]">

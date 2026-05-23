@@ -9,11 +9,11 @@ import { haptics } from '@/components/utils/haptics';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import StemWaveformPlayer from '@/components/audio/StemWaveformPlayer';
 import EnhancedMasteringDialog from '@/components/mastering/EnhancedMasteringDialog';
+import SubtleSplitter from '@/components/ui/SubtleSplitter';
 import {
   Upload, Mic, Music, Disc, Wand2, Play, Pause, Download,
   RefreshCw, Layers, GitBranch, Search, Volume2, VolumeX, Check,
   Clock, Sparkles, Scissors, BarChart3, Zap,
-  GripVertical, GripHorizontal,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -747,14 +747,11 @@ export default function StemStudioPage() {
         </aside>
 
         {sidebarOpen && (
-          <div
-            className="hidden lg:flex w-2 cursor-col-resize items-center justify-center border-r border-white/10 bg-white/[0.02] hover:bg-white/[0.07] transition-colors"
+          <SubtleSplitter
+            orientation="vertical"
+            label="Resize track list"
             onPointerDown={beginSplitResize('sidebar')}
-            role="separator"
-            aria-label="Resize track list"
-          >
-            <GripVertical className="h-4 w-4 text-white/30" />
-          </div>
+          />
         )}
 
         {/* ─ Main content ─ */}
@@ -846,14 +843,11 @@ export default function StemStudioPage() {
                       )}
                     </section>
 
-                    <div
-                      className="h-2 flex-shrink-0 mt-2 mb-2 rounded bg-white/[0.03] border border-white/10 cursor-row-resize flex items-center justify-center hover:bg-white/[0.08] transition-colors"
+                    <SubtleSplitter
+                      orientation="horizontal"
+                      label="Resize separated list and new-track list"
                       onPointerDown={beginSplitResize('library-horizontal')}
-                      role="separator"
-                      aria-label="Resize separated list and new-track list"
-                    >
-                      <GripHorizontal className="h-3.5 w-3.5 text-white/30" />
-                    </div>
+                    />
 
                     <section className="flex-1 min-h-0 overflow-y-auto pr-1.5">
                       {filteredTracks.length > 0 && (

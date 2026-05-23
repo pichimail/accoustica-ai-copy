@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState, useRef, useCallback } from 'react';
-import { Sparkles, Wand2, ChevronDown, ChevronUp, Loader2, Mic2, Music, Plus, BookOpen, GripHorizontal, X, Play } from 'lucide-react';
+import { Sparkles, Wand2, ChevronDown, ChevronUp, Loader2, Mic2, Music, Plus, BookOpen, X, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import SubtleSplitter from '@/components/ui/SubtleSplitter';
 import PresetPromptsPanel from './PresetPromptsPanel';
 
 /**
@@ -443,37 +444,6 @@ function fieldClass(extra = '') {
 /**
  * @param {{ onDrag: (e: MouseEvent | TouchEvent) => void; label?: string }} props
  */
-function TextareaDragHandle({ onDrag, label = 'Drag to resize' }) {
-  const [active, setActive] = React.useState(false);
-  const handleDown = (e) => {
-    setActive(true);
-    onDrag(e);
-    const up = () => { setActive(false); window.removeEventListener('mouseup', up); window.removeEventListener('touchend', up); };
-    window.addEventListener('mouseup', up);
-    window.addEventListener('touchend', up);
-  };
-  return (
-    <div
-      role="separator"
-      aria-label={label}
-      onMouseDown={handleDown}
-      onTouchStart={handleDown}
-      className="flex items-center justify-center cursor-row-resize select-none transition-all rounded-b-lg"
-      style={{
-        height: 16,
-        marginTop: -2,
-        background: active ? 'rgba(225,29,72,0.15)' : 'rgba(255,255,255,0.04)',
-        border: `1px solid ${active ? 'rgba(225,29,72,0.35)' : 'rgba(255,255,255,0.1)'}`,
-        borderTop: 'none',
-      }}
-      onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; }}
-      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-    >
-      <GripHorizontal className="h-3 w-3 pointer-events-none" style={{ color: active ? '#e11d48' : 'rgba(255,255,255,0.32)' }} />
-    </div>
-  );
-}
-
 // ── Horizontal-scroll chip row (short labels → full values) ──
 /**
  * @param {{ chips: Array<StyleChip | string>; onPick: (value: string) => void; activeValues?: string[] }} props
@@ -870,7 +840,11 @@ export default function StudioGeneratePanel({
                   : <Wand2 className="h-3.5 w-3.5 text-white/45" />}
               </button>
             </div>
-            <TextareaDragHandle onDrag={beginSimpleDrag} label="Drag to resize prompt" />
+            <SubtleSplitter
+              orientation="horizontal"
+              label="Drag to resize prompt"
+              onPointerDown={beginSimpleDrag}
+            />
             <div className="text-[10px] text-right mt-0.5" style={{ color: 'rgba(255,255,255,0.32)' }}>
               {simpleCount}/{SIMPLE_PROMPT_MAX}
             </div>
@@ -904,18 +878,11 @@ export default function StudioGeneratePanel({
             </PanelSection>
 
             {/* Styles ↔ Lyrics splitter */}
-            <div
-              role="separator"
-              aria-label="Resize styles and lyrics panels"
-              onMouseDown={beginTextareaSplitDrag}
-              onTouchStart={beginTextareaSplitDrag}
-              className="flex items-center justify-center cursor-row-resize rounded transition-all select-none"
-              style={{ height: 18, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(225,29,72,0.1)'; e.currentTarget.style.borderColor = 'rgba(225,29,72,0.3)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
-            >
-              <GripHorizontal className="h-3.5 w-3.5 pointer-events-none" style={{ color: 'rgba(255,255,255,0.35)' }} />
-            </div>
+            <SubtleSplitter
+              orientation="horizontal"
+              label="Resize styles and lyrics panels"
+              onPointerDown={beginTextareaSplitDrag}
+            />
 
             {/* Lyrics / Structure */}
             <PanelSection label={isInstrumental ? 'Structure Prompt' : 'Lyrics & Structure'}>
@@ -1175,7 +1142,11 @@ export default function StudioGeneratePanel({
               <textarea value={remixPrompt} onChange={e => onRemixPromptChange(e.target.value)}
                 placeholder="Describe the remix direction…" rows={remixPromptRows}
                 aria-label="Remix prompt" className={fieldClass('resize-none')} style={fieldStyle} />
-              <TextareaDragHandle onDrag={beginRemixDrag} label="Drag to resize remix prompt" />
+              <SubtleSplitter
+                orientation="horizontal"
+                label="Drag to resize remix prompt"
+                onPointerDown={beginRemixDrag}
+              />
             </PanelSection>
 
             <PanelSection label={`Audio Influence ${remixInfluence}%`}>
@@ -1217,7 +1188,11 @@ export default function StudioGeneratePanel({
               <textarea value={remixPrompt} onChange={e => onRemixPromptChange(e.target.value)}
                 placeholder="Describe the mashup style…" rows={mashupPromptRows}
                 aria-label="Mashup prompt" className={fieldClass('resize-none')} style={fieldStyle} />
-              <TextareaDragHandle onDrag={beginMashupDrag} label="Drag to resize mashup prompt" />
+              <SubtleSplitter
+                orientation="horizontal"
+                label="Drag to resize mashup prompt"
+                onPointerDown={beginMashupDrag}
+              />
             </PanelSection>
 
             <PanelSection label="Styles">

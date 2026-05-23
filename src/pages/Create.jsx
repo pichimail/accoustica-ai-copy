@@ -8,6 +8,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import StudioLibraryPanel from '@/components/create/StudioLibraryPanel';
 import StudioCenterPanel from '@/components/create/StudioCenterPanel';
 import StudioGeneratePanel from '@/components/create/StudioGeneratePanel';
+import SubtleSplitter from '@/components/ui/SubtleSplitter';
 import { haptics } from '@/components/utils/haptics';
 import { getTrackAudioSource } from '@/components/audio/AudioPlayerContext';
 
@@ -407,7 +408,11 @@ export default function CreatePage() {
           
         </div>
 
-        <SplitterHandle label="Resize library" onPointerDown={beginResize('library')} />
+        <SubtleSplitter
+          orientation="vertical"
+          label="Resize library"
+          onPointerDown={beginResize('library')}
+        />
 
         {/* CENTER — Split track detail + generations */}
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
@@ -443,7 +448,11 @@ export default function CreatePage() {
           </div>
         </div>
 
-        <SplitterHandle label="Resize generate panel" onPointerDown={beginResize('generate')} />
+        <SubtleSplitter
+          orientation="vertical"
+          label="Resize generate panel"
+          onPointerDown={beginResize('generate')}
+        />
 
         {/* RIGHT — Generate */}
         <div className="flex-shrink-0 h-full overflow-hidden" style={{ width: generateWidth }}>
@@ -510,38 +519,6 @@ export default function CreatePage() {
           tracks={allTracks} />
       </div>
     </>);
-
-}
-
-function SplitterHandle({ label, onPointerDown }) {
-  const [hovered, setHovered] = React.useState(false);
-  return (
-    <div
-      role="separator"
-      aria-label={label}
-      aria-orientation="vertical"
-      tabIndex={0}
-      onMouseDown={onPointerDown}
-      onTouchStart={onPointerDown}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="w-3 flex-shrink-0 cursor-col-resize focus:outline-none group relative transition-all"
-      style={{
-        background: hovered ? 'rgba(225,29,72,0.08)' : 'transparent',
-        borderLeft: `1px solid ${hovered ? 'rgba(225,29,72,0.25)' : 'rgba(255,255,255,0.07)'}`,
-        borderRight: `1px solid ${hovered ? 'rgba(225,29,72,0.15)' : 'rgba(255,255,255,0.04)'}`
-      }}>
-      
-      <div className="h-full flex flex-col items-center justify-center gap-1">
-        <div className="w-px" style={{ height: '100%', background: hovered ? 'rgba(225,29,72,0.5)' : 'rgba(255,255,255,0.13)' }} />
-      </div>
-      {hovered &&
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-10 rounded-full flex flex-col items-center justify-center gap-0.5"
-      style={{ background: 'rgba(225,29,72,0.18)', border: '1px solid rgba(225,29,72,0.35)' }}>
-          <div className="w-0.5 h-3 rounded-full" style={{ background: '#e11d48' }} />
-        </div>
-      }
-    </div>);
 
 }
 

@@ -2,6 +2,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Music, Play, Pause, Loader2, Search, SkipForward, Video, Layers, Info, MoreHorizontal } from 'lucide-react';
+import SubtleSplitter from '@/components/ui/SubtleSplitter';
 import StudioCenterVisualizer from './StudioCenterVisualizer';
 import {
   DropdownMenu,
@@ -82,21 +83,11 @@ export default function StudioCenterPanel({ selectedTrack, tracks, currentTrack,
       </div>
 
       {/* DRAG HANDLE */}
-      <div
-        onMouseDown={onMouseDown}
-        onTouchStart={onTouchStart}
-        className="flex-shrink-0 flex items-center justify-center cursor-row-resize select-none transition-colors"
-        style={{
-          height: 18,
-          background: isDragging ? 'rgba(225,29,72,0.12)' : 'rgba(255,255,255,0.02)',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
-        <div className="flex gap-1 items-center">
-          <div className="w-8 h-[3px] rounded-full transition-colors" style={{ background: isDragging ? '#e11d48' : 'rgba(255,255,255,0.15)' }} />
-        </div>
-      </div>
+      <SubtleSplitter
+        orientation="horizontal"
+        label="Resize center panel"
+        onPointerDown={onMouseDown}
+      />
 
       {/* BOTTOM: Generations list */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ background: 'rgba(10,10,15,0.90)', backdropFilter: 'blur(2px)' }}>

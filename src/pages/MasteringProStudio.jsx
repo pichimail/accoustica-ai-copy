@@ -7,9 +7,10 @@ import { cn } from '@/lib/utils';
 import { haptics } from '@/components/utils/haptics';
 import { ensureAudioContext, getAudioAnalyser, resumeAudioContext } from '@/lib/audioContext';
 import { getTrackAudioSource } from '@/components/audio/AudioPlayerContext';
+import SubtleSplitter from '@/components/ui/SubtleSplitter';
 import {
   Volume2, Play, Pause, Sliders, Zap, Download, Music,
-  RefreshCw, Check, BarChart3, Wand2, Search, GripVertical, GripHorizontal
+  RefreshCw, Check, BarChart3, Wand2, Search
 } from 'lucide-react';
 
 const EQ_BANDS = [
@@ -570,14 +571,11 @@ export default function MasteringProStudioPage() {
           </div>
         </aside>
 
-        <div
-          className="hidden lg:flex w-2 cursor-col-resize items-center justify-center border-r border-white/10 bg-white/[0.02] hover:bg-white/[0.07] transition-colors"
+        <SubtleSplitter
+          orientation="vertical"
+          label="Resize track list pane"
           onPointerDown={handleResizeStart('vertical')}
-          role="separator"
-          aria-label="Resize track list pane"
-        >
-          <GripVertical className="h-4 w-4 text-white/30" />
-        </div>
+        />
 
         {/* CENTER — Mastering controls */}
         <main className="flex-1 min-h-0 flex flex-col p-4 lg:p-5 gap-2 overflow-hidden" data-master-right-pane aria-label="Mastering controls">
@@ -666,14 +664,11 @@ export default function MasteringProStudioPage() {
                 </div>
               </section>
 
-              <div
-                className="h-2 flex-shrink-0 mt-2 mb-1 rounded bg-white/[0.03] border border-white/10 cursor-row-resize flex items-center justify-center hover:bg-white/[0.08] transition-colors"
+              <SubtleSplitter
+                orientation="horizontal"
+                label="Resize mastering sections"
                 onPointerDown={handleResizeStart('horizontal')}
-                role="separator"
-                aria-label="Resize mastering sections"
-              >
-                <GripHorizontal className="h-3.5 w-3.5 text-white/30" />
-              </div>
+              />
 
               <section className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-0.5">
                 {/* Main Controls */}
