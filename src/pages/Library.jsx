@@ -23,8 +23,7 @@ import {
 '@/components/ui/dropdown-menu';
 import {
   Search, Music, Plus, Heart, Globe, Lock, Loader2,
-  Play, Pause, Trash2, Edit3, Share2, Wand2, Mic2, Video, MoreVertical, Film,
-  Download, CheckSquare, Square, HardDriveUpload, X } from
+  Play, Pause, Trash2, Edit3, Share2, Wand2, Mic2, Video, MoreVertical, Film } from
 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Link } from 'react-router-dom';
@@ -45,9 +44,6 @@ export default function LibraryPage() {
   const [videoTrack, setVideoTrack] = useState(null);
   const [exportVideoTrack, setExportVideoTrack] = useState(null);
   const [bottomSheetTrack, setBottomSheetTrack] = useState(null);
-  const [bulkMode, setBulkMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState(new Set());
-  const [savingToDrive, setSavingToDrive] = useState(null);
   const queryClient = useQueryClient();
   const { playTrack, currentTrack, isPlaying } = useAudioPlayer();
 
@@ -109,46 +105,6 @@ export default function LibraryPage() {
     setBottomSheetTrack(null);
   };
 
-  const toggleSelect = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const handleBulkDownload = async () => {
-    const toDownload = filtered.filter((t) => selectedIds.has(t.id) && t.audio_url);
-    for (const track of toDownload) {
-      const a = document.createElement('a');
-      a.href = track.audio_url;
-      a.download = `${track.title || 'track'}.mp3`;
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      await new Promise((r) => setTimeout(r, 300));
-    }
-    toast.success(`Downloading ${toDownload.length} track${toDownload.length !== 1 ? 's' : ''}`);
-  };
-
-  const handleSaveToDrive = async (track) => {
-    if (!track.audio_url) return toast.error('No audio available');
-    setSavingToDrive(track.id);
-    try {
-      const res = await base44.functions.invoke('saveTrackToDrive', { audio_url: track.audio_url, title: track.title });
-      if (res.data?.success) {
-        toast.success(`"${track.title}" saved to Google Drive`);
-      } else {
-        toast.error(res.data?.error || 'Failed to save to Drive');
-      }
-    } catch (e) {
-      toast.error('Failed to save to Drive');
-    }
-    setSavingToDrive(null);
-    setBottomSheetTrack(null);
-  };
-
   const handleRefresh = async () => {
     haptics.selection();
     await queryClient.invalidateQueries({ queryKey: ['myTracks'] });
@@ -163,35 +119,7 @@ export default function LibraryPage() {
         
         {/* Title row */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-white">Library</h1>
-            {bulkMode && selectedIds.size > 0 && (
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}>{selectedIds.size} selected</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {bulkMode ? (
-              <>
-                <button
-                  onClick={handleBulkDownload}
-                  disabled={selectedIds.size === 0}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all disabled:opacity-30"
-                  style={{ background: selectedIds.size > 0 ? '#22c55e' : 'rgba(255,255,255,0.08)', color: selectedIds.size > 0 ? '#000' : 'rgba(255,255,255,0.4)' }}>
-                  <Download className="h-3.5 w-3.5" />
-                  Download
-                </button>
-                <button onClick={() => { setBulkMode(false); setSelectedIds(new Set()); }} className="w-8 h-8 flex items-center justify-center rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                  <X className="h-4 w-4 text-white/50" />
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => setBulkMode(true)}
-                className="w-8 h-8 flex items-center justify-center rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}
-                title="Select multiple tracks">
-                <CheckSquare className="h-4 w-4 text-white/50" />
-              </button>
-            )}
+          <h1 className="text-2xl font-bold text-white">Library</h1>
           <Link to={createPageUrl('Create')}>
             <button
                 className="w-9 h-9 rounded-full flex items-center justify-center text-black font-bold"
@@ -200,7 +128,6 @@ export default function LibraryPage() {
               <Plus className="h-5 w-5" />
             </button>
           </Link>
-          </div>
         </div>
 
         {/* Stats */}
@@ -271,11 +198,7 @@ export default function LibraryPage() {
                 user={user}
                 index={i}
                 isCurrentlyPlaying={currentTrack?.id === track.id && isPlaying}
-                bulkMode={bulkMode}
-                isSelected={selectedIds.has(track.id)}
-                onSelect={() => toggleSelect(track.id)}
                 onPlay={() => {
-                  if (bulkMode) { toggleSelect(track.id); return; }
                   haptics.medium();
                   const playable = filtered.filter((t) => t.status === 'ready');
                   playTrack(track, playable);
@@ -289,8 +212,6 @@ export default function LibraryPage() {
                 onVideo={() => {setVideoTrack(track);setBottomSheetTrack(null);}}
                 onExportVideo={() => {setExportVideoTrack(track);setBottomSheetTrack(null);}}
                 onTogglePublic={() => handleTogglePublic(track)}
-                onSaveToDrive={() => handleSaveToDrive(track)}
-                savingToDrive={savingToDrive === track.id}
                 onDelete={() => handleDelete(track)} />
 
               )}
@@ -312,7 +233,6 @@ export default function LibraryPage() {
           onVideo={(t) => {setVideoTrack(t);setBottomSheetTrack(null);}}
           onExportVideo={(t) => {setExportVideoTrack(t);setBottomSheetTrack(null);}}
           onTogglePublic={handleTogglePublic}
-          onSaveToDrive={(t) => handleSaveToDrive(t)}
           onDelete={handleDelete} />
 
         }
@@ -339,9 +259,6 @@ function LibraryTrackRow({
   index,
   isCurrentlyPlaying,
   isMobile,
-  bulkMode,
-  isSelected,
-  onSelect,
   onPlay,
   onFavorite,
   onMore,
@@ -352,8 +269,6 @@ function LibraryTrackRow({
   onVideo,
   onExportVideo,
   onTogglePublic,
-  onSaveToDrive,
-  savingToDrive,
   onDelete
 }) {
   const statusColors = { ready: '#22c55e', generating: '#c084fc', queued: '#facc15', failed: '#f87171' };
@@ -368,22 +283,13 @@ function LibraryTrackRow({
       transition={{ delay: index * 0.03 }}
       className="flex items-center gap-3 rounded-none sm:rounded-2xl px-4 sm:px-3 py-3"
       style={{
-        background: isSelected ? 'rgba(34,197,94,0.1)' : isCurrentlyPlaying ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.025)',
+        background: isCurrentlyPlaying ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.025)',
         borderTop: '0',
         borderLeft: '0',
         borderRight: '0',
         borderBottom: isCurrentlyPlaying ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(255,255,255,0.08)'
       }}>
       
-      {/* Bulk checkbox */}
-      {bulkMode && (
-        <button onClick={onSelect} className="flex-shrink-0 p-1">
-          {isSelected
-            ? <CheckSquare className="h-5 w-5" style={{ color: '#22c55e' }} />
-            : <Square className="h-5 w-5 text-white/30" />}
-        </button>
-      )}
-
       {/* Art */}
       <button onClick={isReady ? onPlay : undefined} className="relative flex-shrink-0">
         <div className="w-12 h-12 rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
@@ -480,12 +386,6 @@ function LibraryTrackRow({
               <DropdownMenuItem onClick={onStems}><Mic2 className="h-4 w-4 mr-2" />Stems</DropdownMenuItem>
               <DropdownMenuItem onClick={onVideo}><Video className="h-4 w-4 mr-2" />Video</DropdownMenuItem>
               <DropdownMenuItem onClick={onExportVideo}><Film className="h-4 w-4 mr-2" />Export MP4</DropdownMenuItem>
-              {track.status === 'ready' && (
-                <DropdownMenuItem onClick={onSaveToDrive} disabled={savingToDrive}>
-                  {savingToDrive ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <HardDriveUpload className="h-4 w-4 mr-2" />}
-                  Save to Drive
-                </DropdownMenuItem>
-              )}
               <DropdownMenuItem onClick={onTogglePublic}>
                 {track.is_public ? <Lock className="h-4 w-4 mr-2" /> : <Globe className="h-4 w-4 mr-2" />}
                 {track.is_public ? 'Make Private' : 'Make Public'}
@@ -501,7 +401,7 @@ function LibraryTrackRow({
 
 }
 
-function TrackActionsSheet({ track, user, onClose, onEdit, onShare, onMaster, onStems, onVideo, onExportVideo, onTogglePublic, onSaveToDrive, onDelete }) {
+function TrackActionsSheet({ track, user, onClose, onEdit, onShare, onMaster, onStems, onVideo, onExportVideo, onTogglePublic, onDelete }) {
   if (!track) return null;
 
   const actions = [
@@ -511,7 +411,6 @@ function TrackActionsSheet({ track, user, onClose, onEdit, onShare, onMaster, on
   { icon: Mic2, label: 'Stems', fn: () => onStems(track) },
   { icon: Video, label: 'Video', fn: () => onVideo(track) },
   { icon: Film, label: 'Export MP4', fn: () => onExportVideo(track) },
-  ...(track.status === 'ready' ? [{ icon: HardDriveUpload, label: 'Save to Drive', fn: () => onSaveToDrive(track) }] : []),
   { icon: track.is_public ? Lock : Globe, label: track.is_public ? 'Make Private' : 'Make Public', fn: () => onTogglePublic(track) }];
 
 
