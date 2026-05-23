@@ -876,8 +876,9 @@ export default function StudioGeneratePanel({
             </div>
             {/* Short-label prompt chips */}
             <HChipRow chips={SIMPLE_CHIPS} onPick={applyStyleChip} />
-          </PanelSection>
-        )}
+            </PanelSection>
+            </>
+            )}
 
         {/* ════ ADVANCED ════ */}
         {tab === 'advanced' && (
