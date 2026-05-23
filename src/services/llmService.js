@@ -12,38 +12,112 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { classifyLLMError, formatErrorForUser } from './llmErrorHandler';
 
+/**
+ * @typedef {'openrouter' | 'openai'} LLMProvider
+ */
+
+/**
+ * @typedef {Record<string, unknown> | null} JsonSchema
+ */
+
+/**
+ * @typedef {object} InvokeParams
+ * @property {string} prompt
+ * @property {string | null} [model]
+ * @property {JsonSchema} [response_json_schema]
+ * @property {boolean} [add_context_from_internet]
+ * @property {string[] | null} [file_urls]
+ * @property {number} [temperature]
+ * @property {number} [max_tokens]
+ * @property {LLMProvider} [provider]
+ */
+
+/**
+ * @typedef {object} LLMCallMeta
+ * @property {string} callId
+ * @property {LLMProvider} provider
+ * @property {string} model
+ * @property {number} duration
+ * @property {number} promptLength
+ * @property {boolean} success
+ * @property {string} [error]
+ */
+
+/**
+ * @typedef {LLMCallMeta & { timestamp: string }} LLMCallRecord
+ */
+
+/**
+ * @param {unknown} value
+ * @returns {string}
+ */
+function toErrorMessage(value) {
+  if (value instanceof Error) return value.message;
+  if (typeof value === 'string') return value;
+  return 'Unknown error';
+}
+
+/**
+ * @param {string} key
+ * @param {string} fallback
+ * @returns {string}
+ */
+function getEnv(key, fallback = '') {
+  const env = /** @type {ImportMetaEnv} */ (import.meta.env);
+  const value = env[key];
+  return typeof value === 'string' && value.length > 0 ? value : fallback;
+}
+
+/**
+ * @param {string} key
+ * @returns {string | undefined}
+ */
+function getOptionalEnv(key) {
+  const env = /** @type {ImportMetaEnv} */ (import.meta.env);
+  const value = env[key];
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
 // Configuration from environment
 const CONFIG = {
-  primaryProvider: import.meta.env.VITE_LLM_PRIMARY_PROVIDER || 'openrouter',
-  enableFallback: import.meta.env.VITE_LLM_ENABLE_FALLBACK === 'true',
-  timeoutMs: parseInt(import.meta.env.VITE_LLM_TIMEOUT_MS || '30000'),
-  maxRetries: parseInt(import.meta.env.VITE_LLM_MAX_RETRIES || '2'),
-  debug: import.meta.env.VITE_LLM_DEBUG === 'true',
+  primaryProvider: /** @type {LLMProvider} */ (getEnv('VITE_LLM_PRIMARY_PROVIDER', 'openrouter')),
+  enableFallback: getEnv('VITE_LLM_ENABLE_FALLBACK', 'false') === 'true',
+  timeoutMs: parseInt(getEnv('VITE_LLM_TIMEOUT_MS', '30000'), 10),
+  maxRetries: parseInt(getEnv('VITE_LLM_MAX_RETRIES', '2'), 10),
+  debug: getEnv('VITE_LLM_DEBUG', 'false') === 'true',
 };
 
 // API Keys
 const KEYS = {
-  openrouter: import.meta.env.VITE_OPENROUTER_API_KEY,
-  openai: import.meta.env.VITE_OPENAI_API_KEY,
+  openrouter: getOptionalEnv('VITE_OPENROUTER_API_KEY'),
+  openai: getOptionalEnv('VITE_OPENAI_API_KEY'),
 };
 
 // Models
 const MODELS = {
-  openrouter: import.meta.env.VITE_OPENROUTER_MODEL || 'openrouter/auto',
-  openai: import.meta.env.VITE_OPENAI_MODEL || 'gpt-4-turbo-preview',
+  openrouter: getEnv('VITE_OPENROUTER_MODEL', 'openrouter/auto'),
+  openai: getEnv('VITE_OPENAI_MODEL', 'gpt-4-turbo-preview'),
 };
 
 class LLMService {
   constructor() {
+    /** @type {LLMCallRecord[]} */
     this.callHistory = [];
+    /** @type {LLMProvider | null} */
     this.lastProvider = null;
+    /** @type {unknown} */
     this.lastError = null;
+    /** @type {number} */
     this.retryCount = 0;
   }
 
   /**
    * Main invoke method - handles both OpenRouter and OpenAI
    * Maintains backward compatibility with InvokeLLM interface
+   */
+  /**
+   * @param {InvokeParams} params
+   * @returns {Promise<unknown>}
    */
   async invoke(params) {
     const {
@@ -68,6 +142,7 @@ class LLMService {
 
     const callId = this._generateCallId();
     const startTime = Date.now();
+    /** @type {LLMProvider} */
     let usedProvider = provider;
 
     if (CONFIG.debug) {
@@ -117,7 +192,7 @@ class LLMService {
           if (CONFIG.debug) {
             console.log(`[LLM] Fallback to ${fallbackProvider}:`, {
               callId,
-              reason: primaryError.message,
+              reason: toErrorMessage(primaryError),
             });
           }
 
@@ -188,7 +263,7 @@ class LLMService {
         duration,
         promptLength: prompt.length,
         success: false,
-        error: error.message,
+        error: toErrorMessage(error),
       });
 
       const userMessage = formatErrorForUser(error);
@@ -205,6 +280,10 @@ class LLMService {
 
   /**
    * OpenRouter API call
+   */
+  /**
+   * @param {{ prompt: string; model: string | null; response_json_schema: JsonSchema; temperature: number; max_tokens: number }} params
+   * @returns {Promise<unknown>}
    */
   async _invokeOpenRouter({ prompt, model, response_json_schema, temperature, max_tokens }) {
     const url = 'https://openrouter.ai/api/v1/chat/completions';
@@ -246,13 +325,18 @@ class LLMService {
 
       return content;
     } catch (error) {
-      const errorMsg = error.response?.data?.error?.message || error.message;
+      const e = /** @type {any} */ (error);
+      const errorMsg = e?.response?.data?.error?.message || toErrorMessage(error);
       throw new Error(`OpenRouter: ${errorMsg}`);
     }
   }
 
   /**
    * OpenAI API call
+   */
+  /**
+   * @param {{ prompt: string; model: string | null; response_json_schema: JsonSchema; temperature: number; max_tokens: number }} params
+   * @returns {Promise<unknown>}
    */
   async _invokeOpenAI({ prompt, model, response_json_schema, temperature, max_tokens }) {
     const url = 'https://api.openai.com/v1/chat/completions';
@@ -277,7 +361,7 @@ class LLMService {
     }
 
     try {
-      const response = await axios.post(url, payload, {
+      const response = await axios.post(url, /** @type {any} */ (payload), {
         headers: {
           'Authorization': `Bearer ${KEYS.openai}`,
           'Content-Type': 'application/json',
@@ -297,7 +381,8 @@ class LLMService {
 
       return content;
     } catch (error) {
-      const errorMsg = error.response?.data?.error?.message || error.message;
+      const e = /** @type {any} */ (error);
+      const errorMsg = e?.response?.data?.error?.message || toErrorMessage(error);
       throw new Error(`OpenAI: ${errorMsg}`);
     }
   }
@@ -309,6 +394,10 @@ class LLMService {
     return `llm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
+  /**
+   * @param {LLMCallMeta} meta
+   * @returns {void}
+   */
   _logCall(meta) {
     this.callHistory.push({
       ...meta,
@@ -330,8 +419,8 @@ class LLMService {
   getStats() {
     const stats = {
       totalCalls: this.callHistory.length,
-      successCount: this.callHistory.filter(c => c.success).length,
-      errorCount: this.callHistory.filter(c => !c.success).length,
+      successCount: this.callHistory.filter((c) => c.success).length,
+      errorCount: this.callHistory.filter((c) => !c.success).length,
       averageDuration: 0,
       lastProvider: this.lastProvider,
       lastError: this.lastError,
@@ -339,7 +428,7 @@ class LLMService {
 
     if (stats.successCount > 0) {
       const totalDuration = this.callHistory
-        .filter(c => c.success)
+        .filter((c) => c.success)
         .reduce((sum, c) => sum + c.duration, 0);
       stats.averageDuration = Math.round(totalDuration / stats.successCount);
     }
@@ -350,14 +439,18 @@ class LLMService {
   /**
    * Get call history
    */
+  /**
+   * @param {{ provider?: LLMProvider; success?: boolean }} [filter]
+   * @returns {LLMCallRecord[]}
+   */
   getHistory(filter = {}) {
     let filtered = [...this.callHistory];
 
     if (filter.provider) {
-      filtered = filtered.filter(c => c.provider === filter.provider);
+      filtered = filtered.filter((c) => c.provider === filter.provider);
     }
     if (filter.success !== undefined) {
-      filtered = filtered.filter(c => c.success === filter.success);
+      filtered = filtered.filter((c) => c.success === filter.success);
     }
 
     return filtered;
