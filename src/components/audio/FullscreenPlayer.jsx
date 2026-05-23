@@ -137,7 +137,6 @@ export default function FullscreenPlayer() {
   } = useAudioPlayer();
 
   const [activeTab, setActiveTab] = useState('lyrics');
-  const [karaokeEnabled, setKaraokeEnabled] = useState(true);
   const [liked, setLiked] = useState(false);
   const [showFsShare, setShowFsShare] = useState(false);
   const [showFsDownload, setShowFsDownload] = useState(false);
@@ -180,12 +179,6 @@ export default function FullscreenPlayer() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [isFullscreen, currentTime, duration]);
-
-  useEffect(() => {
-    setKaraokeEnabled(true);
-  }, [currentTrack?.id]);
-
-
 
   // Seek handlers
   const getSeekPct = (e, el) => {
@@ -460,24 +453,10 @@ export default function FullscreenPlayer() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               className="h-full">
-                  <div className="flex items-center justify-end pb-2">
-                    <button
-                      onClick={() => setKaraokeEnabled(v => !v)}
-                      className={cn(
-                        'min-h-[44px] px-3 rounded-full text-[11px] font-semibold uppercase tracking-wide transition-all',
-                        karaokeEnabled
-                          ? 'text-green-300 border border-green-400/30 bg-green-500/10'
-                          : 'text-white/55 border border-white/15 bg-white/5'
-                      )}
-                    >
-                      {karaokeEnabled ? 'Karaoke On' : 'Karaoke Off'}
-                    </button>
-                  </div>
                   <LyricsView
                     track={currentTrack}
                     currentTime={currentTime}
                     onSeek={seek}
-                    karaokeEnabled={karaokeEnabled}
                   />
                 </motion.div>
             }

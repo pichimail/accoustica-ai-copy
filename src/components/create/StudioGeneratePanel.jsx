@@ -846,17 +846,19 @@ export default function StudioGeneratePanel({
 
         {/* ════ SIMPLE ════ */}
         {tab === 'simple' && (
-          <PanelSection label="Description">
-            <div className="relative">
-              <textarea
-                value={simplePrompt}
-                onChange={e => onSimplePromptChange(e.target.value.slice(0, SIMPLE_PROMPT_MAX))}
-                placeholder="Describe your music..."
-                rows={simpleRows}
-                aria-label="Simple generation description"
-                className={fieldClass('resize-none leading-relaxed pr-10')}
-                style={fieldStyle}
-              />
+          <>
+            <VocalModeRow isInstrumental={isInstrumental} onChange={onInstrumentalChange} />
+            <PanelSection label="Description">
+              <div className="relative">
+                <textarea
+                  value={simplePrompt}
+                  onChange={e => onSimplePromptChange(e.target.value.slice(0, SIMPLE_PROMPT_MAX))}
+                  placeholder={isInstrumental ? 'Describe the instrumental music...' : 'Describe your music...'}
+                  rows={simpleRows}
+                  aria-label="Simple generation description"
+                  className={fieldClass('resize-none leading-relaxed pr-10')}
+                  style={fieldStyle}
+                />
               <button
                 type="button"
                 onClick={generateSimplePrompt}
@@ -1184,6 +1186,7 @@ export default function StudioGeneratePanel({
         {/* ════ MASHUP ════ */}
         {tab === 'mashup' && (
           <>
+            <VocalModeRow isInstrumental={isInstrumental} onChange={onInstrumentalChange} />
             <PanelSection label={`Source Tracks (${mashupTrackIds.length}/2)`}>
               <div className="space-y-1 max-h-44 overflow-y-auto">
                 {readyTracks.map(t => {

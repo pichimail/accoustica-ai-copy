@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 :root {
   --app-viewport-height: 100dvh;
   --mobile-topbar-height: calc(64px + env(safe-area-inset-top, 0px));
@@ -48,6 +58,18 @@
 /* Hide all scrollbars globally — scrolling still works via touch/mouse */
 * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
 *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+
+/* CRITICAL: Enable smooth, fluid scrolling on main content */
+.app-shell-main,
+[class*="overflow-y-auto"] {
+  -webkit-overflow-scrolling: touch !important;
+  scroll-behavior: smooth;
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
+  will-change: scroll-position;
+  -webkit-user-select: text;
+  user-select: text;
+}
 
 /* Safe areas */
 .safe-top    { padding-top:    env(safe-area-inset-top,    0px); }

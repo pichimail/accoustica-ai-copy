@@ -16,15 +16,34 @@
 .safe-right  { padding-right:  env(safe-area-inset-right,  0px); }
 
 /* Smooth momentum scrolling */
-.scroll-smooth-ios {
+.scroll-smooth-ios,
+.scroll-smooth-mobile {
   -webkit-overflow-scrolling: touch;
   overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Mobile-specific smooth scrolling */
+@supports (-webkit-touch-callout: none) {
+  /* iOS */
+  .scroll-smooth-mobile,
+  .app-shell-main,
+  [class*="overflow-y-auto"] {
+    -webkit-overflow-scrolling: touch !important;
+    scroll-behavior: smooth;
+  }
 }
 
 /* Touch manipulation */
 button, a, [role="button"] {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Enable smooth scrolling on all scrollable elements */
+*[style*="overflow-y"] {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 /* Gradient text utility */

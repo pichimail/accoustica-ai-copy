@@ -324,7 +324,7 @@ export default function CreatePage() {
           model: 'V5_5',
           prompt: finalPrompt,
           customMode: false,
-          instrumental: false
+          instrumental: isInstrumental
         };
 
         response = await base44.functions.invoke('generateMusic', payload);

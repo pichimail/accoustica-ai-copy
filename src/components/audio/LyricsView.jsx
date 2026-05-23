@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MicVocal, Loader2, Clock, Plus, Minus, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import { MicVocal, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { base44 } from '@/api/base44Client';
 
@@ -203,13 +203,11 @@ function getWordTokenPrefix(previous, current) {
   return ' ';
 }
 
-export default function LyricsView({ track, currentTime, onSeek, karaokeEnabled = true }) {
+export default function LyricsView({ track, currentTime, onSeek }) {
   const [lines, setLines] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [source, setSource] = useState('none');
-  const [offset, setOffset] = useState(0);
-  const [showOffsetPanel, setShowOffsetPanel] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
   const [activeWordIdx, setActiveWordIdx] = useState(-1);
   const [hasWordTiming, setHasWordTiming] = useState(false);
@@ -227,7 +225,6 @@ export default function LyricsView({ track, currentTime, onSeek, karaokeEnabled 
     setError(null);
     setLines([]);
     setSource('none');
-    setOffset(0);
     setHasWordTiming(false);
 
     if (track.task_id && track.external_audio_id) {
@@ -280,7 +277,7 @@ export default function LyricsView({ track, currentTime, onSeek, karaokeEnabled 
     fetchLyrics();
   }, [fetchLyrics]);
 
-  const adjustedTime = currentTime + offset;
+  const adjustedTime = currentTime;
 
   useEffect(() => {
     if (lines.length === 0) return;
@@ -313,7 +310,7 @@ export default function LyricsView({ track, currentTime, onSeek, karaokeEnabled 
 
   useEffect(() => {
     const activeLine = lines[activeIdx];
-    if (!activeLine || !activeLine.words?.length || !karaokeEnabled) {
+    if (!activeLine || !activeLine.words?.length) {
       setActiveWordIdx(-1);
       return;
     }
@@ -333,7 +330,7 @@ export default function LyricsView({ track, currentTime, onSeek, karaokeEnabled 
     }
 
     setActiveWordIdx(idx);
-  }, [activeIdx, adjustedTime, lines, karaokeEnabled]);
+  }, [activeIdx, adjustedTime, lines]);
 
   useEffect(() => {
     if (activeIdx < 0 || !lyricsContainerRef.current) return;
@@ -349,9 +346,6 @@ export default function LyricsView({ track, currentTime, onSeek, karaokeEnabled 
     container.scrollTo({ top: targetScrollTop, behavior: hasAutoScrolled.current ? 'smooth' : 'auto' });
     hasAutoScrolled.current = true;
   }, [activeIdx]);
-
-  const nudgeOffset = (delta) => setOffset(v => Math.round((v + delta) * 10) / 10);
-  const resetOffset = () => setOffset(0);
 
   if (loading) {
     return (
@@ -377,7 +371,7 @@ export default function LyricsView({ track, currentTime, onSeek, karaokeEnabled 
 
   return (
     <div className="h-full flex flex-col relative">
-      <div className="flex items-center justify-between px-1 mb-2 flex-shrink-0">
+      <div className="flex items-center justify-between px-3 py-2 flex-shrink-0">
         <span
           className="text-[10px] uppercase tracking-widest font-semibold px-2 py-0.5 rounded-full"
           style={{
@@ -385,68 +379,16 @@ export default function LyricsView({ track, currentTime, onSeek, karaokeEnabled 
             color: source === 'api' ? '#22c55e' : 'rgba(255,255,255,0.3)',
           }}
         >
-          {source === 'api' ? 'Synced' : source === 'lrc' ? 'Timed' : 'Estimated'}
+          {source === 'api' ? 'Synced Lyrics' : source === 'lrc' ? 'Timed Lyrics' : 'Estimated Timing'}
         </span>
-
-        <button
-          onClick={() => setShowOffsetPanel(v => !v)}
-          className={cn(
-            'flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border transition-all min-h-[32px]',
-            showOffsetPanel
-              ? 'border-white/20 text-white/70 bg-white/10'
-              : 'border-white/10 text-white/30 hover:text-white/60'
-          )}
-        >
-          <Clock className="h-3 w-3" />
-          {offset !== 0 && <span className="font-semibold">{offset > 0 ? `+${offset}s` : `${offset}s`}</span>}
-          {offset === 0 && <span>Timing</span>}
-          {showOffsetPanel ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        </button>
       </div>
-
-      <AnimatePresence>
-        {showOffsetPanel && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden flex-shrink-0"
-          >
-            <div className="flex items-center gap-2 px-1 pb-3">
-              <span className="text-xs text-white/40 flex-1">Adjust sync offset</span>
-              <div className="flex items-center gap-1">
-                <button onClick={() => nudgeOffset(-1)} className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 transition-all" title="-1s">
-                  <Minus className="h-3 w-3" />
-                </button>
-                <button onClick={() => nudgeOffset(-0.5)} className="text-xs px-2 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 transition-all">-0.5</button>
-                <div
-                  className="px-2 h-7 flex items-center rounded-lg text-sm font-mono font-bold tabular-nums min-w-[52px] text-center justify-center"
-                  style={{ color: offset === 0 ? 'rgba(255,255,255,0.3)' : '#22c55e', background: 'rgba(255,255,255,0.05)' }}
-                >
-                  {offset > 0 ? `+${offset}s` : `${offset}s`}
-                </div>
-                <button onClick={() => nudgeOffset(0.5)} className="text-xs px-2 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 transition-all">+0.5</button>
-                <button onClick={() => nudgeOffset(1)} className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 transition-all" title="+1s">
-                  <Plus className="h-3 w-3" />
-                </button>
-                {offset !== 0 && (
-                  <button onClick={resetOffset} className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/40 hover:text-white/70 transition-all" title="Reset">
-                    <RotateCcw className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <div
         ref={lyricsContainerRef}
         className="flex-1 overflow-y-auto"
         style={{ maskImage: 'linear-gradient(to bottom, transparent 0%, black 8%, black 88%, transparent 100%)' }}
       >
-        <div className="py-16 space-y-2 px-2">
+        <div className="py-16 space-y-3 px-4">
           {lines.map((line, i) => {
             const isActive = i === activeIdx;
             const dist = Math.abs(i - activeIdx);
@@ -455,31 +397,32 @@ export default function LyricsView({ track, currentTime, onSeek, karaokeEnabled 
               <motion.button
                 key={`${line.time}-${i}`}
                 data-lyric-idx={i}
-                onClick={() => onSeek && onSeek(Math.max(0, line.time - offset))}
-                className="w-full text-center px-3 py-2 rounded-xl transition-all cursor-pointer select-none leading-snug min-h-[44px]"
+                onClick={() => onSeek && onSeek(Math.max(0, line.time))}
+                className="w-full text-center px-4 py-3 rounded-2xl transition-all cursor-pointer select-none leading-relaxed min-h-[52px]"
                 animate={{
-                  scale: isActive ? 1.04 : 1,
-                  opacity: isActive ? 1 : Math.max(0.15, 1 - dist * 0.22),
+                  scale: isActive ? 1.06 : 1,
+                  opacity: isActive ? 1 : Math.max(0.2, 1 - dist * 0.25),
                 }}
-                transition={{ duration: 0.35, ease: 'easeOut' }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
                 style={{
-                  fontSize: isActive ? '1.25rem' : dist === 1 ? '1rem' : '0.875rem',
-                  fontWeight: isActive ? 700 : dist === 1 ? 500 : 400,
-                  color: isActive ? '#ffffff' : 'rgba(255,255,255,0.45)',
-                  background: isActive ? 'rgba(34,197,94,0.08)' : 'transparent',
-                  textShadow: isActive ? '0 0 30px rgba(34,197,94,0.6)' : 'none',
+                  fontSize: isActive ? '2rem' : dist === 1 ? '1.25rem' : '1rem',
+                  fontWeight: isActive ? 800 : dist === 1 ? 600 : 500,
+                  color: isActive ? '#ffffff' : 'rgba(255,255,255,0.4)',
+                  background: isActive ? 'rgba(34,197,94,0.12)' : 'transparent',
+                  textShadow: isActive ? '0 0 40px rgba(34,197,94,0.5)' : 'none',
+                  letterSpacing: isActive ? '0.3px' : '0px',
                 }}
               >
                 {isActive && (
                   <motion.span
                     layoutId="lyric-indicator"
-                    className="inline-block w-1.5 h-1.5 rounded-full bg-green-400 mr-2 align-middle"
-                    style={{ boxShadow: '0 0 8px rgba(34,197,94,0.8)' }}
+                    className="inline-block w-2 h-2 rounded-full bg-green-400 mr-2.5 align-middle"
+                    style={{ boxShadow: '0 0 12px rgba(34,197,94,0.9)' }}
                   />
                 )}
 
-                {isActive && karaokeEnabled && hasWordTiming && line.words?.length ? (
-                  <span>
+                {isActive && hasWordTiming && line.words?.length ? (
+                  <span className="block">
                     {line.words.map((word, wordIndex) => {
                       const prefix = getWordTokenPrefix(line.words[wordIndex - 1], word.text);
                       const isCurrentWord = wordIndex === activeWordIdx;
@@ -489,9 +432,11 @@ export default function LyricsView({ track, currentTime, onSeek, karaokeEnabled 
                         <span
                           key={`${word.start}-${wordIndex}`}
                           style={{
-                            color: isCurrentWord || isPastWord ? '#22c55e' : 'inherit',
-                            textShadow: isCurrentWord ? '0 0 16px rgba(34,197,94,0.75)' : 'none',
-                            transition: 'color 120ms linear',
+                            color: isCurrentWord ? '#22c55e' : isPastWord ? 'rgba(34,197,94,0.7)' : 'inherit',
+                            textShadow: isCurrentWord ? '0 0 20px rgba(34,197,94,0.9)' : 'none',
+                            transition: 'all 100ms linear',
+                            fontWeight: isCurrentWord ? 900 : isActive ? 800 : 600,
+                            letterSpacing: isCurrentWord ? '0.5px' : 'inherit',
                           }}
                         >
                           {prefix}{word.text}

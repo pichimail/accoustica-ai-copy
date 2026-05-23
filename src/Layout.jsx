@@ -304,7 +304,7 @@ function ReservedMain({ children, currentPageName, showSidebar, sidebarOpen }) {
   return (
     <main
       className={cn(
-        "app-shell-main flex-1 min-h-0 overflow-y-auto lg:transition-all lg:duration-300 relative z-10",
+        "app-shell-main flex-1 min-h-0 overflow-y-auto overflow-x-hidden lg:transition-all lg:duration-300 relative z-10 scroll-smooth-mobile",
         showSidebar && (sidebarOpen ? "lg:ml-64" : "lg:ml-20")
       )}
       style={{
@@ -315,6 +315,8 @@ function ReservedMain({ children, currentPageName, showSidebar, sidebarOpen }) {
         '--content-available-height': 'calc(var(--app-viewport-height, 100vh) - var(--topbar-reserve) - var(--bottom-chrome-reserve))',
         paddingTop: 'var(--topbar-reserve)',
         paddingBottom: 'var(--bottom-chrome-reserve)',
+        height: '100%',
+        WebkitOverflowScrolling: 'touch',
       }}
     >
       {children}
