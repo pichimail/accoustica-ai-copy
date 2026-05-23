@@ -140,6 +140,7 @@ export default function FullscreenPlayer() {
   const [liked, setLiked] = useState(false);
   const [showFsShare, setShowFsShare] = useState(false);
   const [showFsDownload, setShowFsDownload] = useState(false);
+  const [karaokeEnabled, setKaraokeEnabled] = useState(false);
   const progressRef = useRef(null);
   const volumeRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -457,6 +458,8 @@ export default function FullscreenPlayer() {
                     track={currentTrack}
                     currentTime={currentTime}
                     onSeek={seek}
+                    karaokeEnabled={karaokeEnabled}
+                    setKaraokeEnabled={setKaraokeEnabled}
                   />
                 </motion.div>
             }

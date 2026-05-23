@@ -203,7 +203,7 @@ function getWordTokenPrefix(previous, current) {
   return ' ';
 }
 
-export default function LyricsView({ track, currentTime, onSeek }) {
+export default function LyricsView({ track, currentTime, onSeek, karaokeEnabled = false, setKaraokeEnabled }) {
   const [lines, setLines] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -379,8 +379,36 @@ export default function LyricsView({ track, currentTime, onSeek }) {
             color: source === 'api' ? '#22c55e' : 'rgba(255,255,255,0.3)',
           }}
         >
-          {source === 'api' ? 'Synced Lyrics' : source === 'lrc' ? 'Timed Lyrics' : 'Estimated Timing'}
+          {source === 'api' ? '🎤 Timestamped' : source === 'track' ? '📝 Track' : ''}
         </span>
+        
+        {setKaraokeEnabled && hasWordTiming && (
+          <button
+            onClick={() => setKaraokeEnabled(v => !v)}
+            className="relative inline-flex items-center transition-opacity hover:opacity-80"
+            title={karaokeEnabled ? 'Karaoke on' : 'Karaoke off'}
+          >
+            <div
+              className="relative w-10 h-5 rounded-full transition-all"
+              style={{
+                background: karaokeEnabled ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)',
+                border: '1px solid ' + (karaokeEnabled ? 'rgba(34,197,94,0.6)' : 'rgba(255,255,255,0.15)'),
+              }}
+            >
+              <motion.div
+                className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full"
+                animate={{ x: karaokeEnabled ? 20 : 0 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                style={{
+                  boxShadow: karaokeEnabled ? '0 0 8px rgba(34,197,94,0.6)' : 'none',
+                }}
+              />
+            </div>
+            <span className="text-[10px] ml-1.5 text-white/40 whitespace-nowrap">
+              {karaokeEnabled ? 'Karaoke' : 'Normal'}
+            </span>
+          </button>
+        )}
       </div>
 
       <div
@@ -421,7 +449,7 @@ export default function LyricsView({ track, currentTime, onSeek }) {
                   />
                 )}
 
-                {isActive && hasWordTiming && line.words?.length ? (
+                {isActive && karaokeEnabled && hasWordTiming && line.words?.length ? (
                   <span className="block">
                     {line.words.map((word, wordIndex) => {
                       const prefix = getWordTokenPrefix(line.words[wordIndex - 1], word.text);
