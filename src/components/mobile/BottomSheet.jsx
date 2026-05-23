@@ -9,9 +9,10 @@ import { haptics } from '@/components/utils/haptics';
  * BottomSheet — custom implementation (no vaul) to avoid snap-point re-open issues.
  * Always opens fully. Supports swipe-down to dismiss.
  */
-export default function BottomSheet({ open, onClose, title, children, className = '' }) {
+export default function BottomSheet({ open, onClose, title, children, className = '', snapPoints = null }) {
   const startY = useRef(null);
   const sheetRef = useRef(null);
+  void snapPoints;
 
   const handleTouchStart = (e) => {
     startY.current = e.touches[0].clientY;

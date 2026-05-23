@@ -117,9 +117,9 @@ class LLMService {
    */
   /**
    * @param {InvokeParams} params
-   * @returns {Promise<unknown>}
-   */
-  async invoke(params) {
+ * @returns {Promise<any>}
+ */
+async invoke(params) {
     const {
       prompt,
       model = null,
@@ -283,7 +283,7 @@ class LLMService {
    */
   /**
    * @param {{ prompt: string; model: string | null; response_json_schema: JsonSchema; temperature: number; max_tokens: number }} params
-   * @returns {Promise<unknown>}
+   * @returns {Promise<any>}
    */
   async _invokeOpenRouter({ prompt, model, response_json_schema, temperature, max_tokens }) {
     const url = 'https://openrouter.ai/api/v1/chat/completions';
@@ -336,7 +336,7 @@ class LLMService {
    */
   /**
    * @param {{ prompt: string; model: string | null; response_json_schema: JsonSchema; temperature: number; max_tokens: number }} params
-   * @returns {Promise<unknown>}
+   * @returns {Promise<any>}
    */
   async _invokeOpenAI({ prompt, model, response_json_schema, temperature, max_tokens }) {
     const url = 'https://api.openai.com/v1/chat/completions';

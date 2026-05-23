@@ -6,7 +6,7 @@ export default function SwipeableCard({
   children, 
   onSwipeLeft, 
   onSwipeRight,
-  onTap,
+  onTap = null,
   leftAction,
   rightAction,
   swipeThreshold = 100,

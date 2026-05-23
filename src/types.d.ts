@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import 'react';
 
 interface ImportMetaEnv {
   readonly VITE_LLM_PRIMARY_PROVIDER?: string;
@@ -21,6 +22,16 @@ declare global {
   interface Window {
     __LLM_CALL_HISTORY_: string | Array<any>;
     __LLM_CALL_HISTORY__: string | Array<any>;
+    webkitAudioContext?: typeof AudioContext;
+  }
+}
+
+declare module 'react' {
+  // Loosen JS forwardRef inference in checkJs projects to avoid overly narrow Ref-only props.
+  function forwardRef(render: any): any;
+
+  interface CSSProperties {
+    [key: `--${string}`]: string | number | undefined;
   }
 }
 

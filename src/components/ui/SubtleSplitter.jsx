@@ -4,7 +4,7 @@ import React, { useState } from 'react';
  * Subtle Splitter Component - Works for both vertical and horizontal splitters
  * @param {{ 
  *   orientation?: 'vertical' | 'horizontal';
- *   onPointerDown?: (e: PointerEvent) => void;
+ *   onPointerDown?: (e: any) => void;
  *   label?: string;
  *   className?: string;
  * }} props
