@@ -64,5 +64,15 @@
       "type": "string",
       "description": "Date of last daily usage reset"
     }
-  }
+  },
+  "required": [
+    "artist_name",
+    "bio",
+    "avatar_url",
+    "banner_url",
+    "audio_settings",
+    "ui_preferences",
+    "plan_id",
+    "last_usage_reset"
+  ]
 }
