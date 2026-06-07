@@ -449,31 +449,31 @@ function fieldClass(extra = '') {
  * @param {{ chips: Array<StyleChip | string>; onPick: (value: string) => void; activeValues?: string[] }} props
  */
 function HChipRow({ chips, onPick, activeValues = [] }) {
-  return (
-    <div
-      className="flex overflow-x-auto gap-1.5 mt-1.5 pb-1 hidden"
-      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
-      
-      {chips.map((chip, i) => {
-        const label = typeof chip === 'string' ? chip : chip.label;
-        const value = typeof chip === 'string' ? chip : chip.value;
-        const isActive = activeValues.includes(value);
-        return (
-          <button
-            key={i}
-            type="button"
-            onMouseDown={() => onPick(value)}
-            onTouchEnd={(e) => {e.preventDefault();onPick(value);}}
-            className="flex-shrink-0 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all whitespace-nowrap"
-            style={isActive ?
-            { background: '#e11d48', color: '#fff', border: '1px solid #e11d48' } :
-            { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.65)' }}>
-            
-            {label}
-          </button>);
+  return null;
 
-      })}
-    </div>);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 }
 
