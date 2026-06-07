@@ -13,8 +13,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger } from
-'@/components/ui/dropdown-menu';
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import SubtleSplitter from '@/components/ui/SubtleSplitter';
 import PresetPromptsPanel from './PresetPromptsPanel';
 
@@ -49,12 +49,12 @@ const STYLE_TEMPLATES = {
     instruments: ['ceremonial drums', 'tabla', 'sitar', 'bansuri', 'tanpura drone', 'earthy hand percussion'],
     descriptors: ['ecstatic dance', 'tribal pulse', 'spiritual', 'hypnotic', 'organic', 'cinematic'],
     arrangements: [
-    'steady tribal groove that rises in layers with flute calls and sitar phrases',
-    'deep drum pulse with slow-building hand percussion, drone bed, and trance-like breaks',
-    'grounded dance flow with tabla variations, bansuri answers, and a wide ritual atmosphere'],
-
+      'steady tribal groove that rises in layers with flute calls and sitar phrases',
+      'deep drum pulse with slow-building hand percussion, drone bed, and trance-like breaks',
+      'grounded dance flow with tabla variations, bansuri answers, and a wide ritual atmosphere',
+    ],
     styleTags: ['ecstatic dance', 'shamanic drumming', 'root chakra', 'sitar', 'tabla', 'bansuri', 'tribal ambient', 'organic trance'],
-    avoidTags: ['pop chorus', 'trap hats', 'dubstep wobble', 'metal guitars', 'cheap EDM risers', 'cartoon vocals', 'harsh distortion']
+    avoidTags: ['pop chorus', 'trap hats', 'dubstep wobble', 'metal guitars', 'cheap EDM risers', 'cartoon vocals', 'harsh distortion'],
   },
   hitchhiker: {
     label: 'Hitch Hiker',
@@ -62,12 +62,12 @@ const STYLE_TEMPLATES = {
     instruments: ['pulsing house bass', 'dusty kick drums', 'tribal toms', 'wide desert pads', 'plucked guitar accents'],
     descriptors: ['canyon pulse', 'driving', 'sun-baked', 'cinematic', 'groovy', 'wide-screen'],
     arrangements: [
-    'tight house groove with desert percussion, airy breaks, and a rolling low-end hook',
-    'road-trip build with dry drums, hypnotic bass movement, and spacious melodic fragments',
-    'dusty electronic pulse with tribal accents, long filter sweeps, and a strong travel motif'],
-
+      'tight house groove with desert percussion, airy breaks, and a rolling low-end hook',
+      'road-trip build with dry drums, hypnotic bass movement, and spacious melodic fragments',
+      'dusty electronic pulse with tribal accents, long filter sweeps, and a strong travel motif',
+    ],
     styleTags: ['desert house', 'canyon pulse', 'tribal house', 'dusty groove', 'cinematic electronic', 'wide bass'],
-    avoidTags: ['cheesy pop', 'happy ukulele', 'thin bass', 'over-bright vocals', 'trap hi-hats', 'generic festival EDM']
+    avoidTags: ['cheesy pop', 'happy ukulele', 'thin bass', 'over-bright vocals', 'trap hi-hats', 'generic festival EDM'],
   },
   maksim: {
     label: 'Maksim',
@@ -75,12 +75,12 @@ const STYLE_TEMPLATES = {
     instruments: ['dry kick drum', 'rolling sub bass', 'percussive synth stabs', 'metallic hats', 'acid accents'],
     descriptors: ['dark minimal techno', 'driving', 'live set energy', 'pounding', 'precise', 'underground'],
     arrangements: [
-    'relentless minimal groove with dry stabs, rolling bass, and tension that mutates every few bars',
-    'dark techno pressure with sparse percussion, precise drops, and a hypnotic warehouse build',
-    'peak-time live-set flow with mechanical bass movement, sharp hats, and restrained acid details'],
-
+      'relentless minimal groove with dry stabs, rolling bass, and tension that mutates every few bars',
+      'dark techno pressure with sparse percussion, precise drops, and a hypnotic warehouse build',
+      'peak-time live-set flow with mechanical bass movement, sharp hats, and restrained acid details',
+    ],
     styleTags: ['dark minimal techno', 'underground techno', 'rolling sub bass', 'percussive stabs', 'warehouse groove', '128-132 BPM'],
-    avoidTags: ['pop vocals', 'soft ballad', 'acoustic guitar', 'bright tropical house', 'lo-fi haze', 'orchestral drama']
+    avoidTags: ['pop vocals', 'soft ballad', 'acoustic guitar', 'bright tropical house', 'lo-fi haze', 'orchestral drama'],
   },
   nostalgia: {
     label: 'Nostalgia',
@@ -88,12 +88,12 @@ const STYLE_TEMPLATES = {
     instruments: ['analog arpeggiators', 'gated drums', 'neon pads', 'electric bass', 'vocoder-tinted chops', 'bright synth plucks'],
     descriptors: ['retro synthwave', 'dreamy', 'bittersweet', 'indie electronic', 'polished', 'cinematic'],
     arrangements: [
-    'glowing synthwave build with pulsing arps, sidechained pads, and a bittersweet hook',
-    'night-drive groove with vocoder texture, smooth bass, and an emotional retro chorus lift',
-    'polished indie-electronic flow with gated drums, nostalgic synth layers, and a clean melodic payoff'],
-
+      'glowing synthwave build with pulsing arps, sidechained pads, and a bittersweet hook',
+      'night-drive groove with vocoder texture, smooth bass, and an emotional retro chorus lift',
+      'polished indie-electronic flow with gated drums, nostalgic synth layers, and a clean melodic payoff',
+    ],
     styleTags: ['retro synthwave', 'night drive', 'analog arps', 'gated drums', 'vocoder texture', 'bittersweet electronic'],
-    avoidTags: ['metal guitars', 'folk acoustic', 'raw punk', 'trap beat', 'atonal noise', 'muddy mix']
+    avoidTags: ['metal guitars', 'folk acoustic', 'raw punk', 'trap beat', 'atonal noise', 'muddy mix'],
   },
   rock: {
     label: 'Rock',
@@ -102,7 +102,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['powerful', 'energetic', 'raw', 'aggressive', 'intense'],
     arrangements: ['big riff intro, tight verse groove, explosive chorus, and a short guitar break'],
     styleTags: ['rock', 'electric guitar', 'live drums', 'distortion', 'anthemic'],
-    avoidTags: ['soft lounge', 'sleepy ambient', 'thin drums', 'lo-fi muffled mix', 'cartoon synths']
+    avoidTags: ['soft lounge', 'sleepy ambient', 'thin drums', 'lo-fi muffled mix', 'cartoon synths'],
   },
   romantic: {
     label: 'Romantic',
@@ -111,7 +111,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['intimate', 'warm', 'moody', 'tender', 'slow-burning', 'dreamy'],
     arrangements: ['soft intro, close emotional verse, lifted chorus, and a warm outro'],
     styleTags: ['romantic', 'warm piano', 'gentle guitar', 'dreamy pads', 'emotional ballad'],
-    avoidTags: ['aggressive drums', 'harsh distortion', 'comedy vocals', 'industrial noise', 'rave drop']
+    avoidTags: ['aggressive drums', 'harsh distortion', 'comedy vocals', 'industrial noise', 'rave drop'],
   },
   deephouse: {
     label: 'Deep House',
@@ -120,7 +120,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['120-126 BPM', 'deep', 'groovy', 'minimal', 'hypnotic'],
     arrangements: ['patient four-on-the-floor groove with filtered chords, bass movement, and a late-night breakdown'],
     styleTags: ['deep house', '120-126 BPM', 'deep bass', 'filtered pads', 'subtle percussion', 'late-night groove'],
-    avoidTags: ['rock guitars', 'blast beats', 'folk strumming', 'harsh trance leads', 'cheap risers']
+    avoidTags: ['rock guitars', 'blast beats', 'folk strumming', 'harsh trance leads', 'cheap risers'],
   },
   techno: {
     label: 'Techno',
@@ -129,7 +129,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['128-160 BPM', 'pounding', 'hypnotic', 'repetitive', 'dark'],
     arrangements: ['hard kick foundation, evolving stabs, stripped break, and a controlled peak-time return'],
     styleTags: ['techno', '128-160 BPM', 'kick drum', 'synth stabs', '303 bass', 'dark club'],
-    avoidTags: ['acoustic ballad', 'soft piano solo', 'bright pop hook', 'loose live drums', 'country twang']
+    avoidTags: ['acoustic ballad', 'soft piano solo', 'bright pop hook', 'loose live drums', 'country twang'],
   },
   psychedelic: {
     label: 'Psychedelic',
@@ -138,7 +138,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['LSD-inspired', 'trippy', 'swirling', 'hallucinogenic', 'psychedelic'],
     arrangements: ['swirling intro, modulated groove, delayed motifs, and an evolving cosmic peak'],
     styleTags: ['psychedelic', 'acid bassline', 'modulated synths', 'delay effects', 'cosmic'],
-    avoidTags: ['plain pop', 'dry acoustic', 'sterile mix', 'corporate music', 'simple nursery melody']
+    avoidTags: ['plain pop', 'dry acoustic', 'sterile mix', 'corporate music', 'simple nursery melody'],
   },
   minimaltechno: {
     label: 'Minimal Techno',
@@ -147,7 +147,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['128-135 BPM', 'minimal', 'precise', 'clean', 'focused'],
     arrangements: ['sparse loop discipline with tiny percussive changes, sub pressure, and no clutter'],
     styleTags: ['minimal techno', '128-135 BPM', 'sparse percussion', 'sub bass', 'precise'],
-    avoidTags: ['busy orchestration', 'pop vocal hook', 'guitar solo', 'maximal EDM drop', 'muddy reverb']
+    avoidTags: ['busy orchestration', 'pop vocal hook', 'guitar solo', 'maximal EDM drop', 'muddy reverb'],
   },
   progressivepsych: {
     label: 'Progressive Psych',
@@ -156,7 +156,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['135-145 BPM', 'evolving', 'progressive', 'psychedelic', 'layered'],
     arrangements: ['long progressive arc with rolling bass, psychedelic layers, and controlled energy lifts'],
     styleTags: ['progressive psychedelic', '135-145 BPM', 'rolling bassline', 'layered synths', 'complex percussion'],
-    avoidTags: ['static loop', 'acoustic folk', 'pop ballad', 'thin kick', 'overly bright lead']
+    avoidTags: ['static loop', 'acoustic folk', 'pop ballad', 'thin kick', 'overly bright lead'],
   },
   telugu: {
     label: 'Telugu',
@@ -165,7 +165,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['crystal clear Telugu lyrics', 'traditional', 'melodic', 'soulful', 'authentic'],
     arrangements: ['melodic Telugu song flow with expressive lead lines, Indian percussion, and emotional chorus lift'],
     styleTags: ['Telugu song', 'clear Telugu lyrics', 'traditional melodic', 'flute', 'veena', 'mridangam'],
-    avoidTags: ['unclear diction', 'heavy auto-tune', 'trap beat', 'harsh EDM', 'atonal noise']
+    avoidTags: ['unclear diction', 'heavy auto-tune', 'trap beat', 'harsh EDM', 'atonal noise'],
   },
   telugu70s: {
     label: 'Telugu 70s',
@@ -174,7 +174,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['1970s Telugu classic style', 'retro', 'melodious', 'vintage production'],
     arrangements: ['vintage Telugu film-song arc with warm intro, expressive verse, string lift, and melodic refrain'],
     styleTags: ['1970s Telugu classic', 'vintage keyboard', 'acoustic guitar', 'traditional drums', 'melodious'],
-    avoidTags: ['modern trap', 'dubstep', 'hyperpop', 'harsh distortion', 'flat robotic vocals']
+    avoidTags: ['modern trap', 'dubstep', 'hyperpop', 'harsh distortion', 'flat robotic vocals'],
   },
   synthwave: {
     label: 'Synthwave',
@@ -183,7 +183,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['80s inspired', 'nostalgic', 'neon', 'retro', 'cinematic'],
     arrangements: ['neon intro, pulsing arps, gated drum lift, and wide cinematic chorus'],
     styleTags: ['synthwave', '80s inspired', 'analog synths', 'drum machines', 'gated reverb'],
-    avoidTags: ['acoustic folk', 'metal growls', 'trap hi-hats', 'dry piano ballad', 'muddy low end']
+    avoidTags: ['acoustic folk', 'metal growls', 'trap hi-hats', 'dry piano ballad', 'muddy low end'],
   },
   devotional: {
     label: 'Devotional',
@@ -192,7 +192,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['devotional', 'peaceful', 'spiritual', 'meditative', 'sacred'],
     arrangements: ['peaceful devotional rise with drone, call-and-response feel, gentle percussion, and sacred calm'],
     styleTags: ['devotional', 'harmonium', 'tabla', 'bells', 'flute', 'tanpura', 'sacred'],
-    avoidTags: ['club beat', 'aggressive rap', 'distorted guitar', 'sarcastic tone', 'chaotic drums']
+    avoidTags: ['club beat', 'aggressive rap', 'distorted guitar', 'sarcastic tone', 'chaotic drums'],
   },
   lofi: {
     label: 'Lo-Fi',
@@ -201,7 +201,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['70-90 BPM', 'chill', 'relaxed', 'nostalgic', 'warm'],
     arrangements: ['short mellow loop with dusty drums, soft keys, smooth bass, and subtle tape texture'],
     styleTags: ['lo-fi', '70-90 BPM', 'jazzy keys', 'vinyl crackle', 'smooth bass', 'warm'],
-    avoidTags: ['aggressive vocals', 'bright EDM drop', 'metal drums', 'harsh distortion', 'busy arrangement']
+    avoidTags: ['aggressive vocals', 'bright EDM drop', 'metal drums', 'harsh distortion', 'busy arrangement'],
   },
   edm: {
     label: 'EDM',
@@ -210,7 +210,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['128-140 BPM', 'energetic', 'festival-ready', 'massive drop', 'euphoric'],
     arrangements: ['festival build, pre-drop tension, wide synth hook, and a clean massive drop'],
     styleTags: ['EDM', '128-140 BPM', 'synth leads', 'big drums', 'sub bass', 'risers'],
-    avoidTags: ['sleepy ambient', 'weak drop', 'thin bass', 'acoustic-only', 'muddy mix']
+    avoidTags: ['sleepy ambient', 'weak drop', 'thin bass', 'acoustic-only', 'muddy mix'],
   },
   raga: {
     label: 'Raga',
@@ -219,7 +219,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['Indian classical', 'ornamented melody', 'soulful', 'cinematic', 'emotive'],
     arrangements: ['alap-like opening, tabla entry, melodic improvisation, and a cinematic final lift'],
     styleTags: ['Indian classical', 'raga', 'sitar', 'tabla', 'tanpura', 'bansuri', 'ornamented melody'],
-    avoidTags: ['western pop chorus', 'trap beat', 'auto-tune', 'distorted guitars', 'generic EDM']
+    avoidTags: ['western pop chorus', 'trap beat', 'auto-tune', 'distorted guitars', 'generic EDM'],
   },
   bhairavi: {
     label: 'Bhairavi',
@@ -228,7 +228,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['raaga bhairavi', 'devotional', 'meditative', 'serene', 'soulful'],
     arrangements: ['slow devotional opening, bansuri responses, soft tabla pulse, and a peaceful refrain'],
     styleTags: ['raaga bhairavi', 'devotional', 'tanpura', 'bansuri', 'temple bells', 'meditative'],
-    avoidTags: ['club drums', 'aggressive bass', 'trap hats', 'comic vocals', 'harsh synth lead']
+    avoidTags: ['club drums', 'aggressive bass', 'trap hats', 'comic vocals', 'harsh synth lead'],
   },
   kafi: {
     label: 'Kafi Raga',
@@ -237,7 +237,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['raaga kafi', 'haunting', 'earthy', 'semi-classical', 'night mood'],
     arrangements: ['slow khayal-inspired arc with sarangi phrases, tabla patience, and a haunting refrain'],
     styleTags: ['raaga kafi', 'khayal', 'sarangi', 'tabla', 'haunting night mood'],
-    avoidTags: ['EDM drop', 'over-compressed drums', 'metal guitar', 'cartoon synths', 'unclear tuning']
+    avoidTags: ['EDM drop', 'over-compressed drums', 'metal guitar', 'cartoon synths', 'unclear tuning'],
   },
   darbari: {
     label: 'Darbari Night',
@@ -246,7 +246,7 @@ const STYLE_TEMPLATES = {
     descriptors: ['raaga darbari', 'late night', 'deep resonance', 'slow tempo', 'majestic'],
     arrangements: ['deep slow alap feel, restrained percussion entry, low-register melody, and a grave finish'],
     styleTags: ['raaga darbari', 'late night', 'deep resonance', 'dhrupad', 'slow tempo'],
-    avoidTags: ['bright pop', 'fast dance beat', 'thin synths', 'comic vocal', 'happy ukulele']
+    avoidTags: ['bright pop', 'fast dance beat', 'thin synths', 'comic vocal', 'happy ukulele'],
   },
   bollywood: {
     label: 'Bollywood',
@@ -255,8 +255,8 @@ const STYLE_TEMPLATES = {
     descriptors: ['bollywood orchestral', 'dramatic', 'melodic', 'cinematic', 'emotional'],
     arrangements: ['film-song structure with cinematic intro, expressive verse, big refrain, and orchestral bridge'],
     styleTags: ['bollywood orchestral', 'strings', 'brass fanfare', 'cinematic drama', 'tabla'],
-    avoidTags: ['atonal noise', 'flat loop', 'industrial harshness', 'unclear vocal', 'tiny arrangement']
-  }
+    avoidTags: ['atonal noise', 'flat loop', 'industrial harshness', 'unclear vocal', 'tiny arrangement'],
+  },
 };
 
 /** @typedef {keyof typeof STYLE_TEMPLATES} StyleKey */
@@ -319,29 +319,29 @@ const STYLE_TEMPLATES = {
 
 /** @type {StyleChip[]} */
 const STYLE_CHIPS = [
-{ label: 'Shamanic', value: 'shamanic' },
-{ label: 'Hitch Hiker', value: 'hitchhiker' },
-{ label: 'Maksim', value: 'maksim' },
-{ label: 'Nostalgia', value: 'nostalgia' },
-{ label: 'Raga', value: 'raga' },
-{ label: 'Bhairavi', value: 'bhairavi' },
-{ label: 'Darbari Night', value: 'darbari' },
-{ label: 'Kafi Raga', value: 'kafi' },
-{ label: 'Telugu', value: 'telugu' },
-{ label: 'Telugu 70s', value: 'telugu70s' },
-{ label: 'Minimal Techno', value: 'minimaltechno' },
-{ label: 'Deep House', value: 'deephouse' },
-{ label: 'Progressive Psych', value: 'progressivepsych' },
-{ label: 'Synthwave', value: 'synthwave' },
-{ label: 'Bollywood', value: 'bollywood' },
-{ label: 'Devotional', value: 'devotional' },
-{ label: 'Romantic', value: 'romantic' },
-{ label: 'Techno', value: 'techno' },
-{ label: 'Psychedelic', value: 'psychedelic' },
-{ label: 'Rock', value: 'rock' },
-{ label: 'Lo-Fi', value: 'lofi' },
-{ label: 'EDM', value: 'edm' }];
-
+  { label: 'Shamanic', value: 'shamanic' },
+  { label: 'Hitch Hiker', value: 'hitchhiker' },
+  { label: 'Maksim', value: 'maksim' },
+  { label: 'Nostalgia', value: 'nostalgia' },
+  { label: 'Raga', value: 'raga' },
+  { label: 'Bhairavi', value: 'bhairavi' },
+  { label: 'Darbari Night', value: 'darbari' },
+  { label: 'Kafi Raga', value: 'kafi' },
+  { label: 'Telugu', value: 'telugu' },
+  { label: 'Telugu 70s', value: 'telugu70s' },
+  { label: 'Minimal Techno', value: 'minimaltechno' },
+  { label: 'Deep House', value: 'deephouse' },
+  { label: 'Progressive Psych', value: 'progressivepsych' },
+  { label: 'Synthwave', value: 'synthwave' },
+  { label: 'Bollywood', value: 'bollywood' },
+  { label: 'Devotional', value: 'devotional' },
+  { label: 'Romantic', value: 'romantic' },
+  { label: 'Techno', value: 'techno' },
+  { label: 'Psychedelic', value: 'psychedelic' },
+  { label: 'Rock', value: 'rock' },
+  { label: 'Lo-Fi', value: 'lofi' },
+  { label: 'EDM', value: 'edm' },
+];
 
 const SIMPLE_CHIPS = STYLE_CHIPS;
 const ADV_STYLE_CHIPS = STYLE_CHIPS;
@@ -358,10 +358,10 @@ function pickRandom(items, count) {
 }
 
 function limitText(value, max, keepBreaks = false) {
-  const normalized = String(value || '').
-  replace(keepBreaks ? /[ \t]+/g : /\s+/g, ' ').
-  replace(keepBreaks ? /\n{3,}/g : /^$/, keepBreaks ? '\n\n' : '').
-  trim();
+  const normalized = String(value || '')
+    .replace(keepBreaks ? /[ \t]+/g : /\s+/g, ' ')
+    .replace(keepBreaks ? /\n{3,}/g : /^$/, keepBreaks ? '\n\n' : '')
+    .trim();
   return normalized.length > max ? normalized.slice(0, max).trimEnd() : normalized;
 }
 
@@ -371,9 +371,9 @@ function limitText(value, max, keepBreaks = false) {
  * @returns {GeneratedStyleParts}
  */
 function generateStyleParts(styleKey, { instrumental = false } = {}) {
-  const key = /** @type {StyleKey | undefined} */
-  Object.prototype.hasOwnProperty.call(STYLE_TEMPLATES, styleKey) ? styleKey : undefined;
-
+  const key = /** @type {StyleKey | undefined} */ (
+    Object.prototype.hasOwnProperty.call(STYLE_TEMPLATES, styleKey) ? styleKey : undefined
+  );
   const template = key ? STYLE_TEMPLATES[key] : undefined;
   if (!template) return { prompt: '', styles: '', lyrics: '', negativeTags: '' };
 
@@ -390,36 +390,36 @@ function generateStyleParts(styleKey, { instrumental = false } = {}) {
     SIMPLE_PROMPT_MAX
   );
   const styles = limitText([...template.styleTags, ...descriptors, ...instruments, strictness].join(', '), STYLE_MAX);
-  const lyrics = instrumental ?
-  limitText(
-    `Instrumental only: ${arrangement}. Build around ${theme} with ${instruments.join(', ')}. Keep a ${descriptors.join(', ')} character, strong motif variation, clear intro-build-peak-outro flow, no vocals, no lyrics. Avoid: ${negativeTags}.`,
-    LYRICS_MAX
-  ) :
-  limitText(
-    `[Song Brief]\nOriginal ${template.label} song about ${theme}. ${arrangement}. Use ${instruments.join(', ')} with a ${descriptors.join(', ')} mood.\n\n[Hook Direction]\nMemorable, fresh hook; do not copy any existing melody or lyrics.\n\nAvoid: ${negativeTags}.`,
-    LYRICS_MAX,
-    true
-  );
+  const lyrics = instrumental
+    ? limitText(
+      `Instrumental only: ${arrangement}. Build around ${theme} with ${instruments.join(', ')}. Keep a ${descriptors.join(', ')} character, strong motif variation, clear intro-build-peak-outro flow, no vocals, no lyrics. Avoid: ${negativeTags}.`,
+      LYRICS_MAX
+    )
+    : limitText(
+      `[Song Brief]\nOriginal ${template.label} song about ${theme}. ${arrangement}. Use ${instruments.join(', ')} with a ${descriptors.join(', ')} mood.\n\n[Hook Direction]\nMemorable, fresh hook; do not copy any existing melody or lyrics.\n\nAvoid: ${negativeTags}.`,
+      LYRICS_MAX,
+      true
+    );
 
   return { prompt, styles, lyrics, negativeTags };
 }
 
 function inferStyleKey(stylesValue) {
   const text = String(stylesValue || '').toLowerCase();
-  return /** @type {StyleKey | undefined} */Object.entries(STYLE_TEMPLATES).find(([key, template]) =>
-  text.includes(key) ||
-  text.includes(template.label.toLowerCase()) ||
-  template.styleTags.some((tag) => text.includes(tag.toLowerCase()))
-  )?.[0];
+  return /** @type {StyleKey | undefined} */ (Object.entries(STYLE_TEMPLATES).find(([key, template]) => (
+    text.includes(key)
+    || text.includes(template.label.toLowerCase())
+    || template.styleTags.some(tag => text.includes(tag.toLowerCase()))
+  ))?.[0]);
 }
 
 const REMIX_STYLE_CHIPS = [
-{ label: 'Lo-Fi Jazz', value: 'lo-fi, jazz, ambient' },
-{ label: 'Cinematic', value: 'cinematic, orchestral' },
-{ label: 'Trap', value: 'trap, hard bass' },
-{ label: 'Acoustic', value: 'acoustic, folk' },
-{ label: 'Club', value: 'electronic, club' }];
-
+  { label: 'Lo-Fi Jazz', value: 'lo-fi, jazz, ambient' },
+  { label: 'Cinematic', value: 'cinematic, orchestral' },
+  { label: 'Trap', value: 'trap, hard bass' },
+  { label: 'Acoustic', value: 'acoustic, folk' },
+  { label: 'Club', value: 'electronic, club' },
+];
 
 const VOCAL_GENDERS = ['Auto', 'Male', 'Female', 'Duet'];
 
@@ -428,7 +428,7 @@ const fieldStyle = {
   background: 'rgba(255,255,255,0.05)',
   border: '1px solid rgba(255,255,255,0.13)',
   color: '#fff',
-  transition: 'border-color 0.15s'
+  transition: 'border-color 0.15s',
 };
 
 function fieldClass(extra = '') {
@@ -449,32 +449,32 @@ function fieldClass(extra = '') {
  * @param {{ chips: Array<StyleChip | string>; onPick: (value: string) => void; activeValues?: string[] }} props
  */
 function HChipRow({ chips, onPick, activeValues = [] }) {
-  return null;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  return (
+    <div
+      className="flex overflow-x-auto gap-1.5 mt-1.5 pb-1"
+      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+    >
+      {chips.map((chip, i) => {
+        const label = typeof chip === 'string' ? chip : chip.label;
+        const value = typeof chip === 'string' ? chip : chip.value;
+        const isActive = activeValues.includes(value);
+        return (
+          <button
+            key={i}
+            type="button"
+            onMouseDown={() => onPick(value)}
+            onTouchEnd={(e) => { e.preventDefault(); onPick(value); }}
+            className="flex-shrink-0 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all whitespace-nowrap"
+            style={isActive
+              ? { background: '#e11d48', color: '#fff', border: '1px solid #e11d48' }
+              : { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.65)' }}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 /**
@@ -485,8 +485,8 @@ function PanelSection({ label, children }) {
     <div className="space-y-1.5">
       {label && <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.44)' }}>{label}</p>}
       {children}
-    </div>);
-
+    </div>
+  );
 }
 
 /**
@@ -495,19 +495,19 @@ function PanelSection({ label, children }) {
 function PanelSlider({ label, value, onChange, hideLabel = false }) {
   return (
     <div>
-      {!hideLabel &&
-      <div className="flex items-center justify-between mb-1.5">
+      {!hideLabel && (
+        <div className="flex items-center justify-between mb-1.5">
           <span className="text-[10px] font-bold" style={{ color: 'rgba(255,255,255,0.55)' }}>{label}</span>
           <span className="text-[10px] font-extrabold tabular-nums" style={{ color: '#fb7185' }}>{value}%</span>
         </div>
-      }
+      )}
       <div className="relative h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }}>
         <div className="absolute left-0 top-0 h-full rounded-full" style={{ width: `${value}%`, background: 'linear-gradient(90deg, #e11d48, #be123c)' }} />
-        <input type="range" min={0} max={100} value={value} aria-label={label || 'Slider'} onChange={(e) => onChange(Number(e.target.value))} className="absolute inset-0 w-full opacity-0 cursor-pointer h-full" />
+        <input type="range" min={0} max={100} value={value} aria-label={label || 'Slider'} onChange={e => onChange(Number(e.target.value))} className="absolute inset-0 w-full opacity-0 cursor-pointer h-full" />
         <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-white shadow-md pointer-events-none" style={{ left: `calc(${value}% - 6px)`, background: '#e11d48' }} />
       </div>
-    </div>);
-
+    </div>
+  );
 }
 
 /**
@@ -517,21 +517,21 @@ function VocalModeRow({ isInstrumental, onChange }) {
   return (
     <div className="flex gap-1.5 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
       <button type="button" aria-pressed={!isInstrumental} onClick={() => onChange(false)}
-      className="flex-1 h-8 px-2 border rounded-md text-[10px] font-semibold transition-all inline-flex items-center justify-center gap-1.5"
-      style={!isInstrumental ?
-      { background: 'rgba(225,29,72,0.14)', borderColor: 'rgba(225,29,72,0.28)', color: 'rgba(255,255,255,0.92)' } :
-      { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.52)' }}>
+        className="flex-1 h-8 px-2 border rounded-md text-[10px] font-semibold transition-all inline-flex items-center justify-center gap-1.5"
+        style={!isInstrumental
+          ? { background: 'rgba(225,29,72,0.14)', borderColor: 'rgba(225,29,72,0.28)', color: 'rgba(255,255,255,0.92)' }
+          : { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.52)' }}>
         <Mic2 className="h-3 w-3" />Vocal
       </button>
       <button type="button" aria-pressed={isInstrumental} onClick={() => onChange(true)}
-      className="flex-1 h-8 px-2 border rounded-md text-[10px] font-semibold transition-all inline-flex items-center justify-center gap-1.5"
-      style={isInstrumental ?
-      { background: 'rgba(225,29,72,0.14)', borderColor: 'rgba(225,29,72,0.28)', color: 'rgba(255,255,255,0.92)' } :
-      { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.52)' }}>
+        className="flex-1 h-8 px-2 border rounded-md text-[10px] font-semibold transition-all inline-flex items-center justify-center gap-1.5"
+        style={isInstrumental
+          ? { background: 'rgba(225,29,72,0.14)', borderColor: 'rgba(225,29,72,0.28)', color: 'rgba(255,255,255,0.92)' }
+          : { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.52)' }}>
         <Music className="h-3 w-3" />Instrumental
       </button>
-    </div>);
-
+    </div>
+  );
 }
 
 // Build a drag-resize handler for a single textarea row state
@@ -592,7 +592,7 @@ export default function StudioGeneratePanel({
   onToggleMashupTrack,
   selectedPersonaId, onSelectPersona,
   onGenerate, isGenerating,
-  tracks = []
+  tracks = [],
 }) {
   const [showPresets, setShowPresets] = useState(false);
   const [generatingSimplePrompt, setGeneratingSimplePrompt] = useState(false);
@@ -611,7 +611,7 @@ export default function StudioGeneratePanel({
 
   const { data: personas = [] } = useQuery({
     queryKey: ['personas'],
-    queryFn: () => base44.entities.Persona.list('-created_date', 100)
+    queryFn: () => base44.entities.Persona.list('-created_date', 100),
   });
 
   // Refs for drag state
@@ -638,13 +638,13 @@ export default function StudioGeneratePanel({
   const stylesCount = styles.length;
   const lyricsCount = lyrics.length;
 
-  const activeStyleValues = ADV_STYLE_CHIPS.
-  filter((c) => {
-    const template = STYLE_TEMPLATES[c.value];
-    const stylesText = styles.toLowerCase();
-    return template?.styleTags.some((tag) => stylesText.includes(tag.toLowerCase()));
-  }).
-  map((c) => c.value);
+  const activeStyleValues = ADV_STYLE_CHIPS
+    .filter(c => {
+      const template = STYLE_TEMPLATES[c.value];
+      const stylesText = styles.toLowerCase();
+      return template?.styleTags.some(tag => stylesText.includes(tag.toLowerCase()));
+    })
+    .map(c => c.value);
 
   /**
    * @param {string} styleKey
@@ -681,10 +681,10 @@ export default function StudioGeneratePanel({
     try {
       const { llmService } = await import('@/services/llmService');
       const response = await llmService.invoke({
-        prompt: shouldEnhance ?
-        `Enhance this music-generation prompt while preserving the user's intent. Make it more specific with mood, arrangement, instrumentation, and sonic texture. Keep it under ${SIMPLE_PROMPT_MAX} characters. Return plain text only.\n\nPrompt: ${currentPrompt}` :
-        `Create one vivid music-generation prompt under ${SIMPLE_PROMPT_MAX} characters. Blend one unexpected hook, clear mood, instrumentation, and section flow cues. No markdown.`,
-        add_context_from_internet: false
+        prompt: shouldEnhance
+          ? `Enhance this music-generation prompt while preserving the user's intent. Make it more specific with mood, arrangement, instrumentation, and sonic texture. Keep it under ${SIMPLE_PROMPT_MAX} characters. Return plain text only.\n\nPrompt: ${currentPrompt}`
+          : `Create one vivid music-generation prompt under ${SIMPLE_PROMPT_MAX} characters. Blend one unexpected hook, clear mood, instrumentation, and section flow cues. No markdown.`,
+        add_context_from_internet: false,
       });
       onSimplePromptChange(String(response || '').slice(0, SIMPLE_PROMPT_MAX));
       toast.success(shouldEnhance ? 'Prompt enhanced' : 'Random prompt generated');
@@ -700,7 +700,7 @@ export default function StudioGeneratePanel({
     try {
       if (isInstrumental) {
         const styleKeys = Object.keys(STYLE_TEMPLATES);
-        const styleKey = inferStyleKey(styles) || (/** @type {StyleKey} */styleKeys[Math.floor(Math.random() * styleKeys.length)]);
+      const styleKey = inferStyleKey(styles) || /** @type {StyleKey} */ (styleKeys[Math.floor(Math.random() * styleKeys.length)]);
         const generated = generateStyleParts(styleKey, { instrumental: true });
         if (!styles.trim()) onStylesChange(generated.styles);
         onLyricsChange(generated.lyrics);
@@ -716,10 +716,10 @@ export default function StudioGeneratePanel({
         response_json_schema: {
           type: 'object',
           properties: { styles: { type: 'string' }, lyrics: { type: 'string' } },
-          required: ['styles', 'lyrics']
-        }
+          required: ['styles', 'lyrics'],
+        },
       });
-      const responseObj = response && typeof response === 'object' ? (/** @type {{ styles?: string; lyrics?: string }} */response) : {};
+      const responseObj = (response && typeof response === 'object') ? /** @type {{ styles?: string; lyrics?: string }} */ (response) : {};
       if (responseObj.styles) onStylesChange(String(responseObj.styles).slice(0, STYLE_MAX));
       if (responseObj.lyrics) onLyricsChange(String(responseObj.lyrics).slice(0, LYRICS_MAX));
       const inferredStyleKey = inferStyleKey(responseObj.styles || styles);
@@ -770,12 +770,12 @@ export default function StudioGeneratePanel({
   );
 
   return (
-    <div className="flex flex-col h-full overflow-hidden relative" style={{ background: '#0a0a0f', borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
-      {showPresets &&
-      <div className="absolute inset-0 z-20">
+      <div className="flex flex-col h-full overflow-hidden relative" style={{ background: '#0a0a0f', borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
+      {showPresets && (
+        <div className="absolute inset-0 z-20">
           <PresetPromptsPanel onApply={handleApplyPreset} onClose={() => setShowPresets(false)} />
         </div>
-      }
+      )}
 
       {/* Header */}
       <div className="flex-shrink-0 px-4 pt-4 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
@@ -783,11 +783,11 @@ export default function StudioGeneratePanel({
           <p className="text-xs font-extrabold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.85)' }}>Generate</p>
           <button
             type="button"
-            onClick={() => setShowPresets((v) => !v)}
+            onClick={() => setShowPresets(v => !v)}
             className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all border"
-            style={showPresets ?
-            { background: 'rgba(225,29,72,0.2)', borderColor: 'rgba(225,29,72,0.4)', color: '#fff' } :
-            { background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.13)', color: 'rgba(255,255,255,0.5)' }}>
+            style={showPresets
+              ? { background: 'rgba(225,29,72,0.2)', borderColor: 'rgba(225,29,72,0.4)', color: '#fff' }
+              : { background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.13)', color: 'rgba(255,255,255,0.5)' }}>
             <BookOpen className="h-3 w-3" /> Presets
           </button>
         </div>
@@ -795,19 +795,19 @@ export default function StudioGeneratePanel({
           role="tablist"
           aria-label="Generation mode"
           className="flex overflow-hidden border rounded-lg"
-          style={{ borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)' }}>
-          
-          {TABS.map((t) =>
-          <button
-            key={t} type="button" role="tab" aria-selected={tab === t}
-            onClick={() => onTabChange(t)}
-            className="flex-1 py-1.5 text-[10px] font-bold capitalize transition-all focus:outline-none focus:ring-1 focus:ring-rose-400"
-            style={tab === t ?
-            { background: 'rgba(225,29,72,0.26)', borderBottom: '2px solid #e11d48', color: '#fff' } :
-            { color: 'rgba(255,255,255,0.42)' }}>
+          style={{ borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)' }}
+        >
+          {TABS.map(t => (
+            <button
+              key={t} type="button" role="tab" aria-selected={tab === t}
+              onClick={() => onTabChange(t)}
+              className="flex-1 py-1.5 text-[10px] font-bold capitalize transition-all focus:outline-none focus:ring-1 focus:ring-rose-400"
+              style={tab === t
+                ? { background: 'rgba(225,29,72,0.26)', borderBottom: '2px solid #e11d48', color: '#fff' }
+                : { color: 'rgba(255,255,255,0.42)' }}>
               {t}
             </button>
-          )}
+          ))}
         </div>
       </div>
 
@@ -815,36 +815,36 @@ export default function StudioGeneratePanel({
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-3 space-y-3 pb-20 md:pb-3">
 
         {/* ════ SIMPLE ════ */}
-        {tab === 'simple' &&
-        <>
+        {tab === 'simple' && (
+          <>
             <VocalModeRow isInstrumental={isInstrumental} onChange={onInstrumentalChange} />
             <PanelSection label="Description">
               <div className="relative">
                 <textarea
-                value={simplePrompt}
-                onChange={(e) => onSimplePromptChange(e.target.value.slice(0, SIMPLE_PROMPT_MAX))}
-                placeholder={isInstrumental ? 'Describe the instrumental music...' : 'Describe your music...'}
-                rows={simpleRows}
-                aria-label="Simple generation description"
-                className={fieldClass('resize-none leading-relaxed pr-10')}
-                style={fieldStyle} />
-              
+                  value={simplePrompt}
+                  onChange={e => onSimplePromptChange(e.target.value.slice(0, SIMPLE_PROMPT_MAX))}
+                  placeholder={isInstrumental ? 'Describe the instrumental music...' : 'Describe your music...'}
+                  rows={simpleRows}
+                  aria-label="Simple generation description"
+                  className={fieldClass('resize-none leading-relaxed pr-10')}
+                  style={fieldStyle}
+                />
               <button
                 type="button"
                 onClick={generateSimplePrompt}
                 className="absolute top-2 right-2 p-1 rounded hover:bg-white/10 transition-colors"
-                aria-label={simplePrompt.trim() ? 'Enhance prompt' : 'Generate random prompt'}>
-                
-                {generatingSimplePrompt ?
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-white/45" /> :
-                <Wand2 className="h-3.5 w-3.5 text-white/45" />}
+                aria-label={simplePrompt.trim() ? 'Enhance prompt' : 'Generate random prompt'}
+              >
+                {generatingSimplePrompt
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin text-white/45" />
+                  : <Wand2 className="h-3.5 w-3.5 text-white/45" />}
               </button>
             </div>
             <SubtleSplitter
               orientation="horizontal"
               label="Drag to resize prompt"
-              onPointerDown={beginSimpleDrag} />
-            
+              onPointerDown={beginSimpleDrag}
+            />
             <div className="text-[10px] text-right mt-0.5" style={{ color: 'rgba(255,255,255,0.32)' }}>
               {simpleCount}/{SIMPLE_PROMPT_MAX}
             </div>
@@ -852,24 +852,24 @@ export default function StudioGeneratePanel({
             <HChipRow chips={SIMPLE_CHIPS} onPick={applyStyleChip} />
             </PanelSection>
             </>
-        }
+            )}
 
         {/* ════ ADVANCED ════ */}
-        {tab === 'advanced' &&
-        <>
+        {tab === 'advanced' && (
+          <>
             <VocalModeRow isInstrumental={isInstrumental} onChange={onInstrumentalChange} />
 
             {/* Styles input + horizontal preset chips */}
             <PanelSection label="Styles">
               <textarea
-              value={styles}
-              onChange={(e) => onStylesChange(e.target.value.slice(0, STYLE_MAX))}
-              placeholder="soaring, acoustic, emotional, folk, deep, warm..."
-              rows={styleRows}
-              aria-label="Style tags"
-              className={fieldClass('resize-none leading-relaxed')}
-              style={fieldStyle} />
-            
+                value={styles}
+                onChange={e => onStylesChange(e.target.value.slice(0, STYLE_MAX))}
+                placeholder="soaring, acoustic, emotional, folk, deep, warm..."
+                rows={styleRows}
+                aria-label="Style tags"
+                className={fieldClass('resize-none leading-relaxed')}
+                style={fieldStyle}
+              />
               <div className="text-[10px] text-right mt-0.5" style={{ color: 'rgba(255,255,255,0.32)' }}>
                 {stylesCount}/{STYLE_MAX}
               </div>
@@ -879,34 +879,34 @@ export default function StudioGeneratePanel({
 
             {/* Styles ↔ Lyrics splitter */}
             <SubtleSplitter
-            orientation="horizontal"
-            label="Resize styles and lyrics panels"
-            onPointerDown={beginTextareaSplitDrag} />
-          
+              orientation="horizontal"
+              label="Resize styles and lyrics panels"
+              onPointerDown={beginTextareaSplitDrag}
+            />
 
             {/* Lyrics / Structure */}
             <PanelSection label={isInstrumental ? 'Structure Prompt' : 'Lyrics & Structure'}>
               <div className="relative">
                 <textarea
-                value={lyrics}
-                onChange={(e) => onLyricsChange(e.target.value.slice(0, LYRICS_MAX))}
-                placeholder={isInstrumental ?
-                'Describe arrangement, sections, mood, and instrumentation...' :
-                '[Verse 1]\nYour lyrics here...\n\n[Chorus]\n...'}
-                rows={lyricRows}
-                aria-label={isInstrumental ? 'Instrumental structure prompt' : 'Lyrics and song structure'}
-                className={fieldClass('resize-none font-mono leading-relaxed pr-10')}
-                style={fieldStyle} />
-              
+                  value={lyrics}
+                  onChange={e => onLyricsChange(e.target.value.slice(0, LYRICS_MAX))}
+                  placeholder={isInstrumental
+                    ? 'Describe arrangement, sections, mood, and instrumentation...'
+                    : '[Verse 1]\nYour lyrics here...\n\n[Chorus]\n...'}
+                  rows={lyricRows}
+                  aria-label={isInstrumental ? 'Instrumental structure prompt' : 'Lyrics and song structure'}
+                  className={fieldClass('resize-none font-mono leading-relaxed pr-10')}
+                  style={fieldStyle}
+                />
                 <button
-                type="button"
-                onClick={enhanceAdvanced}
-                aria-label="Enhance advanced prompts"
-                className="absolute top-2 right-2 p-1 rounded hover:bg-white/10 transition-colors">
-                
-                  {enhancingAdvanced ?
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-white/45" /> :
-                <Sparkles className="h-3.5 w-3.5 text-white/45" />}
+                  type="button"
+                  onClick={enhanceAdvanced}
+                  aria-label="Enhance advanced prompts"
+                  className="absolute top-2 right-2 p-1 rounded hover:bg-white/10 transition-colors"
+                >
+                  {enhancingAdvanced
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin text-white/45" />
+                    : <Sparkles className="h-3.5 w-3.5 text-white/45" />}
                 </button>
               </div>
               <div className="text-[10px] text-right mt-0.5" style={{ color: 'rgba(255,255,255,0.32)' }}>
@@ -916,31 +916,31 @@ export default function StudioGeneratePanel({
             </PanelSection>
 
             <PanelSection label="Voice Persona">
-              {isMobile ?
-            <button
-              type="button"
-              onClick={() => {
-                haptics.light();
-                setPersonaPickerOpen(true);
-              }}
-              className="w-full min-h-[44px] flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all hover:border-rose-500/40"
-              style={{ background: 'rgba(255,255,255,0.04)', borderColor: selectedPersona ? 'rgba(225,29,72,0.4)' : 'rgba(255,255,255,0.08)' }}>
-              
+              {isMobile ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.light();
+                    setPersonaPickerOpen(true);
+                  }}
+                  className="w-full min-h-[44px] flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all hover:border-rose-500/40"
+                  style={{ background: 'rgba(255,255,255,0.04)', borderColor: selectedPersona ? 'rgba(225,29,72,0.4)' : 'rgba(255,255,255,0.08)' }}
+                >
                   <Mic2 className="h-4 w-4 flex-shrink-0" style={{ color: selectedPersona ? '#e11d48' : 'rgba(255,255,255,0.35)' }} />
                   <span className={cn('flex-1 text-xs truncate', selectedPersona ? 'text-white font-semibold' : 'text-white/35')}>
                     {selectedPersona ? selectedPersona.name : 'No voice persona (default)'}
                   </span>
                   <ChevronDown className="h-4 w-4 text-white/30" />
-                </button> :
-
-            <DropdownMenu>
+                </button>
+              ) : (
+                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                  type="button"
-                  onClick={() => haptics.light()}
-                  className="w-full min-h-[44px] flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all hover:border-rose-500/40"
-                  style={{ background: 'rgba(255,255,255,0.04)', borderColor: selectedPersona ? 'rgba(225,29,72,0.4)' : 'rgba(255,255,255,0.08)' }}>
-                  
+                      type="button"
+                      onClick={() => haptics.light()}
+                      className="w-full min-h-[44px] flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all hover:border-rose-500/40"
+                      style={{ background: 'rgba(255,255,255,0.04)', borderColor: selectedPersona ? 'rgba(225,29,72,0.4)' : 'rgba(255,255,255,0.08)' }}
+                    >
                       <Mic2 className="h-4 w-4 flex-shrink-0" style={{ color: selectedPersona ? '#e11d48' : 'rgba(255,255,255,0.35)' }} />
                       <span className={cn('flex-1 text-xs truncate', selectedPersona ? 'text-white font-semibold' : 'text-white/35')}>
                         {selectedPersona ? selectedPersona.name : 'No voice persona (default)'}
@@ -949,270 +949,270 @@ export default function StudioGeneratePanel({
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
-                align="start"
-                className="w-[var(--radix-dropdown-menu-trigger-width)] bg-[#0e0e16] border border-white/15 text-white">
-                
+                    align="start"
+                    className="w-[var(--radix-dropdown-menu-trigger-width)] bg-[#0e0e16] border border-white/15 text-white"
+                  >
                     <DropdownMenuItem
-                  onClick={() => onSelectPersona?.(null)}
-                  className={cn('min-h-[44px] text-xs', !selectedPersonaId ? 'text-rose-300' : 'text-white/85')}>
-                  
+                      onClick={() => onSelectPersona?.(null)}
+                      className={cn('min-h-[44px] text-xs', !selectedPersonaId ? 'text-rose-300' : 'text-white/85')}
+                    >
                       <Music className="h-3.5 w-3.5 mr-2" /> Default Voice
                     </DropdownMenuItem>
-                    {readyPersonas.map((persona) =>
-                <DropdownMenuItem
-                  key={persona.id}
-                  onClick={() => onSelectPersona?.(persona.id)}
-                  className={cn('min-h-[44px] text-xs', selectedPersonaId === persona.id ? 'text-rose-300' : 'text-white/85')}>
-                  
+                    {readyPersonas.map((persona) => (
+                      <DropdownMenuItem
+                        key={persona.id}
+                        onClick={() => onSelectPersona?.(persona.id)}
+                        className={cn('min-h-[44px] text-xs', selectedPersonaId === persona.id ? 'text-rose-300' : 'text-white/85')}
+                      >
                         <Mic2 className="h-3.5 w-3.5 mr-2" /> {persona.name}
                       </DropdownMenuItem>
-                )}
-                    {readyPersonas.length === 0 &&
-                <div className="px-2 py-2 text-[11px] text-white/45">No ready personas yet. Create one in Voice Studio.</div>
-                }
+                    ))}
+                    {readyPersonas.length === 0 && (
+                      <div className="px-2 py-2 text-[11px] text-white/45">No ready personas yet. Create one in Voice Studio.</div>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-            }
+              )}
 
               <button
-              type="button"
-              onClick={() => {
-                haptics.light();
-                if (typeof window !== 'undefined') window.location.href = '/VoiceStudio';
-              }}
-              className="mt-2 min-h-[44px] w-full rounded-lg border border-white/15 bg-white/[0.04] text-white/80 text-xs font-semibold">
-              
+                type="button"
+                onClick={() => {
+                  haptics.light();
+                  if (typeof window !== 'undefined') window.location.href = '/VoiceStudio';
+                }}
+                className="mt-2 min-h-[44px] w-full rounded-lg border border-white/15 bg-white/[0.04] text-white/80 text-xs font-semibold"
+              >
                 Open Voice Studio
               </button>
 
               <label className="flex items-center gap-2 text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                <input type="checkbox" checked={!!strictVoiceClone} onChange={(e) => onStrictVoiceCloneChange?.(e.target.checked)} />
+                <input type="checkbox" checked={!!strictVoiceClone} onChange={e => onStrictVoiceCloneChange?.(e.target.checked)} />
                 Strict voice match (best effort)
               </label>
             </PanelSection>
 
             <PanelSection label="Vocal Gender">
               <div className="grid grid-cols-4 gap-1">
-                {VOCAL_GENDERS.map((g) =>
-              <button key={g} type="button" aria-pressed={vocalGender === g} onClick={() => onVocalGenderChange(g)}
-              className="py-1.5 rounded-lg text-[10px] font-bold transition-all border capitalize"
-              style={vocalGender === g ?
-              { background: 'rgba(225,29,72,0.2)', borderColor: 'rgba(225,29,72,0.4)', color: '#fff' } :
-              { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.45)' }}>
+                {VOCAL_GENDERS.map(g => (
+                  <button key={g} type="button" aria-pressed={vocalGender === g} onClick={() => onVocalGenderChange(g)}
+                    className="py-1.5 rounded-lg text-[10px] font-bold transition-all border capitalize"
+                    style={vocalGender === g
+                      ? { background: 'rgba(225,29,72,0.2)', borderColor: 'rgba(225,29,72,0.4)', color: '#fff' }
+                      : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.45)' }}>
                     {g}
                   </button>
-              )}
+                ))}
               </div>
             </PanelSection>
 
             <div className="overflow-hidden border rounded-lg" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
               <button
-              type="button"
-              aria-expanded={showMoreOptions}
-              onClick={onToggleMoreOptions}
-              className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/3 transition-colors">
-              
+                type="button"
+                aria-expanded={showMoreOptions}
+                onClick={onToggleMoreOptions}
+                className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/3 transition-colors"
+              >
                 <span className="text-[11px] font-bold" style={{ color: 'rgba(255,255,255,0.6)' }}>More Options</span>
-                {showMoreOptions ?
-              <ChevronUp className="h-3.5 w-3.5 text-white/40" /> :
-              <ChevronDown className="h-3.5 w-3.5 text-white/40" />}
+                {showMoreOptions
+                  ? <ChevronUp className="h-3.5 w-3.5 text-white/40" />
+                  : <ChevronDown className="h-3.5 w-3.5 text-white/40" />}
               </button>
               <AnimatePresence>
-                {showMoreOptions &&
-              <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+                {showMoreOptions && (
+                  <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                     <div className="px-3 pb-3 pt-1 space-y-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                       <PanelSection label="Track Title (optional)">
-                        <input value={title} onChange={(e) => onTitleChange(e.target.value)}
-                    placeholder="Auto if empty" aria-label="Optional track title"
-                    className={fieldClass()} style={fieldStyle} />
+                        <input value={title} onChange={e => onTitleChange(e.target.value)}
+                          placeholder="Auto if empty" aria-label="Optional track title"
+                          className={fieldClass()} style={fieldStyle} />
                       </PanelSection>
                       <PanelSection label="Negative Styles (auto-filled if empty)">
-                        <input value={negativeTag} onChange={(e) => onNegativeTagChange(e.target.value)}
-                    placeholder="aggressive, distorted…" aria-label="Negative styles"
-                    className={fieldClass()} style={fieldStyle} />
+                        <input value={negativeTag} onChange={e => onNegativeTagChange(e.target.value)}
+                          placeholder="aggressive, distorted…" aria-label="Negative styles"
+                          className={fieldClass()} style={fieldStyle} />
                       </PanelSection>
                       <PanelSlider label="Style Influence" value={styleWeight} onChange={onStyleWeightChange} />
                       <PanelSlider label="Weirdness" value={clarityWeight} onChange={onClarityWeightChange} />
                     </div>
                   </motion.div>
-              }
+                )}
               </AnimatePresence>
             </div>
           </>
-        }
+        )}
 
         {/* ════ REMIX ════ */}
-        {tab === 'remix' &&
-        <>
+        {tab === 'remix' && (
+          <>
             <div className="flex gap-2">
               {[
-            { label: 'Vocal', IconComp: Mic2, active: !isInstrumental },
-            { label: 'No Vocal', IconComp: Music, active: isInstrumental },
-            { label: 'Upload', IconComp: Plus, active: !!remixUploadFileName }].
-            map(({ label, IconComp, active }) =>
-            <button key={label} type="button" aria-pressed={active}
-            onClick={() => {
-              if (label === 'Vocal') onInstrumentalChange(false);else
-              if (label === 'No Vocal') onInstrumentalChange(true);else
-              {
-                haptics.light();
-                remixUploadInputRef.current?.click();
-              }
-            }}
-            className="flex-1 flex flex-col items-center gap-1 py-2.5 border rounded-lg transition-all text-[10px] font-bold"
-            style={active ?
-            { background: 'rgba(225,29,72,0.2)', borderColor: 'rgba(225,29,72,0.45)', color: '#fff' } :
-            { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.45)' }}>
+                { label: 'Vocal', IconComp: Mic2, active: !isInstrumental },
+                { label: 'No Vocal', IconComp: Music, active: isInstrumental },
+                { label: 'Upload', IconComp: Plus, active: !!remixUploadFileName },
+              ].map(({ label, IconComp, active }) => (
+                <button key={label} type="button" aria-pressed={active}
+                  onClick={() => {
+                    if (label === 'Vocal') onInstrumentalChange(false);
+                    else if (label === 'No Vocal') onInstrumentalChange(true);
+                    else {
+                      haptics.light();
+                      remixUploadInputRef.current?.click();
+                    }
+                  }}
+                  className="flex-1 flex flex-col items-center gap-1 py-2.5 border rounded-lg transition-all text-[10px] font-bold"
+                  style={active
+                    ? { background: 'rgba(225,29,72,0.2)', borderColor: 'rgba(225,29,72,0.45)', color: '#fff' }
+                    : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.45)' }}>
                   <IconComp className="h-4 w-4" />
                   {label}
                 </button>
-            )}
+              ))}
             </div>
 
             <input
-            ref={remixUploadInputRef}
-            type="file"
-            accept="audio/*"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0] || null;
-              onRemixUploadFile?.(file);
-              event.target.value = '';
-            }} />
-          
+              ref={remixUploadInputRef}
+              type="file"
+              accept="audio/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0] || null;
+                onRemixUploadFile?.(file);
+                event.target.value = '';
+              }}
+            />
 
-            {remixUploadFileName &&
-          <PanelSection label="Uploaded Source">
+            {remixUploadFileName && (
+              <PanelSection label="Uploaded Source">
                 <div className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg border" style={{ ...fieldStyle, color: '#fff' }}>
                   <Play className="h-4 w-4 text-white/55 flex-shrink-0" />
                   <span className="text-xs truncate flex-1">{remixUploadFileName}</span>
                   <button
-                type="button"
-                onClick={() => {
-                  haptics.selection();
-                  onClearRemixUploadFile?.();
-                }}
-                className="min-w-[32px] min-h-[32px] rounded-md border border-white/15 bg-white/[0.06] inline-flex items-center justify-center"
-                aria-label="Remove uploaded source">
-                
+                    type="button"
+                    onClick={() => {
+                      haptics.selection();
+                      onClearRemixUploadFile?.();
+                    }}
+                    className="min-w-[32px] min-h-[32px] rounded-md border border-white/15 bg-white/[0.06] inline-flex items-center justify-center"
+                    aria-label="Remove uploaded source"
+                  >
                     <X className="h-3.5 w-3.5 text-white/70" />
                   </button>
                 </div>
-                {remixUploadPreviewUrl &&
-            <audio controls className="w-full mt-2 h-9" src={remixUploadPreviewUrl} />
-            }
+                {remixUploadPreviewUrl && (
+                  <audio controls className="w-full mt-2 h-9" src={remixUploadPreviewUrl} />
+                )}
               </PanelSection>
-          }
+            )}
 
             <PanelSection label="Remix Source">
-              {isMobile ?
-            <button
-              type="button"
-              onClick={() => {
-                haptics.light();
-                setRemixSourcePickerOpen(true);
-              }}
-              className="w-full min-h-[44px] flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left"
-              style={{ ...fieldStyle, color: remixSource ? '#fff' : 'rgba(255,255,255,0.35)' }}>
-              
+              {isMobile ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.light();
+                    setRemixSourcePickerOpen(true);
+                  }}
+                  className="w-full min-h-[44px] flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left"
+                  style={{ ...fieldStyle, color: remixSource ? '#fff' : 'rgba(255,255,255,0.35)' }}
+                >
                   <span className="flex-1 truncate">
                     {selectedRemixTrack?.title || 'Choose a generated or uploaded source'}
                   </span>
                   <ChevronDown className="h-4 w-4 text-white/35" />
-                </button> :
-
-            <select value={remixSource} onChange={(e) => onRemixSourceChange(e.target.value)}
-            aria-label="Remix source track"
-            className={fieldClass('appearance-none min-h-[44px]')}
-            style={{ ...fieldStyle, color: remixSource ? '#fff' : 'rgba(255,255,255,0.35)' }}>
+                </button>
+              ) : (
+                <select value={remixSource} onChange={e => onRemixSourceChange(e.target.value)}
+                  aria-label="Remix source track"
+                  className={fieldClass('appearance-none min-h-[44px]')}
+                  style={{ ...fieldStyle, color: remixSource ? '#fff' : 'rgba(255,255,255,0.35)' }}>
                   <option value="" style={{ background: '#0a0a0f' }}>Choose a generated or uploaded source</option>
-                  {readyTracks.map((t) => <option key={t.id} value={t.id} style={{ background: '#0a0a0f' }}>{t.title}</option>)}
+                  {readyTracks.map(t => <option key={t.id} value={t.id} style={{ background: '#0a0a0f' }}>{t.title}</option>)}
                 </select>
-            }
+              )}
             </PanelSection>
 
             <PanelSection label="Target Style">
-              <input value={styles} onChange={(e) => onStylesChange(e.target.value.slice(0, STYLE_MAX))}
-            placeholder="lo-fi, jazz, ambient…" aria-label="Remix target style"
-            className={fieldClass()} style={fieldStyle} />
+              <input value={styles} onChange={e => onStylesChange(e.target.value.slice(0, STYLE_MAX))}
+                placeholder="lo-fi, jazz, ambient…" aria-label="Remix target style"
+                className={fieldClass()} style={fieldStyle} />
               <HChipRow chips={REMIX_STYLE_CHIPS} onPick={onStylesChange} />
             </PanelSection>
 
             <PanelSection label="Remix Prompt">
-              <textarea value={remixPrompt} onChange={(e) => onRemixPromptChange(e.target.value)}
-            placeholder="Describe the remix direction…" rows={remixPromptRows}
-            aria-label="Remix prompt" className={fieldClass('resize-none')} style={fieldStyle} />
+              <textarea value={remixPrompt} onChange={e => onRemixPromptChange(e.target.value)}
+                placeholder="Describe the remix direction…" rows={remixPromptRows}
+                aria-label="Remix prompt" className={fieldClass('resize-none')} style={fieldStyle} />
               <SubtleSplitter
-              orientation="horizontal"
-              label="Drag to resize remix prompt"
-              onPointerDown={beginRemixDrag} />
-            
+                orientation="horizontal"
+                label="Drag to resize remix prompt"
+                onPointerDown={beginRemixDrag}
+              />
             </PanelSection>
 
             <PanelSection label={`Audio Influence ${remixInfluence}%`}>
               <PanelSlider label="" value={remixInfluence} onChange={onRemixInfluenceChange} hideLabel />
             </PanelSection>
           </>
-        }
+        )}
 
         {/* ════ MASHUP ════ */}
-        {tab === 'mashup' &&
-        <>
+        {tab === 'mashup' && (
+          <>
             <VocalModeRow isInstrumental={isInstrumental} onChange={onInstrumentalChange} />
             <PanelSection label={`Source Tracks (${mashupTrackIds.length}/2)`}>
               <div className="space-y-1 max-h-44 overflow-y-auto">
-                {readyTracks.map((t) => {
-                const selected = mashupTrackIds.includes(t.id);
-                return (
-                  <button key={t.id} type="button" aria-pressed={selected}
-                  onClick={() => onToggleMashupTrack?.(t.id)}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 text-left rounded-lg transition-all"
-                  style={{
-                    background: selected ? 'rgba(225,29,72,0.15)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${selected ? 'rgba(225,29,72,0.35)' : 'rgba(255,255,255,0.1)'}`
-                  }}>
+                {readyTracks.map(t => {
+                  const selected = mashupTrackIds.includes(t.id);
+                  return (
+                    <button key={t.id} type="button" aria-pressed={selected}
+                      onClick={() => onToggleMashupTrack?.(t.id)}
+                      className="w-full flex items-center gap-2 px-2.5 py-2 text-left rounded-lg transition-all"
+                      style={{
+                        background: selected ? 'rgba(225,29,72,0.15)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${selected ? 'rgba(225,29,72,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                      }}>
                       <div className="w-7 h-7 overflow-hidden rounded-lg flex-shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                        {t.cover_image_url ?
-                      <img src={t.cover_image_url} alt="" className="w-full h-full object-cover" /> :
-                      <Music className="h-3 w-3 m-auto" style={{ color: 'rgba(255,255,255,0.18)' }} />}
+                        {t.cover_image_url
+                          ? <img src={t.cover_image_url} alt="" className="w-full h-full object-cover" />
+                          : <Music className="h-3 w-3 m-auto" style={{ color: 'rgba(255,255,255,0.18)' }} />}
                       </div>
                       <span className="text-xs font-semibold truncate" style={{ color: 'rgba(255,255,255,0.82)' }}>{t.title}</span>
                       {selected && <span className="ml-auto text-[10px] font-bold" style={{ color: '#fb7185' }}>Selected</span>}
-                    </button>);
-
-              })}
+                    </button>
+                  );
+                })}
               </div>
             </PanelSection>
 
             <PanelSection label="Mashup Prompt">
-              <textarea value={remixPrompt} onChange={(e) => onRemixPromptChange(e.target.value)}
-            placeholder="Describe the mashup style…" rows={mashupPromptRows}
-            aria-label="Mashup prompt" className={fieldClass('resize-none')} style={fieldStyle} />
+              <textarea value={remixPrompt} onChange={e => onRemixPromptChange(e.target.value)}
+                placeholder="Describe the mashup style…" rows={mashupPromptRows}
+                aria-label="Mashup prompt" className={fieldClass('resize-none')} style={fieldStyle} />
               <SubtleSplitter
-              orientation="horizontal"
-              label="Drag to resize mashup prompt"
-              onPointerDown={beginMashupDrag} />
-            
+                orientation="horizontal"
+                label="Drag to resize mashup prompt"
+                onPointerDown={beginMashupDrag}
+              />
             </PanelSection>
 
             <PanelSection label="Styles">
-              <input value={styles} onChange={(e) => onStylesChange(e.target.value.slice(0, STYLE_MAX))}
-            placeholder="cinematic, orchestral…" aria-label="Mashup style"
-            className={fieldClass()} style={fieldStyle} />
+              <input value={styles} onChange={e => onStylesChange(e.target.value.slice(0, STYLE_MAX))}
+                placeholder="cinematic, orchestral…" aria-label="Mashup style"
+                className={fieldClass()} style={fieldStyle} />
               <div className="text-[10px] text-right mt-0.5" style={{ color: 'rgba(255,255,255,0.32)' }}>
                 {styles.length}/{STYLE_MAX}
               </div>
-              <HChipRow chips={ADV_STYLE_CHIPS} onPick={(v) => onStylesChange(generateStyleParts(v).styles)} />
+              <HChipRow chips={ADV_STYLE_CHIPS} onPick={v => onStylesChange(generateStyleParts(v).styles)} />
             </PanelSection>
           </>
-        }
+        )}
       </div>
 
       {/* Generate button footer */}
       <div
         className="flex-shrink-0 md:static fixed left-0 right-0 z-[45] px-4 pb-4 pt-3 border-t"
-        style={{ bottom: 'var(--fixed-action-bottom, var(--bottom-chrome-reserve, 0px))', borderColor: 'rgba(255,255,255,0.08)', background: '#0a0a0f', backdropFilter: 'blur(8px)' }}>
-        
+        style={{ bottom: 'var(--fixed-action-bottom, var(--bottom-chrome-reserve, 0px))', borderColor: 'rgba(255,255,255,0.08)', background: '#0a0a0f', backdropFilter: 'blur(8px)' }}
+      >
         <button
           type="button"
           onClick={onGenerate}
@@ -1222,15 +1222,15 @@ export default function StudioGeneratePanel({
             'w-full py-3 rounded-lg font-extrabold text-sm flex items-center justify-center gap-2 transition-all tracking-wide focus:outline-none focus:ring-2 focus:ring-rose-400',
             isGenerating ? 'cursor-not-allowed' : 'active:scale-[0.99]'
           )}
-          style={isGenerating ?
-          { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.28)' } :
-          { background: 'linear-gradient(135deg, #e11d48, #be123c)', boxShadow: '0 0 24px rgba(225,29,72,0.42)', color: '#fff' }}>
-          
-          {isGenerating ?
-          <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> :
-          tab === 'remix' ? <><Sparkles className="h-4 w-4" /> Remix</> :
-          tab === 'mashup' ? <><Sparkles className="h-4 w-4" /> Mashup</> :
-          <><Sparkles className="h-4 w-4" /> Generate</>}
+          style={isGenerating
+            ? { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.28)' }
+            : { background: 'linear-gradient(135deg, #e11d48, #be123c)', boxShadow: '0 0 24px rgba(225,29,72,0.42)', color: '#fff' }}
+        >
+          {isGenerating
+            ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
+            : tab === 'remix' ? <><Sparkles className="h-4 w-4" /> Remix</>
+            : tab === 'mashup' ? <><Sparkles className="h-4 w-4" /> Mashup</>
+            : <><Sparkles className="h-4 w-4" /> Generate</>}
         </button>
       </div>
 
@@ -1243,30 +1243,30 @@ export default function StudioGeneratePanel({
               setPersonaPickerOpen(false);
               haptics.selection();
             }}
-            className="w-full min-h-[44px] rounded-xl border border-white/15 bg-white/[0.04] text-left px-3 text-sm">
-            
+            className="w-full min-h-[44px] rounded-xl border border-white/15 bg-white/[0.04] text-left px-3 text-sm"
+          >
             Default Voice
           </button>
-          {readyPersonas.map((persona) =>
-          <button
-            key={persona.id}
-            type="button"
-            onClick={() => {
-              onSelectPersona?.(persona.id);
-              setPersonaPickerOpen(false);
-              haptics.selection();
-            }}
-            className={cn(
-              'w-full min-h-[44px] rounded-xl border text-left px-3 text-sm',
-              selectedPersonaId === persona.id ? 'border-rose-500/45 bg-rose-500/15 text-rose-200' : 'border-white/15 bg-white/[0.04] text-white/85'
-            )}>
-            
+          {readyPersonas.map((persona) => (
+            <button
+              key={persona.id}
+              type="button"
+              onClick={() => {
+                onSelectPersona?.(persona.id);
+                setPersonaPickerOpen(false);
+                haptics.selection();
+              }}
+              className={cn(
+                'w-full min-h-[44px] rounded-xl border text-left px-3 text-sm',
+                selectedPersonaId === persona.id ? 'border-rose-500/45 bg-rose-500/15 text-rose-200' : 'border-white/15 bg-white/[0.04] text-white/85'
+              )}
+            >
               {persona.name}
             </button>
+          ))}
+          {readyPersonas.length === 0 && (
+            <p className="text-xs text-white/50">No ready personas yet. Create one in Voice Studio.</p>
           )}
-          {readyPersonas.length === 0 &&
-          <p className="text-xs text-white/50">No ready personas yet. Create one in Voice Studio.</p>
-          }
         </div>
       </BottomSheet>
 
@@ -1279,29 +1279,29 @@ export default function StudioGeneratePanel({
               setRemixSourcePickerOpen(false);
               haptics.selection();
             }}
-            className="w-full min-h-[44px] rounded-xl border border-white/15 bg-white/[0.04] text-left px-3 text-sm text-white/80">
-            
+            className="w-full min-h-[44px] rounded-xl border border-white/15 bg-white/[0.04] text-left px-3 text-sm text-white/80"
+          >
             Clear source
           </button>
-          {readyTracks.map((track) =>
-          <button
-            key={track.id}
-            type="button"
-            onClick={() => {
-              onRemixSourceChange(track.id);
-              setRemixSourcePickerOpen(false);
-              haptics.selection();
-            }}
-            className={cn(
-              'w-full min-h-[44px] rounded-xl border text-left px-3 text-sm',
-              String(remixSource) === String(track.id) ? 'border-rose-500/45 bg-rose-500/15 text-rose-200' : 'border-white/15 bg-white/[0.04] text-white/85'
-            )}>
-            
+          {readyTracks.map((track) => (
+            <button
+              key={track.id}
+              type="button"
+              onClick={() => {
+                onRemixSourceChange(track.id);
+                setRemixSourcePickerOpen(false);
+                haptics.selection();
+              }}
+              className={cn(
+                'w-full min-h-[44px] rounded-xl border text-left px-3 text-sm',
+                String(remixSource) === String(track.id) ? 'border-rose-500/45 bg-rose-500/15 text-rose-200' : 'border-white/15 bg-white/[0.04] text-white/85'
+              )}
+            >
               {track.title}
             </button>
-          )}
+          ))}
         </div>
       </BottomSheet>
-    </div>);
-
+    </div>
+  );
 }
