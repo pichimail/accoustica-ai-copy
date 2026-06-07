@@ -23,7 +23,9 @@ import {
   Volume2,
   Zap,
   Trash2,
+  Sliders,
 } from 'lucide-react';
+import SoundProfilePanel from '@/components/settings/SoundProfilePanel';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: User },
@@ -343,6 +345,18 @@ export default function ProfilePage() {
               <SelectField label="Mastering Preset" value={audioSettings.preferredMastering} onChange={value => setAudioSettings(prev => ({ ...prev, preferredMastering: value }))} options={['balanced', 'warm', 'loud', 'streaming', 'wide']} />
             </Panel>
           </div>
+        )}
+
+        {tab === 'settings' && user?.role === 'admin' && (
+          <section className="mb-5 border rounded-lg overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#0d0d13' }}>
+            <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+              <Sliders className="h-4 w-4" style={{ color: '#fb7185' }} />
+              <h2 className="text-sm font-extrabold uppercase tracking-wider">Default Sound Profile (Admin)</h2>
+            </div>
+            <div className="p-4">
+              <SoundProfilePanel />
+            </div>
+          </section>
         )}
 
         {tab === 'settings' && (

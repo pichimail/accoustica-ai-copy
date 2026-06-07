@@ -95,6 +95,58 @@ function autoSelectModel(requestedModel: string, style = '', prompt = '') {
     return 'V5_5';
 }
 
+const INTENSITY_PHRASES = {
+    drum: {
+        reduce: 'subtle understated drums',
+        balanced: '',
+        increase: 'prominent driving drums',
+        remove: 'no drums, drumless arrangement',
+    },
+    guitar: {
+        reduce: 'subtle background guitars',
+        balanced: '',
+        increase: 'prominent lead guitars',
+        remove: 'no guitars',
+    },
+};
+
+/**
+ * Build instruction phrases from the global SoundProfile and HQ toggle.
+ * Returns { directives: string[], avoidTags: string[] }.
+ */
+function buildProfileDirectives(profile, hq) {
+    const directives = [];
+    const avoidTags = [];
+    if (!profile || profile.is_active === false) {
+        return { directives, avoidTags };
+    }
+
+    if (profile.drum_style && profile.drum_intensity !== 'remove') directives.push(profile.drum_style);
+    const drumPhrase = INTENSITY_PHRASES.drum[profile.drum_intensity];
+    if (drumPhrase) directives.push(drumPhrase);
+
+    if (profile.guitar_style && profile.guitar_intensity !== 'remove') directives.push(profile.guitar_style);
+    const guitarPhrase = INTENSITY_PHRASES.guitar[profile.guitar_intensity];
+    if (guitarPhrase) directives.push(guitarPhrase);
+
+    if (hq) {
+        if (profile.hq_vocal_instructions) directives.push(profile.hq_vocal_instructions);
+        if (profile.hq_music_instructions) directives.push(profile.hq_music_instructions);
+    }
+
+    if (profile.global_avoid_tags) {
+        profile.global_avoid_tags.split(',').map(t => t.trim()).filter(Boolean).forEach(t => avoidTags.push(t));
+    }
+
+    return { directives, avoidTags };
+}
+
+function appendDirectives(base = '', directives = []) {
+    if (!directives.length) return base;
+    const joined = directives.join(', ');
+    return base && base.trim() ? `${base.trim()}, ${joined}` : joined;
+}
+
 function makeTitle(input = 'Untitled Track') {
     const cleaned = input
         .replace(/\[[^\]]+\]/g, ' ')
@@ -135,6 +187,7 @@ Deno.serve(async (req) => {
             negativeTags,
             personaId,
             selectedPersonaId,
+            hq = false,
         } = await req.json();
 
         const apiKey = Deno.env.get('SUNO_API_KEY');
@@ -145,7 +198,29 @@ Deno.serve(async (req) => {
         const resolvedCustomMode = customMode === true || mode === 'custom' || mode === 'advanced' || instrumental;
         const inferred = inferSettings(style, prompt);
         const finalTitle = title?.trim() || makeTitle(prompt || style || 'Untitled Track');
-        const finalNegativeTags = negativeTags?.trim() || inferred.avoid;
+
+        // ── Apply global Sound Profile (admin defaults) + HQ enhancement ──
+        let profileDirectives = [];
+        let profileAvoidTags = [];
+        try {
+            const profiles = await base44.asServiceRole.entities.SoundProfile.filter({ scope: 'global' });
+            const profile = profiles && profiles.length > 0 ? profiles[0] : null;
+            const built = buildProfileDirectives(profile, hq);
+            profileDirectives = built.directives;
+            profileAvoidTags = built.avoidTags;
+        } catch (e) {
+            console.error('SoundProfile load failed (continuing without it):', e?.message);
+        }
+
+        // For vocal-only directives, skip vocal HQ text when instrumental
+        const effectiveDirectives = instrumental
+            ? profileDirectives.filter(d => !/vocal/i.test(d))
+            : profileDirectives;
+
+        const baseNegative = negativeTags?.trim() || inferred.avoid;
+        const finalNegativeTags = [baseNegative, ...profileAvoidTags]
+            .filter(Boolean)
+            .join(', ');
         const finalWeirdness = clampNumber(
             weirdnessConstraint ?? weirdness,
             0,
@@ -191,7 +266,7 @@ Deno.serve(async (req) => {
             if (!prompt || !prompt.trim()) {
                 return Response.json({ error: 'Prompt is required' }, { status: 400, headers: corsHeaders });
             }
-            payload.prompt = prompt;
+            payload.prompt = appendDirectives(prompt, effectiveDirectives);
             if (resolvedPersonaId) payload.personaId = resolvedPersonaId;
         } else {
             // Custom mode per Kie/Suno: style is required, title can be synthesized by the app.
@@ -202,7 +277,7 @@ Deno.serve(async (req) => {
                 return Response.json({ error: 'Lyrics/prompt are required when vocals are enabled' }, { status: 400, headers: corsHeaders });
             }
             if (prompt?.trim()) payload.prompt = prompt;
-            payload.style = style;
+            payload.style = appendDirectives(style, effectiveDirectives);
             payload.title = finalTitle;
             payload.negativeTags = finalNegativeTags;
             payload.weirdnessConstraint = toApiWeight(finalWeirdness);

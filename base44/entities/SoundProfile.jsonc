@@ -1,0 +1,66 @@
+{
+  "name": "SoundProfile",
+  "type": "object",
+  "properties": {
+    "scope": {
+      "type": "string",
+      "default": "global",
+      "description": "Identifier for this profile. 'global' is the single active default profile."
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this profile is applied to new generations"
+    },
+    "drum_style": {
+      "type": "string",
+      "default": "natural acoustic drums",
+      "description": "Preferred drum character to steer toward"
+    },
+    "drum_intensity": {
+      "type": "string",
+      "enum": [
+        "reduce",
+        "balanced",
+        "increase",
+        "remove"
+      ],
+      "default": "balanced",
+      "description": "How prominent drums should be in the mix"
+    },
+    "guitar_style": {
+      "type": "string",
+      "default": "warm clean guitars",
+      "description": "Preferred guitar character to steer toward"
+    },
+    "guitar_intensity": {
+      "type": "string",
+      "enum": [
+        "reduce",
+        "balanced",
+        "increase",
+        "remove"
+      ],
+      "default": "balanced",
+      "description": "How prominent guitars should be in the mix"
+    },
+    "hq_vocal_instructions": {
+      "type": "string",
+      "default": "clear vocal-forward mix, natural studio-quality vocals, crisp articulation, balanced compression, minimal reverb, no muddiness",
+      "description": "High-quality vocal instructions appended when HQ is on"
+    },
+    "hq_music_instructions": {
+      "type": "string",
+      "default": "professional studio production, clean balanced mix, natural dynamics, wide clear stereo image, realistic acoustic instruments, no harsh shimmer, no excessive echo",
+      "description": "High-quality music instructions appended when HQ is on"
+    },
+    "global_avoid_tags": {
+      "type": "string",
+      "default": "excessive reverb, heavy echo, metallic shimmer, muddy mix, buried vocals, clipped distortion, robotic vocals, over-compressed, low fidelity",
+      "description": "Artifacts to always avoid (merged into negative tags)"
+    }
+  },
+  "required": [
+    "scope"
+  ]
+}

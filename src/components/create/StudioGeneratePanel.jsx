@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState, useRef, useCallback } from 'react';
-import { Sparkles, Wand2, ChevronDown, ChevronUp, Loader2, Mic2, Music, Plus, BookOpen, X, Play } from 'lucide-react';
+import { Sparkles, Wand2, ChevronDown, ChevronUp, Loader2, Mic2, Music, Plus, BookOpen, X, Play, Gem } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -534,6 +534,35 @@ function VocalModeRow({ isInstrumental, onChange }) {
   );
 }
 
+/**
+ * @param {{ enabled: boolean; onChange: (value: boolean) => void }} props
+ */
+function HQToggleRow({ enabled, onChange }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      onClick={() => { haptics.selection(); onChange(!enabled); }}
+      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all"
+      style={enabled
+        ? { background: 'rgba(225,29,72,0.12)', borderColor: 'rgba(225,29,72,0.4)' }
+        : { background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.1)' }}
+    >
+      <Gem className="h-4 w-4 flex-shrink-0" style={{ color: enabled ? '#fb7185' : 'rgba(255,255,255,0.4)' }} />
+      <div className="flex-1 text-left">
+        <p className="text-[11px] font-bold" style={{ color: enabled ? '#fff' : 'rgba(255,255,255,0.7)' }}>HQ Studio Profile</p>
+        <p className="text-[9px]" style={{ color: 'rgba(255,255,255,0.4)' }}>Pro vocals & natural studio sound</p>
+      </div>
+      <span className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0"
+        style={{ background: enabled ? '#e11d48' : 'rgba(255,255,255,0.15)' }}>
+        <span className="inline-block h-4 w-4 rounded-full bg-white transition-transform"
+          style={{ transform: enabled ? 'translateX(18px)' : 'translateX(2px)' }} />
+      </span>
+    </button>
+  );
+}
+
 // Build a drag-resize handler for a single textarea row state
 /**
  * @param {React.MutableRefObject<number>} rowsRef
@@ -578,6 +607,7 @@ export default function StudioGeneratePanel({
   styleWeight, onStyleWeightChange,
   clarityWeight, onClarityWeightChange,
   isInstrumental, onInstrumentalChange,
+  hqMode, onHqModeChange,
   strictVoiceClone, onStrictVoiceCloneChange,
   simplePrompt, onSimplePromptChange,
   showMoreOptions, onToggleMoreOptions,
@@ -818,6 +848,7 @@ export default function StudioGeneratePanel({
         {tab === 'simple' && (
           <>
             <VocalModeRow isInstrumental={isInstrumental} onChange={onInstrumentalChange} />
+            <HQToggleRow enabled={hqMode} onChange={onHqModeChange} />
             <PanelSection label="Description">
               <div className="relative">
                 <textarea
@@ -858,6 +889,7 @@ export default function StudioGeneratePanel({
         {tab === 'advanced' && (
           <>
             <VocalModeRow isInstrumental={isInstrumental} onChange={onInstrumentalChange} />
+            <HQToggleRow enabled={hqMode} onChange={onHqModeChange} />
 
             {/* Styles input + horizontal preset chips */}
             <PanelSection label="Styles">
@@ -1159,6 +1191,7 @@ export default function StudioGeneratePanel({
         {tab === 'mashup' && (
           <>
             <VocalModeRow isInstrumental={isInstrumental} onChange={onInstrumentalChange} />
+            <HQToggleRow enabled={hqMode} onChange={onHqModeChange} />
             <PanelSection label={`Source Tracks (${mashupTrackIds.length}/2)`}>
               <div className="space-y-1 max-h-44 overflow-y-auto">
                 {readyTracks.map(t => {

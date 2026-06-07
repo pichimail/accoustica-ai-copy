@@ -89,6 +89,7 @@ export default function CreatePage() {
   const [weirdnessTouched, setWeirdnessTouched] = useState(false);
   const [negativeTagTouched, setNegativeTagTouched] = useState(false);
   const [isInstrumental, setIsInstrumental] = useState(false);
+  const [hqMode, setHqMode] = useState(true);
   const [simplePrompt, setSimplePrompt] = useState('');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [remixSource, setRemixSource] = useState('');
@@ -273,6 +274,7 @@ export default function CreatePage() {
           audioWeight: remixInfluence,
           styleWeight,
           weirdnessConstraint: clarityWeight,
+          hq: hqMode,
           ...(vocalGender !== 'Auto' && { vocalGender }),
         });
       } else if (isRemix) {
@@ -318,6 +320,7 @@ export default function CreatePage() {
           ...(negativeTag.trim() && { negativeTags: negativeTag.trim() }),
           styleWeight,
           weirdnessConstraint: clarityWeight,
+          hq: hqMode,
           ...(vocalGender !== 'Auto' && { vocalGender }),
           ...(selectedPersonaId && { selectedPersonaId })
         } : {
@@ -325,7 +328,8 @@ export default function CreatePage() {
           model: 'V5_5',
           prompt: finalPrompt,
           customMode: false,
-          instrumental: isInstrumental
+          instrumental: isInstrumental,
+          hq: hqMode
         };
 
         response = await base44.functions.invoke('generateMusic', payload);
@@ -466,6 +470,7 @@ export default function CreatePage() {
             styleWeight={styleWeight} onStyleWeightChange={(value) => {setStyleWeight(value);setStyleWeightTouched(true);}}
             clarityWeight={clarityWeight} onClarityWeightChange={(value) => {setClarityWeight(value);setWeirdnessTouched(true);}}
             isInstrumental={isInstrumental} onInstrumentalChange={setIsInstrumental}
+            hqMode={hqMode} onHqModeChange={setHqMode}
             strictVoiceClone={strictVoiceClone} onStrictVoiceCloneChange={setStrictVoiceClone}
             simplePrompt={simplePrompt} onSimplePromptChange={setSimplePrompt}
             showMoreOptions={showMoreOptions} onToggleMoreOptions={() => setShowMoreOptions((v) => !v)}
@@ -501,6 +506,7 @@ export default function CreatePage() {
           styleWeight={styleWeight} onStyleWeightChange={(value) => {setStyleWeight(value);setStyleWeightTouched(true);}}
           clarityWeight={clarityWeight} onClarityWeightChange={(value) => {setClarityWeight(value);setWeirdnessTouched(true);}}
           isInstrumental={isInstrumental} onInstrumentalChange={setIsInstrumental}
+          hqMode={hqMode} onHqModeChange={setHqMode}
           strictVoiceClone={strictVoiceClone} onStrictVoiceCloneChange={setStrictVoiceClone}
           simplePrompt={simplePrompt} onSimplePromptChange={setSimplePrompt}
           showMoreOptions={showMoreOptions} onToggleMoreOptions={() => setShowMoreOptions((v) => !v)}

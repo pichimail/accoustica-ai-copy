@@ -88,7 +88,34 @@ Deno.serve(async (req: Request) => {
       styleWeight,
       weirdnessConstraint,
       audioWeight,       // 0–1 or 0–100; controls audio feature blend in the mashup
+      hq = false,
     } = await req.json();
+
+    // ── Load global Sound Profile (admin defaults) ──
+    const INTENSITY_PHRASES = {
+      drum: { reduce: 'subtle understated drums', balanced: '', increase: 'prominent driving drums', remove: 'no drums, drumless arrangement' },
+      guitar: { reduce: 'subtle background guitars', balanced: '', increase: 'prominent lead guitars', remove: 'no guitars' },
+    };
+    let profileDirectives: string[] = [];
+    let profileAvoidTags: string[] = [];
+    try {
+      const profiles = await base44.asServiceRole.entities.SoundProfile.filter({ scope: 'global' });
+      const profile = profiles && profiles.length > 0 ? profiles[0] : null;
+      if (profile && profile.is_active !== false) {
+        if (profile.drum_style && profile.drum_intensity !== 'remove') profileDirectives.push(profile.drum_style);
+        if (INTENSITY_PHRASES.drum[profile.drum_intensity]) profileDirectives.push(INTENSITY_PHRASES.drum[profile.drum_intensity]);
+        if (profile.guitar_style && profile.guitar_intensity !== 'remove') profileDirectives.push(profile.guitar_style);
+        if (INTENSITY_PHRASES.guitar[profile.guitar_intensity]) profileDirectives.push(INTENSITY_PHRASES.guitar[profile.guitar_intensity]);
+        if (hq) {
+          if (profile.hq_vocal_instructions) profileDirectives.push(profile.hq_vocal_instructions);
+          if (profile.hq_music_instructions) profileDirectives.push(profile.hq_music_instructions);
+        }
+        if (profile.global_avoid_tags) profileAvoidTags = profile.global_avoid_tags.split(',').map((t: string) => t.trim()).filter(Boolean);
+      }
+    } catch (e) {
+      console.error('SoundProfile load failed (mashup, continuing):', (e as Error)?.message);
+    }
+    if (instrumental) profileDirectives = profileDirectives.filter(d => !/vocal/i.test(d));
 
     // ── Resolve the two source audio URLs ──────────────────────────────────────
     // Prefer audio_url (direct file link) over stream_audio_url (may be a
@@ -168,8 +195,12 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      body.style = String(style).slice(0, 1000);  // required in customMode
+      const styledWithProfile = profileDirectives.length
+        ? `${String(style).trim()}, ${profileDirectives.join(', ')}`
+        : String(style);
+      body.style = styledWithProfile.slice(0, 1000);  // required in customMode
       body.title = finalTitle;                      // required in customMode (max 80)
+      if (profileAvoidTags.length) body.negativeTags = profileAvoidTags.join(', ').slice(0, 1000);
 
       const promptStr = String(prompt || '').trim();
       if (promptStr) {
