@@ -232,9 +232,11 @@ export default function CreatePage() {
   );
 
   // ── Generate mutation ──
-  const isGenerating = !!generatingTaskId;
+  const [isStartingGeneration, setIsStartingGeneration] = useState(false);
+  const isGenerating = !!generatingTaskId || isStartingGeneration;
 
   const handleGenerate = async () => {
+    if (isStartingGeneration) return;
     haptics.medium();
     const isAdvanced = tab === 'advanced';
     const isRemix = tab === 'remix';
@@ -249,16 +251,20 @@ export default function CreatePage() {
     if (isRemix && !remixSource && !remixUploadFile) {toast.error('Choose or upload a source track to remix');return;}
     if (isMashup && mashupTrackIds.length !== 2) {toast.error('Choose exactly two ready tracks for a mashup');return;}
 
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      await base44.auth.updateMe({
-        daily_usage: (user?.daily_usage || 0) + 1,
-        last_usage_reset: today,
-        monthly_usage: (user?.monthly_usage || 0) + 1,
-        total_tracks: (user?.total_tracks || 0) + 1,
-        last_active: new Date().toISOString()
-      });
+    // ⚡ Instant UI feedback — spinner shows immediately on click, before any network call
+    setIsStartingGeneration(true);
 
+    // Fire-and-forget usage update so it never blocks the generation request
+    const today = new Date().toISOString().split('T')[0];
+    base44.auth.updateMe({
+      daily_usage: (user?.daily_usage || 0) + 1,
+      last_usage_reset: today,
+      monthly_usage: (user?.monthly_usage || 0) + 1,
+      total_tracks: (user?.total_tracks || 0) + 1,
+      last_active: new Date().toISOString()
+    }).catch(() => {});
+
+    try {
       let response;
 
       if (isMashup) {
@@ -353,6 +359,8 @@ export default function CreatePage() {
     } catch (err) {
       haptics.error();
       toast.error(err.message || 'Failed to start generation');
+    } finally {
+      setIsStartingGeneration(false);
     }
   };
 

@@ -13,6 +13,7 @@ import FullscreenPlayer from './FullscreenPlayer';
 import { toast } from 'sonner';
 import LyricsView from './LyricsView';
 import ShareTrackDialog from '@/components/collaboration/ShareTrackDialog';
+import ExportShareButton from '@/components/collaboration/ExportShareButton';
 import { useNavigate } from 'react-router-dom';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -641,13 +642,16 @@ export default function GlobalAudioPlayer() {
                   )}
                 ><Mic2 className="h-3 w-3" /></button>
 
+                {/* One-click export & share — opens native share sheet with audio + cover, or saves locally */}
+                {hasTrack && <ExportShareButton track={currentTrack} className="w-7 h-7" />}
+
                 <button
-                  onClick={() => setShowShare(v => !v)} aria-label="Share track" disabled={!hasTrack}
-                  className="w-7 h-7 flex items-center justify-center rounded-full text-white/28 hover:text-white/65 hover:bg-white/5 transition-all disabled:opacity-35"
+                  onClick={() => setShowShare(v => !v)} aria-label="More share options" disabled={!hasTrack}
+                  className="hidden sm:flex w-7 h-7 items-center justify-center rounded-full text-white/28 hover:text-white/65 hover:bg-white/5 transition-all disabled:opacity-35"
                 ><Share2 className="h-3 w-3" /></button>
 
                 <button
-                  onClick={() => setShowDownload(v => !v)} aria-label="Download track" disabled={!hasTrack}
+                  onClick={() => setShowDownload(v => !v)} aria-label="Download options" disabled={!hasTrack}
                   className="hidden sm:flex w-7 h-7 items-center justify-center rounded-full text-white/28 hover:text-white/65 hover:bg-white/5 transition-all disabled:opacity-35"
                 ><Download className="h-3 w-3" /></button>
 

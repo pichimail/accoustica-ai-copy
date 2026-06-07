@@ -14,31 +14,21 @@
 .safe-left   { padding-left:   env(safe-area-inset-left,   0px); }
 .safe-right  { padding-right:  env(safe-area-inset-right,  0px); }
 
-/* Smooth momentum scrolling */
+/* Native momentum scrolling for buttery touch flicks.
+   We rely on -webkit-overflow-scrolling instead of `scroll-behavior: smooth`,
+   which would otherwise fight the OS momentum and feel laggy on mobile. */
 .scroll-smooth-ios,
-.scroll-smooth-mobile {
-  scroll-behavior: smooth;
+.scroll-smooth-mobile,
+[class*="overflow-y-auto"],
+[class*="overflow-y-scroll"] {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
-/* Mobile-specific smooth scrolling */
-@supports (-webkit-touch-callout: none) {
-  /* iOS */
-  .scroll-smooth-mobile,
-  .app-shell-main,
-  [class*="overflow-y-auto"] {
-    scroll-behavior: smooth;
-  }
-}
-
-/* Touch manipulation */
+/* Touch manipulation — removes the 300ms tap delay */
 button, a, [role="button"] {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-}
-
-/* Enable smooth scrolling on all scrollable elements */
-*[style*="overflow-y"] {
-  scroll-behavior: smooth;
 }
 
 /* Gradient text utility */

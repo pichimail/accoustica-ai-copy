@@ -61,23 +61,29 @@ const refreshTrackUrls = async (track) => {
   return null;
 };
 
-// Wait for audio to be ready to play, with timeout
-const waitForCanPlay = (audio, timeoutMs = 8000) => {
+// Wait for audio to be ready to play, with timeout.
+// Resolves on the FIRST of: canplay OR loadedmetadata (readyState >= 1) so playback
+// starts as soon as the browser has enough to begin buffering — no long stalls.
+const waitForCanPlay = (audio, timeoutMs = 6000) => {
   return new Promise((resolve, reject) => {
-    if (audio.readyState >= 3) { resolve(); return; }
+    // Already has current data — play right away
+    if (audio.readyState >= 2) { resolve(); return; }
     let done = false;
     const cleanup = () => {
       done = true;
-      audio.removeEventListener('canplay', onCanPlay);
+      audio.removeEventListener('canplay', onReady);
+      audio.removeEventListener('loadeddata', onReady);
       audio.removeEventListener('error', onError);
       clearTimeout(timer);
     };
-    const onCanPlay = () => { if (!done) { cleanup(); resolve(); } };
+    const onReady = () => { if (!done) { cleanup(); resolve(); } };
     const onError = (e) => { if (!done) { cleanup(); reject(e); } };
     const timer = setTimeout(() => {
-      if (!done) { cleanup(); reject(new Error('canplay timeout')); }
+      // Don't hard-fail on timeout — try playing anyway, browser may still stream
+      if (!done) { cleanup(); resolve(); }
     }, timeoutMs);
-    audio.addEventListener('canplay', onCanPlay, { once: true });
+    audio.addEventListener('canplay', onReady, { once: true });
+    audio.addEventListener('loadeddata', onReady, { once: true });
     audio.addEventListener('error', onError, { once: true });
   });
 };
@@ -152,10 +158,13 @@ export function AudioPlayerProvider({ children }) {
       } else {
         ensureAudioContext();
         resumeAudioContext();
+        setIsPlaying(true); // optimistic — instant UI response
         try {
+          // If the source got dropped, restore it before playing
+          if (!audio.src && audio.__lastSrc) { audio.src = audio.__lastSrc; audio.load(); }
           await audio.play();
-          setIsPlaying(true);
         } catch (e) {
+          setIsPlaying(false);
           console.error('Resume play failed:', e);
         }
       }
@@ -169,7 +178,7 @@ export function AudioPlayerProvider({ children }) {
     setCurrentTrack({ ...track, __resolvedAudioSource: candidates[0] });
     setCurrentTime(0);
     setDuration(Number(track.duration) || 0);
-    setIsPlaying(false);
+    setIsPlaying(true); // optimistic — instant UI response on first click
 
     if (trackQueue.length > 0) {
       const playableQueue = trackQueue.filter(t => getTrackAudioSource(t));
@@ -200,11 +209,12 @@ export function AudioPlayerProvider({ children }) {
         // crossOrigin MUST be set before src for AudioContext CORS to work
         audio.crossOrigin = 'anonymous';
         audio.src = url;
+        audio.__lastSrc = url;
         audio.volume = volumeRef.current / 100;
         audio.preload = 'auto';
         audio.load();
 
-        await waitForCanPlay(audio, 10000);
+        await waitForCanPlay(audio, 6000);
 
         if (loadingIdRef.current !== loadId) return;
 

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Music, Play, Pause, Loader2, Search, SkipForward, Video, Layers, Info, MoreHorizontal } from 'lucide-react';
 import SubtleSplitter from '@/components/ui/SubtleSplitter';
 import StudioCenterVisualizer from './StudioCenterVisualizer';
+import ExportShareButton from '@/components/collaboration/ExportShareButton';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -193,6 +194,21 @@ function TrackDetailView({ track, currentTrack, isPlaying, onPlay }) {
             </p>
           )}
         </div>
+
+        {/* Quick actions */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button
+            onClick={onPlay}
+            aria-label={isActive && isPlaying ? 'Pause' : 'Play'}
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
+            style={{ background: 'linear-gradient(135deg, #22c55e 0%, #a855f7 55%, #ec4899 100%)' }}
+          >
+            {isActive && isPlaying
+              ? <Pause className="h-4 w-4 fill-black text-black" />
+              : <Play className="h-4 w-4 fill-black text-black ml-[1px]" />}
+          </button>
+          <ExportShareButton track={track} />
+        </div>
       </div>
 
       {/* Lyrics snippet */}
@@ -285,6 +301,7 @@ function CenterTrackRow({ track, index, isCurrent, isPlaying, onPlay, onSelect }
             <span className="hidden xl:inline">{label}</span>
           </Link>
         ))}
+        {canPlay && <ExportShareButton track={track} className="w-7 h-7" />}
       </div>
 
       {/* Duration / status */}

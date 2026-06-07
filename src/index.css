@@ -59,14 +59,16 @@ html, body {
 * { -ms-overflow-style: none !important; }
 *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
 
-/* Smooth, fluid scrolling for main app containers */
+/* Smooth, fluid scrolling for main app containers.
+   Note: we intentionally do NOT set `scroll-behavior: smooth` here — on touch devices
+   it fights native momentum scrolling and makes flicks feel laggy. Native momentum
+   (-webkit-overflow-scrolling: touch) gives the buttery flow instead. */
 .app-shell-main,
 .smooth-scroll-y {
-  scroll-behavior: smooth;
   overflow-x: hidden;
   overscroll-behavior-y: contain;
   touch-action: pan-y;
-  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
   -webkit-user-select: text;
   user-select: text;
 }
