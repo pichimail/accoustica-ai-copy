@@ -254,11 +254,13 @@ Deno.serve(async (req) => {
             resolvedPersonaId = selectedPersona.persona_id;
         }
 
+        const functionBase = Deno.env.get('BASE44_FUNCTION_URL')
+            || `https://base44.app/api/apps/${Deno.env.get('BASE44_APP_ID')}/functions`;
         const payload = {
             customMode: resolvedCustomMode,
             instrumental: instrumental,
             model: finalModel,
-            callBackUrl: `${Deno.env.get('BASE44_FUNCTION_URL') || ''}/sunoCallback`,
+            callBackUrl: `${functionBase}/sunoCallback`,
         };
 
         if (!resolvedCustomMode) {
