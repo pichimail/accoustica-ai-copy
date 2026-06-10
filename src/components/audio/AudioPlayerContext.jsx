@@ -5,6 +5,36 @@ import { toast } from 'sonner';
 import { ensureAudioContext, resumeAudioContext } from '@/lib/audioContext';
 
 const AudioPlayerContext = createContext(null);
+const PLAYBACK_STORAGE_KEY = 'accoustica_playback_state_v1';
+
+const readStoredPlayback = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(PLAYBACK_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.currentTrack || !getTrackAudioSource(parsed.currentTrack)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredPlayback = (state) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(PLAYBACK_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Storage can fail in private mode or under quota pressure. Playback must continue.
+  }
+};
+
+const clearStoredPlayback = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(PLAYBACK_STORAGE_KEY);
+  } catch {}
+};
 
 export const normalizeAudioUrl = (value) => {
   const url = String(value || '').trim();
@@ -95,26 +125,80 @@ export const useAudioPlayer = () => {
 };
 
 export function AudioPlayerProvider({ children }) {
-  const [currentTrack, setCurrentTrack] = useState(null);
+  const restoredPlaybackRef = useRef(readStoredPlayback());
+  const restoredPlayback = restoredPlaybackRef.current;
+  const restoredTrack = restoredPlayback?.currentTrack || null;
+  const restoredQueue = Array.isArray(restoredPlayback?.queue) ? restoredPlayback.queue : [];
+
+  const [currentTrack, setCurrentTrack] = useState(restoredTrack);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(70);
-  const [queue, setQueue] = useState([]);
-  const [queueIndex, setQueueIndex] = useState(0);
-  const [repeatMode, setRepeatMode] = useState('off');
-  const [isShuffle, setIsShuffle] = useState(false);
+  const [currentTime, setCurrentTime] = useState(Number(restoredPlayback?.currentTime) || 0);
+  const [duration, setDuration] = useState(Number(restoredPlayback?.duration || restoredTrack?.duration) || 0);
+  const [volume, setVolume] = useState(Number(restoredPlayback?.volume) || 70);
+  const [queue, setQueue] = useState(restoredQueue);
+  const [queueIndex, setQueueIndex] = useState(Number(restoredPlayback?.queueIndex) || 0);
+  const [repeatMode, setRepeatMode] = useState(restoredPlayback?.repeatMode || 'off');
+  const [isShuffle, setIsShuffle] = useState(!!restoredPlayback?.isShuffle);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [playerVisible, setPlayerVisible] = useState(false);
+  const [playerVisible, setPlayerVisible] = useState(!!restoredTrack);
   const [audioSettings, setAudioSettings] = useState(null);
 
   // audioRef is populated by GlobalAudioPlayer's callback ref
   const audioRef = useRef(null);
   // Cancel stale load operations
   const loadingIdRef = useRef(null);
-  const volumeRef = useRef(70);
+  const volumeRef = useRef(Number(restoredPlayback?.volume) || 70);
+  const restoredSeekAppliedRef = useRef(false);
 
   useEffect(() => { volumeRef.current = volume; }, [volume]);
+
+  // Persist enough playback state to restore the player after refresh.
+  useEffect(() => {
+    if (!currentTrack) {
+      clearStoredPlayback();
+      return;
+    }
+
+    writeStoredPlayback({
+      currentTrack,
+      currentTime,
+      duration,
+      volume,
+      queue,
+      queueIndex,
+      repeatMode,
+      isShuffle,
+      savedAt: Date.now(),
+    });
+  }, [currentTrack, currentTime, duration, volume, queue, queueIndex, repeatMode, isShuffle]);
+
+  // On refresh, rehydrate the hidden audio node with the previous source and seek position.
+  // It intentionally does not auto-play because mobile browsers block autoplay without user action.
+  useEffect(() => {
+    if (restoredSeekAppliedRef.current || !currentTrack || !audioRef.current) return;
+    const source = normalizeAudioUrl(getTrackAudioSource(currentTrack));
+    if (!source) return;
+
+    const audio = audioRef.current;
+    restoredSeekAppliedRef.current = true;
+    audio.crossOrigin = 'anonymous';
+    audio.src = source;
+    audio.__lastSrc = source;
+    audio.volume = volumeRef.current / 100;
+    audio.preload = 'metadata';
+    audio.load();
+
+    const seekTo = Math.max(0, Number(restoredPlaybackRef.current?.currentTime) || 0);
+    const applySeek = () => {
+      if (seekTo > 0 && Number.isFinite(audio.duration)) {
+        audio.currentTime = Math.min(seekTo, Math.max(0, audio.duration - 0.25));
+        setCurrentTime(audio.currentTime);
+      }
+    };
+
+    audio.addEventListener('loadedmetadata', applySeek, { once: true });
+    return () => audio.removeEventListener('loadedmetadata', applySeek);
+  }, [currentTrack]);
 
   // Load user audio settings once
   useEffect(() => {
@@ -126,13 +210,13 @@ export function AudioPlayerProvider({ children }) {
           ? JSON.parse(user.audio_settings)
           : user.audio_settings;
         setAudioSettings(settings);
-        if (typeof settings.defaultVolume === 'number') {
+        if (typeof settings.defaultVolume === 'number' && !restoredPlaybackRef.current?.volume) {
           const v = Math.max(0, Math.min(100, settings.defaultVolume));
           setVolume(v);
           volumeRef.current = v;
           if (audioRef.current) audioRef.current.volume = v / 100;
         }
-        if (settings.autoplayNext === true) setRepeatMode('all');
+        if (settings.autoplayNext === true && !restoredPlaybackRef.current?.repeatMode) setRepeatMode('all');
       })
       .catch(() => {});
     return () => { mounted = false; };
@@ -272,13 +356,22 @@ export function AudioPlayerProvider({ children }) {
       setIsPlaying(false);
     } else {
       try {
+        const source = normalizeAudioUrl(getTrackAudioSource(currentTrack));
+        if (!audio.src && source) {
+          audio.crossOrigin = 'anonymous';
+          audio.src = source;
+          audio.__lastSrc = source;
+          audio.load();
+          await waitForCanPlay(audio, 6000);
+        }
         await audio.play();
         setIsPlaying(true);
       } catch (error) {
+        setIsPlaying(false);
         console.error('togglePlayPause error:', error);
       }
     }
-  }, [isPlaying]);
+  }, [currentTrack, isPlaying]);
 
   const playNext = useCallback(() => {
     if (queue.length === 0) return;
