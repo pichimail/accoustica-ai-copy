@@ -7,7 +7,7 @@ import { queryClientInstance } from '@/lib/query-client'
 import VisualEditAgent from '@/lib/VisualEditAgent'
 import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -15,6 +15,9 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
+
+const PUBLIC_PAGES = new Set(['Home', 'PublicTrack', 'Discover', 'SocialFeed', 'TrackView', 'TrackInfo', 'ArtistInfo']);
+const ADMIN_PAGES = new Set(['AdminDashboard', 'AdminUsers', 'AdminPlans', 'AdminTracks', 'AdminFeatureFlags']);
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
@@ -26,8 +29,40 @@ const RouteFallback = () => (
   </div>
 );
 
+const RequireRouteAccess = ({ pageName, children }) => {
+  const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
+  const isPublicPage = PUBLIC_PAGES.has(pageName);
+  const isAdminPage = ADMIN_PAGES.has(pageName);
+
+  if (isAdminPage && user?.role !== 'admin') {
+    return <Navigate to="/Create" replace state={{ from: location.pathname }} />;
+  }
+
+  if (!isPublicPage && !isAuthenticated) {
+    return <Navigate to="/Home" replace state={{ from: location.pathname }} />;
+  }
+
+  return children;
+};
+
+const renderPage = (path, Page) => (
+  <LayoutWrapper currentPageName={path}>
+    <Suspense fallback={<RouteFallback />}>
+      <RequireRouteAccess pageName={path}>
+        {path === 'Home' ? <HomeRedirect><Page /></HomeRedirect> : <Page />}
+      </RequireRouteAccess>
+    </Suspense>
+  </LayoutWrapper>
+);
+
+const HomeRedirect = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Navigate to="/Create" replace /> : children;
+};
+
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
@@ -53,23 +88,13 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route path="/" element={
-        <LayoutWrapper currentPageName={mainPageKey}>
-          <Suspense fallback={<RouteFallback />}>
-            <MainPage />
-          </Suspense>
-        </LayoutWrapper>
+        <Navigate to={`/${mainPageKey}`} replace />
       } />
       {Object.entries(Pages).map(([path, Page]) => (
         <Route
           key={path}
           path={`/${path}`}
-          element={
-            <LayoutWrapper currentPageName={path}>
-              <Suspense fallback={<RouteFallback />}>
-                {path === 'Home' && isAuthenticated ? <Navigate to="/Create" replace /> : <Page />}
-              </Suspense>
-            </LayoutWrapper>
-          }
+          element={renderPage(path, Page)}
         />
       ))}
       <Route path="*" element={<PageNotFound />} />
