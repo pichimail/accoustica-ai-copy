@@ -15,7 +15,7 @@ import ArtistInfo from './pages/ArtistInfo';
 import SocialFeed from './pages/SocialFeed';
 import SongEditor from './pages/SongEditor';
 import Insights from './pages/Insights';
-import __Layout from './Layout.jsx';
+import __Layout from './AuthenticatedLayout.jsx';
 
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
