@@ -99,6 +99,7 @@ export const AuthProvider = ({ children }) => {
       console.error('User auth check failed:', error);
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
+      setUser(null);
       
       // If user auth fails, it might be an expired token
       if (error.status === 401 || error.status === 403) {
@@ -110,22 +111,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = (shouldRedirect = true) => {
+  const logout = (redirectTarget = true) => {
     setUser(null);
     setIsAuthenticated(false);
     
-    if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
-      base44.auth.logout(window.location.href);
+    if (redirectTarget) {
+      const targetUrl = typeof redirectTarget === 'string' ? redirectTarget : window.location.href;
+      base44.auth.logout(targetUrl);
     } else {
-      // Just remove the token without redirect
+      // Just remove the session without redirecting.
       base44.auth.logout();
     }
   };
 
-  const navigateToLogin = () => {
-    // Use the SDK's redirectToLogin method
-    base44.auth.redirectToLogin(window.location.href);
+  const navigateToLogin = (redirectTarget = window.location.href) => {
+    base44.auth.redirectToLogin(redirectTarget);
   };
 
   return (
