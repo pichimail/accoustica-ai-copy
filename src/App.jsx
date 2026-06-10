@@ -14,7 +14,6 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
-const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 
 const PUBLIC_PAGES = new Set(['Home', 'PublicTrack', 'Discover', 'SocialFeed', 'TrackView', 'TrackInfo', 'ArtistInfo']);
 const ADMIN_PAGES = new Set(['AdminDashboard', 'AdminUsers', 'AdminPlans', 'AdminTracks', 'AdminFeatureFlags']);
@@ -35,15 +34,20 @@ const RequireRouteAccess = ({ pageName, children }) => {
   const isPublicPage = PUBLIC_PAGES.has(pageName);
   const isAdminPage = ADMIN_PAGES.has(pageName);
 
-  if (isAdminPage && user?.role !== 'admin') {
-    return <Navigate to="/Create" replace state={{ from: location.pathname }} />;
-  }
-
   if (!isPublicPage && !isAuthenticated) {
     return <Navigate to="/Home" replace state={{ from: location.pathname }} />;
   }
 
+  if (isAdminPage && user?.role !== 'admin') {
+    return <Navigate to="/Create" replace state={{ from: location.pathname }} />;
+  }
+
   return children;
+};
+
+const HomeRedirect = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Navigate to="/Create" replace /> : children;
 };
 
 const renderPage = (path, Page) => (
@@ -55,11 +59,6 @@ const renderPage = (path, Page) => (
     </Suspense>
   </LayoutWrapper>
 );
-
-const HomeRedirect = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <Navigate to="/Create" replace /> : children;
-};
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
