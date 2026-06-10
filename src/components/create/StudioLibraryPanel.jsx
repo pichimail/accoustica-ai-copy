@@ -44,8 +44,8 @@ export default function StudioLibraryPanel({ tracks, search, onSearch, selectedT
         </div>
         {/* Filter tabs */}
         <div className="flex gap-1 mb-2.5">
-          <button className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white" style={{ background: '#e11d48' }}>All</button>
-          <button className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors hover:text-white/70" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.35)' }}>Liked</button>
+          <button type="button" className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white" style={{ background: '#e11d48' }}>All</button>
+          <button type="button" className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors hover:text-white/70" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.35)' }}>Liked</button>
         </div>
         {/* Search */}
         <div className="relative">
@@ -104,9 +104,17 @@ function LibraryItem({ track, isSelected, isPlaying, onClick, onPlay }) {
   const statusDot = { ready: '#22c55e', generating: '#a78bfa', queued: '#fbbf24', failed: '#f87171' };
   const canPlay = !!(track?.stream_audio_url || track?.audio_url);
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className={cn('w-full flex items-center gap-2 px-2 py-2 rounded-xl text-left transition-all group')}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      className={cn('w-full flex items-center gap-2 px-2 py-2 rounded-xl text-left transition-all group cursor-pointer focus:outline-none focus:ring-1 focus:ring-rose-400/70')}
       style={{ background: isSelected ? 'rgba(225,29,72,0.12)' : 'transparent' }}
       onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
       onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
@@ -117,9 +125,13 @@ function LibraryItem({ track, isSelected, isPlaying, onClick, onPlay }) {
           : <Music className="h-3.5 w-3.5 absolute inset-0 m-auto" style={{ color: 'rgba(255,255,255,0.15)' }} />
         }
         {canPlay && (
-          <button onClick={onPlay}
-            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ background: 'rgba(0,0,0,0.55)' }}>
+          <button
+            type="button"
+            onClick={onPlay}
+            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-white/60"
+            style={{ background: 'rgba(0,0,0,0.55)' }}
+            aria-label={isPlaying ? `Pause ${track.title || 'track'}` : `Play ${track.title || 'track'}`}
+          >
             {isPlaying
               ? <Pause className="h-3 w-3 fill-white text-white" />
               : <Play className="h-3 w-3 fill-white text-white" />}
@@ -146,6 +158,6 @@ function LibraryItem({ track, isSelected, isPlaying, onClick, onPlay }) {
       {!canPlay && (
         <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: (track.status && statusDot[track.status]) || '#555' }} />
       )}
-    </button>
+    </div>
   );
 }
