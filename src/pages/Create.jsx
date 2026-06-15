@@ -1,6 +1,9 @@
 // @ts-nocheck
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+// TODO_EXPORT_REPLACE_WITH_GOOGLE_AUTH: base44.auth.me() / updateMe() → NextAuth / custom API
+import { base44 } from '@/api/exportClient';
+import * as trackClient from '@/api/trackClient';
+import * as musicClient from '@/api/musicClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
@@ -200,7 +203,7 @@ export default function CreatePage() {
     queryKey: ['studioTracks', user?.email],
     queryFn: async () => {
       if (!user?.email) return [];
-      return base44.entities.Track.filter({ created_by: user.email }, '-created_date', 50);
+      return trackClient.listTracks({ created_by: user.email }, '-created_date', 50);
     },
     enabled: !!user?.email,
     refetchInterval: (data) => {
@@ -269,7 +272,7 @@ export default function CreatePage() {
 
       if (isMashup) {
         const selected = allTracks.filter((track) => mashupTrackIds.includes(track.id));
-        response = await base44.functions.invoke('generateMashup', {
+        response = await musicClient.generateMashup({
           trackIds: mashupTrackIds,
           prompt: remixPrompt || `Blend ${selected.map((track) => track.title).join(' and ')} into a coherent mashup`,
           style: styles,
@@ -298,7 +301,7 @@ export default function CreatePage() {
 
         if (!sourceUrl) throw new Error('Selected source track has no playable audio URL yet');
         const strictVoiceDirective = selectedPersonaId && strictVoiceClone ? ' strict voice clone, preserve identity timbre and articulation' : '';
-        response = await base44.functions.invoke('uploadAndCoverAudio', {
+        response = await musicClient.uploadAndCover({
           uploadUrl: sourceUrl,
           prompt: remixPrompt || styles || `Remix ${sourceTitle}`,
           customMode: true,
@@ -338,7 +341,7 @@ export default function CreatePage() {
           hq: hqMode
         };
 
-        response = await base44.functions.invoke('generateMusic', payload);
+        response = await musicClient.generate(payload);
       }
       if (!response.data.success) throw new Error(response.data.error || 'Generation failed');
 
@@ -369,7 +372,7 @@ export default function CreatePage() {
     const poll = async () => {
       attempts++;
       try {
-        const res = await base44.functions.invoke('checkMusicStatus', { taskId });
+        const res = await musicClient.checkStatus(taskId);
         if (res.data.success) {
           const tracks = res.data.tracks || [];
           if (tracks.length > 0 && tracks.every((t) => t.status === 'ready')) {

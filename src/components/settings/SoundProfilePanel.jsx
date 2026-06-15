@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import * as musicClient from '@/api/musicClient';
 import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';
 import { Drum, Guitar, Save, Sparkles, SlidersHorizontal } from 'lucide-react';
@@ -23,7 +23,7 @@ export default function SoundProfilePanel() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    base44.functions.invoke('getSoundProfile', {})
+    musicClient.getSoundProfile()
       .then((res) => {
         if (res?.data?.profile) setForm({ ...DEFAULTS, ...res.data.profile });
       })
@@ -36,7 +36,7 @@ export default function SoundProfilePanel() {
   const save = async () => {
     setSaving(true);
     try {
-      await base44.functions.invoke('saveSoundProfile', form);
+      await musicClient.saveSoundProfile(form);
       haptics.success();
       toast.success('Sound profile saved — applies to all new tracks');
     } catch (e) {

@@ -1,6 +1,9 @@
 // @ts-nocheck
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
+import * as trackClient from '@/api/trackClient';
+import * as musicClient from '@/api/musicClient';
+import * as llmClient from '@/api/llmClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +35,7 @@ export default function EnhancedMasteringDialog({ track, open, onClose, onSucces
     queryKey: ['masteringPresets'],
     queryFn: async () => {
       const user = await base44.auth.me();
+      // TODO_EXPORT_REPLACE_WITH_NEON_DB: MasteringPreset entity → NeonDB table
       return await base44.entities.MasteringPreset.filter({ created_by: user.email });
     },
     enabled: open,
@@ -57,8 +61,7 @@ export default function EnhancedMasteringDialog({ track, open, onClose, onSucces
       setReferenceFile(file_url);
 
       // Analyze reference track with AI
-      const { llmService } = await import('@/services/llmService');
-      const analysis = await llmService.invoke({
+      const analysis = await llmClient.invoke({
         prompt: `Analyze this audio file and provide mastering settings. Return a JSON with: loudness (dB from -6 to 6), eq_adjust (dB from -6 to 6), compression (0-100), stereo_width (50-150), bass_boost (dB from -6 to 6), high_boost (dB from -6 to 6). Base your analysis on the sonic characteristics of professional mastering.`,
         file_urls: file_url,
         response_json_schema: {
@@ -100,6 +103,7 @@ export default function EnhancedMasteringDialog({ track, open, onClose, onSucces
 
     setSavingPreset(true);
     try {
+      // TODO_EXPORT_REPLACE_WITH_NEON_DB
       await base44.entities.MasteringPreset.create({
         preset_name: customPresetName,
         description: `Custom preset: ${customPresetName}`,
@@ -134,6 +138,7 @@ export default function EnhancedMasteringDialog({ track, open, onClose, onSucces
 
   const handleDeletePreset = async (presetId) => {
     try {
+      // TODO_EXPORT_REPLACE_WITH_NEON_DB
       await base44.entities.MasteringPreset.delete(presetId);
       queryClient.invalidateQueries({ queryKey: ['masteringPresets'] });
       toast.success('Preset deleted');
@@ -145,7 +150,7 @@ export default function EnhancedMasteringDialog({ track, open, onClose, onSucces
   const handleMaster = async () => {
     setProcessing(true);
     try {
-      const response = await base44.functions.invoke('masterAudio', {
+      const response = await musicClient.master({
         trackId: track.id,
         audioUrl: track.audio_url || track.stream_audio_url,
         targetLufs: loudness[0],
@@ -168,7 +173,8 @@ export default function EnhancedMasteringDialog({ track, open, onClose, onSucces
       }
       
       const user = await base44.auth.me();
-      await base44.entities.TrackVersion.create({
+      // TODO_EXPORT_REPLACE_WITH_NEON_DB
+      await trackClient.createTrackVersion({
         track_id: track.id,
         parent_track_id: track.id,
         changes_description: `AI Mastering: Loudness ${loudness[0]}dB, EQ ${eqAdjust[0]}dB, Compression ${compression[0]}%, Stereo ${stereoWidth[0]}%, Bass ${bassBoost[0]}dB, Highs ${highBoost[0]}dB`,

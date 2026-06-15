@@ -1,6 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+// TODO_EXPORT_REPLACE_WITH_GOOGLE_AUTH: base44.auth.me() → NextAuth session
+import { base44 } from '@/api/exportClient';
+import * as trackClient from '@/api/trackClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -28,6 +30,8 @@ import {
 import { cn } from "@/lib/utils";
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { getTrackStatusLabel } from '@/utils/status';
+import * as musicClient from '@/api/musicClient';
 
 const FILTERS = ['All', 'Ready', 'Favorites', 'Public', 'Instrumental'];
 
@@ -55,7 +59,7 @@ export default function LibraryPage() {
     queryKey: ['myTracks', user?.email, sort],
     queryFn: async () => {
       if (!user?.email) return [];
-      return await base44.entities.Track.filter({ created_by: user.email }, sort, 100);
+      return await trackClient.listTracks({ created_by: user.email }, sort, 100);
     },
     enabled: !!user?.email,
     refetchInterval: (data) => {
@@ -85,7 +89,7 @@ export default function LibraryPage() {
 
   const handleDelete = async (track) => {
     haptics.heavy();
-    await base44.entities.Track.delete(track.id);
+    await trackClient.deleteTrack(track.id);
     queryClient.invalidateQueries({ queryKey: ['myTracks'] });
     toast.success('Deleted');
     setBottomSheetTrack(null);
@@ -93,13 +97,13 @@ export default function LibraryPage() {
 
   const handleToggleFavorite = async (track) => {
     haptics.light();
-    await base44.entities.Track.update(track.id, { is_favorite: !track.is_favorite });
+    await trackClient.updateTrack(track.id, { is_favorite: !track.is_favorite });
     queryClient.invalidateQueries({ queryKey: ['myTracks'] });
   };
 
   const handleTogglePublic = async (track) => {
     haptics.light();
-    await base44.entities.Track.update(track.id, { is_public: !track.is_public });
+    await trackClient.updateTrack(track.id, { is_public: !track.is_public });
     queryClient.invalidateQueries({ queryKey: ['myTracks'] });
     toast.success(track.is_public ? 'Track set to private' : 'Track is now public');
     setBottomSheetTrack(null);
@@ -273,6 +277,19 @@ function LibraryTrackRow({
 }) {
   const statusColors = { ready: '#22c55e', generating: '#c084fc', queued: '#facc15', failed: '#f87171' };
   const isReady = track.status === 'ready';
+  const handleRetry = async (e, t) => {
+    e.stopPropagation();
+    try {
+      const res = await musicClient.retry(t);
+      if (res.data?.success) {
+        toast.success('Retry started — track is regenerating');
+      } else {
+        toast.error(res.data?.error || 'Retry failed');
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to retry generation');
+    }
+  };
   const isActiveGeneration = track.status === 'generating' || track.status === 'queued';
   const creatorName = getCreatorName(track, user);
 
@@ -332,12 +349,20 @@ function LibraryTrackRow({
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-xs text-white/45 truncate">{creatorName}</span>
           {!isReady &&
-          <span className="text-[10px] font-medium" style={{ color: statusColors[track.status] }}>{track.status}</span>
+          <span className="text-[10px] font-medium" style={{ color: statusColors[track.status] }}>{getTrackStatusLabel(track.status)}</span>
           }
           {track.is_instrumental &&
           <span className="text-[10px] text-purple-400 bg-purple-400/10 px-1.5 rounded-full">Inst.</span>
           }
         </div>
+        {track.status === 'failed' && (
+          <div className="mt-1 flex flex-col gap-1">
+            {track.error_message && <p className="text-[10px] text-red-400/80 line-clamp-2">{track.error_message}</p>}
+            <button onClick={(e) => handleRetry(e, track)} className="text-[10px] font-bold text-white bg-red-500/20 hover:bg-red-500/30 px-2 py-0.5 rounded transition-colors self-start">
+              Retry Generation
+            </button>
+          </div>
+        )}
         {isActiveGeneration &&
         <div className="mt-2" aria-label={`${track.status} progress`}>
             <div className="h-7 rounded-lg px-2 flex items-center gap-[2px] overflow-hidden"

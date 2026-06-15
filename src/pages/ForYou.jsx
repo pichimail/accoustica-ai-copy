@@ -1,6 +1,9 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { base44 } from '@/api/base44Client';
+// TODO_EXPORT_REPLACE_WITH_GOOGLE_AUTH: base44.auth.me() → NextAuth session
+import { base44 } from '@/api/exportClient';
+import * as trackClient from '@/api/trackClient';
+import * as llmClient from '@/api/llmClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { haptics } from '@/components/utils/haptics';
@@ -368,25 +371,25 @@ export default function ForYouPage() {
   // ── Data fetches ────────────────────────────────────────────────────────
   const { data: userTracks = [] } = useQuery({
     queryKey: ['myTracks', user?.email],
-    queryFn: () => base44.entities.Track.filter({ created_by: user.email }, '-created_date', 50),
+    queryFn: () => trackClient.listTracks({ created_by: user.email }, '-created_date', 50),
     enabled: !!user?.email,
   });
 
   const { data: allTracks = [], isLoading } = useQuery({
     queryKey: ['allPublicTracks'],
-    queryFn: () => base44.entities.Track.filter({ is_public: true, status: 'ready' }, '-plays', 200),
+    queryFn: () => trackClient.listPublicTracks('-plays', 200),
     refetchInterval: 60000,
   });
 
   const { data: likes = [] } = useQuery({
     queryKey: ['trackLikes'],
-    queryFn: () => base44.entities.TrackLike.list('-created_date', 2000),
+    queryFn: () => trackClient.listAllLikes(2000),
     refetchInterval: 30000,
   });
 
   const { data: comments = [] } = useQuery({
     queryKey: ['feedComments'],
-    queryFn: () => base44.entities.TrackComment.list('-created_date', 2000),
+    queryFn: () => trackClient.listAllComments(2000),
     refetchInterval: 30000,
   });
 
@@ -448,8 +451,7 @@ export default function ForYouPage() {
       const userStyles = [...new Set(userTracks.map(t => t.style).filter(Boolean))];
       const pool = trending.slice(0, 40);
       if (!userStyles.length) { setAiPicks(pool.slice(0, 10)); return; }
-      const { llmService } = await import('@/services/llmService');
-      const res = await llmService.invoke({
+      const res = await llmClient.invoke({
         prompt: `User creates music in styles: ${userStyles.join(', ')}. From these track IDs pick the 10 best matching ones: ${pool.map(t => t.id).join(',')}`,
         response_json_schema: {
           type: 'object',
@@ -475,8 +477,8 @@ export default function ForYouPage() {
     haptics.medium();
     playTrack(track, queue);
     await Promise.allSettled([
-      base44.entities.Track.update(track.id, { plays: (track.plays || 0) + 1 }),
-      base44.entities.TrackPlay.create({
+      trackClient.updateTrack(track.id, { plays: (track.plays || 0) + 1 }),
+      trackClient.createTrackPlay({
         track_id: track.id,
         user_email: user?.email || '',
         played_at: new Date().toISOString(),
@@ -490,8 +492,8 @@ export default function ForYouPage() {
     if (!user?.email) { toast.error('Sign in to like tracks'); return; }
     haptics.light();
     const existing = likes.find(l => l.track_id === track.id && l.user_email === user.email);
-    if (existing) await base44.entities.TrackLike.delete(existing.id);
-    else await base44.entities.TrackLike.create({ track_id: track.id, user_email: user.email, type: 'like' });
+    if (existing) await trackClient.deleteTrackLike(existing.id);
+    else await trackClient.createTrackLike({ track_id: track.id, user_email: user.email, type: 'like' });
     queryClient.invalidateQueries({ queryKey: ['trackLikes'] });
   };
 

@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
+import * as trackClient from '@/api/trackClient';
+import * as musicClient from '@/api/musicClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -295,7 +297,7 @@ export default function MasteringProStudioPage() {
 
   const { data: tracks = [], isLoading } = useQuery({
     queryKey: ['mastering-pro-tracks'],
-    queryFn: () => base44.entities.Track.filter({ status: 'ready' }, '-created_date', 50),
+    queryFn: () => trackClient.listTracks({ status: 'ready' }, '-created_date', 50),
     enabled: !!user,
   });
 
@@ -439,7 +441,7 @@ export default function MasteringProStudioPage() {
     setIsMastering(true);
     haptics.medium();
     try {
-      const res = await base44.functions.invoke('masterAudio', {
+      const res = await musicClient.master({
         trackId: selectedTrack.id,
         audioUrl: selectedSource,
         targetLufs: loudness,
@@ -455,7 +457,7 @@ export default function MasteringProStudioPage() {
         toast.success('Track mastered successfully!');
         haptics.success();
         // Update track tags
-        await base44.entities.Track.update(selectedTrack.id, {
+        await trackClient.updateTrack(selectedTrack.id, {
           tags: [selectedTrack.tags, 'mastered'].filter(Boolean).join(','),
         });
         queryClient.invalidateQueries({ queryKey: ['mastering-pro-tracks'] });

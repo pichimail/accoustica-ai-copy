@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+// TODO_EXPORT_REPLACE_WITH_GOOGLE_AUTH: All auth.* calls → NextAuth
+import { base44 } from '@/api/exportClient';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { haptics } from '@/components/utils/haptics';

@@ -1,6 +1,8 @@
 // @ts-nocheck
 import React, { useMemo, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import * as trackClient from '@/api/trackClient';
+// TODO_EXPORT_REPLACE_WITH_NEON_DB: TrackShare → NeonDB table
+import { base44 } from '@/api/exportClient';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy, Globe, Loader2, Send, Share2, Trash2, X } from 'lucide-react';
@@ -46,6 +48,7 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
     queryKey: ['trackShares', track?.id],
     queryFn: async () => {
       if (!track?.id) return [];
+      // TODO_EXPORT_REPLACE_WITH_NEON_DB: TrackShare entity → NeonDB table
       return base44.entities.TrackShare.filter({ track_id: track.id }, '-created_date', 50);
     },
     enabled: !!track?.id && open,
@@ -57,7 +60,7 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
     const slug = getTrackPublicSlug(track);
     const seoTitle = track.seo_title || `${track.title} by ${track.created_by?.split('@')[0] || 'Accoustica'}`;
     const seoDescription = track.seo_description || getSeoDescription(track);
-    await base44.entities.Track.update(track.id, {
+    await trackClient.updateTrack(track.id, {
       is_public: true,
       public_slug: slug,
       seo_title: seoTitle,
@@ -71,8 +74,9 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
     try {
       await ensurePublic();
       await navigator.clipboard.writeText(publicUrl);
+      // TODO_EXPORT_REPLACE_WITH_NEON_DB: TrackShare entity → NeonDB table
       await base44.entities.TrackShare.create({ track_id: track.id, public_url: publicUrl, status: 'active' });
-      await base44.entities.Track.update(track.id, { share_count: (track.share_count || 0) + 1 });
+      await trackClient.updateTrack(track.id, { share_count: (track.share_count || 0) + 1 });
       toast.success('Public player link copied');
       queryClient.invalidateQueries({ queryKey: ['myTracks'] });
       queryClient.invalidateQueries({ queryKey: ['trackShares', track.id] });
@@ -94,7 +98,7 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
         await navigator.clipboard.writeText(publicUrl);
         toast.success('Public player link copied');
       }
-      await base44.entities.Track.update(track.id, { share_count: (track.share_count || 0) + 1 });
+      await trackClient.updateTrack(track.id, { share_count: (track.share_count || 0) + 1 });
       queryClient.invalidateQueries({ queryKey: ['myTracks'] });
       onSuccess?.();
     } catch (error) {
@@ -108,6 +112,7 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
     if (!email.trim()) { toast.error('Enter an email address'); return; }
     setSaving(true);
     try {
+      // TODO_EXPORT_REPLACE_WITH_NEON_DB: TrackShare → NeonDB
       await base44.entities.TrackShare.create({
         track_id: track.id,
         shared_with_email: email.trim(),
@@ -129,6 +134,7 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
   };
 
   const handleRemoveShare = async (shareId) => {
+    // TODO_EXPORT_REPLACE_WITH_NEON_DB: TrackShare → NeonDB
     await base44.entities.TrackShare.delete(shareId);
     queryClient.invalidateQueries({ queryKey: ['trackShares', track.id] });
     toast.success('Share removed');
@@ -281,4 +287,3 @@ export default function ShareTrackDialog({ track, open, onClose, onSuccess }) {
     </Dialog>
   );
 }
-

@@ -1,6 +1,9 @@
 // @ts-nocheck
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
-import { base44 } from '@/api/base44Client';
+// TODO_EXPORT_REPLACE_WITH_GOOGLE_AUTH: base44.auth.me() → NextAuth session
+import { base44 } from '@/api/exportClient';
+import * as trackClient from '@/api/trackClient';
+import * as musicClient from '@/api/musicClient';
 import { toast } from 'sonner';
 import { ensureAudioContext, resumeAudioContext } from '@/lib/audioContext';
 
@@ -71,14 +74,14 @@ const buildAudioCandidates = (track) => {
 const refreshTrackUrls = async (track) => {
   if (!track?.task_id) return null;
   try {
-    const res = await base44.functions.invoke('getMusicDetails', { taskId: track.task_id });
+    const res = await musicClient.getDetails(track.task_id);
     const sunoTracks = res?.data?.tracks || [];
     let match = sunoTracks.find(t => t.id === track.external_audio_id);
     if (!match && sunoTracks.length > 0) match = sunoTracks[0];
     if (match) {
       const freshUrl = match.stream_audio_url || match.audio_url || match.audioUrl || match.streamAudioUrl;
       if (freshUrl) {
-        await base44.entities.Track.update(track.id, {
+        await trackClient.updateTrack(track.id, {
           audio_url: match.audio_url || match.audioUrl || freshUrl,
           stream_audio_url: match.stream_audio_url || match.streamAudioUrl || freshUrl,
         });
