@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Badge } from "@/components/ui/badge";
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
 import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';
 import { User, Plus, Trash2, Wand2, X } from 'lucide-react';

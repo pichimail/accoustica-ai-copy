@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
 import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";

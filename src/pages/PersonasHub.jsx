@@ -2,7 +2,9 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
+import * as musicClient from '@/api/musicClient';
+import * as trackClient from '@/api/trackClient';
 import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';
 import PullToRefresh from '@/components/mobile/PullToRefresh';
@@ -22,18 +24,18 @@ export default function PersonasHubPage() {
 
   const { data: personas = [], isLoading } = useQuery({
     queryKey: ['personas-hub'],
-    queryFn: () => base44.entities.Persona.list('-created_date', 150),
+    queryFn: () => trackClient.listPersonas(),
   });
 
   const refreshMutation = useMutation({
-    mutationFn: async (persona) => base44.functions.invoke('checkPersonaStatus', { personaId: persona.id }),
+    mutationFn: async (persona) => musicClient.checkPersonaStatus(persona.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['personas-hub'] });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (personaId) => base44.functions.invoke('deletePersona', { personaId }),
+    mutationFn: async (personaId) => musicClient.deletePersona(personaId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['personas-hub'] });
       toast.success('Persona deleted');

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowRight, RefreshCw } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
 import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';
 import BottomSheet from '@/components/mobile/BottomSheet';

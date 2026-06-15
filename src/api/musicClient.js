@@ -202,6 +202,68 @@ export async function saveSoundProfile(profile) {
   return base44.functions.invoke('saveSoundProfile', profile);
 }
 
+// ─── Persona / Voice ──────────────────────────────────────────────────────────
+
+/**
+ * Initiate voice persona creation process.
+ */
+export async function initiateVoiceProcess(payload) {
+  // TODO_EXPORT_REPLACE_WITH_NEXT_API
+  return base44.functions.invoke('initiateVoiceProcess', payload);
+}
+
+/**
+ * Submit persona verification recording.
+ */
+export async function submitPersonaVerification(payload) {
+  // TODO_EXPORT_REPLACE_WITH_NEXT_API
+  return base44.functions.invoke('submitPersonaVerification', payload);
+}
+
+/**
+ * Delete a persona by ID.
+ */
+export async function deletePersona(personaId) {
+  // TODO_EXPORT_REPLACE_WITH_NEXT_API
+  return base44.functions.invoke('deletePersona', { personaId });
+}
+
+/**
+ * Check persona status.
+ */
+export async function checkPersonaStatus(personaId) {
+  // TODO_EXPORT_REPLACE_WITH_NEXT_API
+  return base44.functions.invoke('checkPersonaStatus', { personaId });
+}
+
+// ─── Video ──────────────────────────────────────────────────────────────────
+
+/**
+ * Create a music video for a track.
+ */
+export async function createMusicVideo(payload) {
+  // TODO_EXPORT_REPLACE_WITH_NEXT_API
+  return base44.functions.invoke('createMusicVideo', payload);
+}
+
+/**
+ * Check video generation status.
+ */
+export async function checkVideoStatus(taskId) {
+  // TODO_EXPORT_REPLACE_WITH_NEXT_API
+  return base44.functions.invoke('checkVideoStatus', { taskId });
+}
+
+// ─── Stem Remix ─────────────────────────────────────────────────────────────
+
+/**
+ * Remix a stem with AI.
+ */
+export async function remixStem(payload) {
+  // TODO_EXPORT_REPLACE_WITH_NEXT_API
+  return base44.functions.invoke('remixStem', payload);
+}
+
 export default {
   generate,
   checkStatus,
@@ -217,4 +279,11 @@ export default {
   generateLyrics,
   getSoundProfile,
   saveSoundProfile,
+  initiateVoiceProcess,
+  submitPersonaVerification,
+  deletePersona,
+  checkPersonaStatus,
+  createMusicVideo,
+  checkVideoStatus,
+  remixStem,
 };

@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useMemo, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart3, Disc3, Loader2, Music2, Sparkles, TrendingUp, Wand2 } from 'lucide-react';
 

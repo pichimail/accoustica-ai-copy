@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
 import { useQuery } from '@tanstack/react-query';
 import WaveformCanvas from '@/components/audio/WaveformCanvas';
 import { Button } from "@/components/ui/button";

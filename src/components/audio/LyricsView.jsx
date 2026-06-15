@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MicVocal, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
+import * as musicClient from '@/api/musicClient';
 
 function toSeconds(value) {
   if (value === null || value === undefined) return null;

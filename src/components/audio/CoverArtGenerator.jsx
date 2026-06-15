@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
 import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';

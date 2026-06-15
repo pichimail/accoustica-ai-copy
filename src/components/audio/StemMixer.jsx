@@ -8,7 +8,7 @@ import {
   Volume2, Download, Wand2, 
   RefreshCw, Music2, Disc3, Guitar, Piano 
 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
 import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';
 import BottomSheet from '@/components/mobile/BottomSheet';

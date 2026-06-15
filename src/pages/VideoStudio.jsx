@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
+import * as trackClient from '@/api/trackClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,7 @@ export default function VideoStudioPage() {
 
   const { data: tracks = [], isLoading } = useQuery({
     queryKey: ['tracks'],
-    queryFn: () => base44.entities.Track.list('-created_date'),
+    queryFn: () => trackClient.listTracks({}, '-created_date', 200),
   });
 
   const { data: videos = [] } = useQuery({

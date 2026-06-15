@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
+import * as musicClient from '@/api/musicClient';
+import * as trackClient from '@/api/trackClient';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { AlertCircle, Calendar, Clock, Copy, Disc3, Globe, Loader2, Pause, Play, Share2, Sparkles, Volume2 } from 'lucide-react';
@@ -21,11 +23,11 @@ export default function PublicTrackPage() {
     queryKey: ['publicTrack', trackId, slug],
     queryFn: async () => {
       if (trackId) {
-        const byId = await base44.entities.Track.filter({ id: trackId, is_public: true });
+        const byId = await trackClient.listTracks({ id: trackId, is_public: true }, undefined, 1);
         if (byId[0]) return byId[0];
       }
       if (slug) {
-        const bySlug = await base44.entities.Track.filter({ public_slug: slug, is_public: true });
+        const bySlug = await trackClient.listTracks({ public_slug: slug, is_public: true }, undefined, 1);
         return bySlug[0];
       }
       return null;
@@ -80,8 +82,8 @@ export default function PublicTrackPage() {
     if (!track || played) return;
     setPlayed(true);
     await Promise.allSettled([
-      base44.entities.Track.update(track.id, { plays: (track.plays || 0) + 1, public_slug: track.public_slug || getTrackPublicSlug(track) }),
-      base44.entities.TrackPlay.create({
+      trackClient.updateTrack(track.id, { plays: (track.plays || 0) + 1, public_slug: track.public_slug || getTrackPublicSlug(track) }),
+      trackClient.createTrackPlay({
         track_id: track.id,
         played_at: new Date().toISOString(),
         source: 'public',
@@ -226,7 +228,7 @@ function EmbeddedPlayer({ track, coverImage, onFirstPlay }) {
   const tryRefreshUrls = async () => {
     if (!track.task_id) return null;
     try {
-      const res = await base44.functions.invoke('getMusicDetails', { taskId: track.task_id });
+      const res = await musicClient.getDetails(track.task_id);
       const sunoTracks = res?.data?.tracks || [];
       const match = sunoTracks.find(t => t.id === track.external_audio_id) || sunoTracks[0];
       if (!match) return null;

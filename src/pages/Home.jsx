@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
 import { useQuery } from '@tanstack/react-query';
 import FloatingAlbumArt from '@/components/home/FloatingAlbumArt';
 import DynamicGradient from '@/components/background/DynamicGradient';

@@ -1,6 +1,8 @@
 // @ts-nocheck
 import React, { useState, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
+import * as musicClient from '@/api/musicClient';
+import * as trackClient from '@/api/trackClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -294,7 +296,7 @@ export default function StemStudioPage() {
   // ─── Queries ───────────────────────────────────────────────────────────────
   const { data: tracks = [], isLoading: tracksLoading } = useQuery({
     queryKey: ['stem-tracks'],
-    queryFn: () => base44.entities.Track.filter({ status: 'ready' }, '-created_date', 50),
+    queryFn: () => trackClient.listTracks({ status: 'ready' }, '-created_date', 50),
   });
 
   const { data: separations = [] } = useQuery({
@@ -342,7 +344,7 @@ export default function StemStudioPage() {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setUploadedUrl(file_url);
-      const uploaded = await base44.entities.Track.create({
+      const uploaded = await trackClient.createTrack({
         title: file.name.replace(/\.[^/.]+$/, ''),
         audio_url: file_url,
         stream_audio_url: file_url,
@@ -368,7 +370,7 @@ export default function StemStudioPage() {
     setIsSeparating(true);
     haptics.medium();
     try {
-      const res = await base44.functions.invoke('separateVocals', {
+      const res = await musicClient.separateVocals({
         taskId:   track.task_id,
         audioId:  track.external_audio_id,
         audioUrl: track.audio_url || uploadedUrl,
@@ -393,7 +395,7 @@ export default function StemStudioPage() {
     haptics.medium();
     try {
       const stemUrl = selectedSeparation[`${stemKey}_url`];
-      const res = await base44.functions.invoke('remixStem', {
+      const res = await musicClient.remixStem({
         stem_url:  stemUrl,
         stemUrl,
         style:     restyleStyle,

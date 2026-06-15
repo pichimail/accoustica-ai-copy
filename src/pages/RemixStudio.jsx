@@ -213,7 +213,7 @@ export default function RemixStudioPage() {
     try {
       const stemUrl = separation[`${stemKey}_url`];
       // TODO_EXPORT_REPLACE_WITH_NEXT_API: remixStem → custom API route
-      const res = await base44.functions.invoke('remixStem', {
+      const res = await musicClient.remixStem({
         stem_url: stemUrl,
         stemUrl,
         style: restyleStyle,

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, Download, Film, Smartphone, Monitor, Share2, Youtube, Instagram, Facebook } from 'lucide-react';
 import { toast } from 'sonner';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/exportClient';
 import { cn } from '@/lib/utils';
 
 const PLATFORMS = [
