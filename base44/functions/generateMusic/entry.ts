@@ -1,353 +1,196 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.32';
+import {
+  corsHeaders,
+  jsonResponse,
+  assertTextLength,
+  normalizeModel,
+  getCallbackBase,
+  withCallbackSecret,
+  enforceGenerationPolicy,
+  incrementGenerationUsage,
+  createGenerationJob,
+} from '../_shared/security.ts';
 
-const KIE_API_BASES = ['https://kie.ai/suno-api', 'https://api.kie.ai/api/v1', 'https://kie.ai'];
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'authorization, content-type, x-base44-token',
-};
+const KIE_API_BASES = ['https://api.kie.ai/api/v1', 'https://kie.ai/suno-api', 'https://kie.ai'];
+const SIMPLE_PROMPT_MAX = 495;
+const STYLE_MAX = 995;
+const LYRICS_MAX = 4995;
 
-async function postWithFallback(
-    apiKey: string,
-    paths: string[],
-    body: Record<string, unknown>,
-) {
-    let lastError: unknown = null;
-
-    for (const base of KIE_API_BASES) {
-        for (const rawPath of paths) {
-            const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
-            try {
-                const response = await fetch(`${base}${path}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(body),
-                });
-                const data = await response.json().catch(() => ({}));
-                if (response.ok && data?.code === 200) {
-                    return data;
-                }
-                lastError = data;
-            } catch (error) {
-                lastError = error;
-            }
-        }
+async function postWithFallback(apiKey: string, paths: string[], body: Record<string, unknown>) {
+  let lastError: unknown = null;
+  for (const base of KIE_API_BASES) {
+    for (const rawPath of paths) {
+      const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+      try {
+        const response = await fetch(`${base}${path}`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data?.code === 200) return data;
+        lastError = data;
+      } catch (error) {
+        lastError = error;
+      }
     }
-
-    return lastError || { code: 500, msg: 'All Kie/Suno endpoints failed' };
+  }
+  return lastError || { code: 500, msg: 'All KIE/Suno endpoints failed' };
 }
 
-const STYLE_AVOID_MAP = [
-    { match: /lo-?fi|ambient|soft|acoustic|folk|ballad|dreamy|ethereal/i, avoid: 'harsh distortion, aggressive metal, over-compressed drums, noisy clipping', weirdness: 42, styleWeight: 78 },
-    { match: /cinematic|orchestral|epic|score/i, avoid: 'thin synths, weak percussion, low dynamic range, casual pop arrangement', weirdness: 56, styleWeight: 86 },
-    { match: /trap|hip.?hop|drill|rap|bass/i, avoid: 'folk acoustic, orchestral waltz, thin bass, weak drums', weirdness: 62, styleWeight: 82 },
-    { match: /edm|club|house|techno|electronic|dance/i, avoid: 'slow ballad, acoustic-only arrangement, weak kick, muddy low end', weirdness: 66, styleWeight: 84 },
-    { match: /jazz|soul|r.?b|blues/i, avoid: 'robotic vocals, harsh EDM drops, metal guitars, sterile quantized groove', weirdness: 48, styleWeight: 80 },
-    { match: /rock|punk|metal|gritty/i, avoid: 'thin guitars, lounge jazz, soft lullaby, weak chorus impact', weirdness: 58, styleWeight: 83 },
-];
-
-function clampNumber(value, min, max, fallback) {
-    const num = Number(value);
-    if (!Number.isFinite(num)) return fallback;
-    return Math.max(min, Math.min(max, num));
+function clampNumber(value: unknown, min: number, max: number, fallback: number) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.max(min, Math.min(max, num));
 }
 
-function toApiWeight(value) {
-    return Number((clampNumber(value, 0, 100, 50) / 100).toFixed(2));
+function toApiWeight(value: unknown) {
+  return Number((clampNumber(value, 0, 100, 50) / 100).toFixed(2));
 }
 
-function normalizeVocalGender(value) {
-    if (!value || value === 'Auto') return undefined;
-    const normalized = String(value).toLowerCase();
-    if (normalized.startsWith('m')) return 'm';
-    if (normalized.startsWith('f')) return 'f';
-    return undefined;
-}
-
-function inferSettings(style = '', prompt = '') {
-    const source = `${style} ${prompt}`;
-    const matched = STYLE_AVOID_MAP.find(item => item.match.test(source));
-    return matched || {
-        avoid: 'low fidelity artifacts, off-key vocals, weak rhythm, muddy mix, abrupt transitions',
-        weirdness: 50,
-        styleWeight: 75,
-    };
-}
-
-/**
- * Auto-select Suno model based on style/prompt content.
- * V5_5 is the default (most expressive). V5_0 is used for styles that
- * benefit from the older model's stability (classical, traditional, folk, lo-fi).
- */
-function autoSelectModel(requestedModel: string, style = '', prompt = '') {
-    // If caller explicitly sets a specific model other than auto/V5, respect it
-    if (requestedModel && requestedModel !== 'V5' && requestedModel !== 'auto') {
-        return requestedModel;
-    }
-    const source = `${style} ${prompt}`.toLowerCase();
-    // V5_0 for traditional / classical / low-complexity styles
-    const v5_0Patterns = /raaga|raga|hindustani|carnatic|classical|folk|acoustic|lo-?fi|devotional|bhairavi|darbari|kafi|telugu.*70s|vintage|retro.*classic|shamanic.*traditional|sufi/i;
-    if (v5_0Patterns.test(source)) return 'V5_0';
-    // Default to V5_5 for everything else (modern, expressive, EDM, pop, synthwave, etc.)
-    return 'V5_5';
-}
-
-const INTENSITY_PHRASES = {
-    drum: {
-        reduce: 'subtle understated drums',
-        balanced: '',
-        increase: 'prominent driving drums',
-        remove: 'no drums, drumless arrangement',
-    },
-    guitar: {
-        reduce: 'subtle background guitars',
-        balanced: '',
-        increase: 'prominent lead guitars',
-        remove: 'no guitars',
-    },
-};
-
-/**
- * Build instruction phrases from the global SoundProfile and HQ toggle.
- * Returns { directives: string[], avoidTags: string[] }.
- */
-function buildProfileDirectives(profile, hq) {
-    const directives = [];
-    const avoidTags = [];
-    if (!profile || profile.is_active === false) {
-        return { directives, avoidTags };
-    }
-
-    if (profile.drum_style && profile.drum_intensity !== 'remove') directives.push(profile.drum_style);
-    const drumPhrase = INTENSITY_PHRASES.drum[profile.drum_intensity];
-    if (drumPhrase) directives.push(drumPhrase);
-
-    if (profile.guitar_style && profile.guitar_intensity !== 'remove') directives.push(profile.guitar_style);
-    const guitarPhrase = INTENSITY_PHRASES.guitar[profile.guitar_intensity];
-    if (guitarPhrase) directives.push(guitarPhrase);
-
-    if (hq) {
-        if (profile.hq_vocal_instructions) directives.push(profile.hq_vocal_instructions);
-        if (profile.hq_music_instructions) directives.push(profile.hq_music_instructions);
-    }
-
-    if (profile.global_avoid_tags) {
-        profile.global_avoid_tags.split(',').map(t => t.trim()).filter(Boolean).forEach(t => avoidTags.push(t));
-    }
-
-    return { directives, avoidTags };
-}
-
-function appendDirectives(base = '', directives = []) {
-    if (!directives.length) return base;
-    const joined = directives.join(', ');
-    return base && base.trim() ? `${base.trim()}, ${joined}` : joined;
+function normalizeVocalGender(value: unknown) {
+  if (!value || value === 'Auto') return undefined;
+  const normalized = String(value).toLowerCase();
+  if (normalized.startsWith('m')) return 'm';
+  if (normalized.startsWith('f')) return 'f';
+  return undefined;
 }
 
 function makeTitle(input = 'Untitled Track') {
-    const cleaned = input
-        .replace(/\[[^\]]+\]/g, ' ')
-        .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
-        .trim()
-        .split(/\s+/)
-        .slice(0, 6)
-        .join(' ');
-    return (cleaned || 'Untitled Track').slice(0, 60);
+  const cleaned = input.replace(/\[[^\]]+\]/g, ' ').replace(/[^\p{L}\p{N}\s-]/gu, ' ').trim().split(/\s+/).slice(0, 6).join(' ');
+  return (cleaned || 'Untitled Track').slice(0, 60);
+}
+
+function inferDefaults(style = '', prompt = '') {
+  const source = `${style} ${prompt}`;
+  if (/lo-?fi|ambient|soft|acoustic|folk|ballad|dreamy|ethereal/i.test(source)) return { avoid: 'harsh distortion, aggressive metal, over-compressed drums, noisy clipping', weirdness: 42, styleWeight: 78 };
+  if (/cinematic|orchestral|epic|score/i.test(source)) return { avoid: 'thin synths, weak percussion, low dynamic range, casual pop arrangement', weirdness: 56, styleWeight: 86 };
+  if (/trap|hip.?hop|drill|rap|bass/i.test(source)) return { avoid: 'folk acoustic, orchestral waltz, thin bass, weak drums', weirdness: 62, styleWeight: 82 };
+  if (/edm|club|house|techno|electronic|dance/i.test(source)) return { avoid: 'slow ballad, acoustic-only arrangement, weak kick, muddy low end', weirdness: 66, styleWeight: 84 };
+  return { avoid: 'low fidelity artifacts, off-key vocals, weak rhythm, muddy mix, abrupt transitions', weirdness: 50, styleWeight: 75 };
+}
+
+function autoSelectModel(requestedModel: string, style = '', prompt = '') {
+  const requested = normalizeModel(requestedModel, 'V5_5');
+  if (requested && requested !== 'V5') return requested;
+  const source = `${style} ${prompt}`.toLowerCase();
+  if (/raaga|raga|hindustani|carnatic|classical|folk|acoustic|lo-?fi|devotional|bhairavi|darbari|kafi|telugu.*70s|vintage|sufi/i.test(source)) return 'V5_0';
+  return 'V5_5';
+}
+
+async function loadSoundProfile(base44: any, hq: boolean, instrumental: boolean) {
+  const directives: string[] = [];
+  const avoidTags: string[] = [];
+  try {
+    const profiles = await base44.asServiceRole.entities.SoundProfile.filter({ scope: 'global' });
+    const profile = profiles?.[0];
+    if (profile && profile.is_active !== false) {
+      if (profile.drum_style && profile.drum_intensity !== 'remove') directives.push(profile.drum_style);
+      if (profile.guitar_style && profile.guitar_intensity !== 'remove') directives.push(profile.guitar_style);
+      if (hq) {
+        if (!instrumental && profile.hq_vocal_instructions) directives.push(profile.hq_vocal_instructions);
+        if (profile.hq_music_instructions) directives.push(profile.hq_music_instructions);
+      }
+      if (profile.global_avoid_tags) profile.global_avoid_tags.split(',').map((t: string) => t.trim()).filter(Boolean).forEach((tag: string) => avoidTags.push(tag));
+    }
+  } catch (error) {
+    console.warn('SoundProfile load skipped:', error?.message || error);
+  }
+  return { directives, avoidTags };
+}
+
+function appendDirectives(base = '', directives: string[] = []) {
+  if (!directives.length) return base;
+  return base?.trim() ? `${base.trim()}, ${directives.join(', ')}` : directives.join(', ');
 }
 
 Deno.serve(async (req) => {
-    if (req.method === 'OPTIONS') {
-        return new Response(null, { headers: corsHeaders });
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  if (req.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, { status: 405 });
+
+  try {
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    if (!user) return jsonResponse({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = await req.json();
+    const mode = body.mode || 'simple';
+    const prompt = String(body.prompt || '');
+    const style = String(body.style || '');
+    const title = String(body.title || '');
+    const instrumental = Boolean(body.instrumental);
+    const customMode = body.customMode === true || mode === 'custom' || mode === 'advanced' || instrumental;
+
+    if (!customMode) assertTextLength('Prompt', prompt, SIMPLE_PROMPT_MAX, true);
+    if (customMode) {
+      assertTextLength('Style', style, STYLE_MAX, true);
+      if (!instrumental) assertTextLength('Lyrics/prompt', prompt, LYRICS_MAX, true);
+      else assertTextLength('Instrumental structure prompt', prompt, LYRICS_MAX, false);
     }
 
-    try {
-        const base44 = createClientFromRequest(req);
-        const user = await base44.auth.me();
+    const finalModel = autoSelectModel(String(body.model || 'V5_5'), style, prompt);
+    await enforceGenerationPolicy(base44, user, { model: finalModel, feature: customMode ? 'advanced_generation' : 'generation' });
 
-        if (!user) {
-            return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
-        }
+    const apiKey = Deno.env.get('SUNO_API_KEY') || Deno.env.get('KIE_API_KEY');
+    if (!apiKey) return jsonResponse({ error: 'SUNO_API_KEY is not configured' }, { status: 500 });
 
-        const { 
-            mode = 'simple',
-            model = 'V5_5',
-            prompt, 
-            style = '', 
-            title = '', 
-            customMode = false,
-            instrumental = false,
-            vocalGender,
-            weirdness,
-            weirdnessConstraint,
-            styleInfluence,
-            styleWeight,
-            negativeTags,
-            personaId,
-            selectedPersonaId,
-            hq = false,
-        } = await req.json();
+    const inferred = inferDefaults(style, prompt);
+    const finalTitle = title.trim() || makeTitle(prompt || style || 'Untitled Track');
+    const profile = await loadSoundProfile(base44, Boolean(body.hq), instrumental);
+    const callbackBase = getCallbackBase();
+    if (!callbackBase) return jsonResponse({ error: 'BASE44_FUNCTION_URL or BASE44_APP_ID is required for callbacks' }, { status: 500 });
 
-        const apiKey = Deno.env.get('SUNO_API_KEY');
-        if (!apiKey) {
-            return Response.json({ error: 'SUNO_API_KEY not configured' }, { status: 500, headers: corsHeaders });
-        }
+    const payload: Record<string, unknown> = {
+      customMode,
+      instrumental,
+      model: finalModel,
+      callBackUrl: withCallbackSecret(`${callbackBase}/sunoCallback`),
+    };
 
-        const resolvedCustomMode = customMode === true || mode === 'custom' || mode === 'advanced' || instrumental;
-        const inferred = inferSettings(style, prompt);
-        const finalTitle = title?.trim() || makeTitle(prompt || style || 'Untitled Track');
-
-        // ── Apply global Sound Profile (admin defaults) + HQ enhancement ──
-        let profileDirectives = [];
-        let profileAvoidTags = [];
-        try {
-            const profiles = await base44.asServiceRole.entities.SoundProfile.filter({ scope: 'global' });
-            const profile = profiles && profiles.length > 0 ? profiles[0] : null;
-            const built = buildProfileDirectives(profile, hq);
-            profileDirectives = built.directives;
-            profileAvoidTags = built.avoidTags;
-        } catch (e) {
-            console.error('SoundProfile load failed (continuing without it):', e?.message);
-        }
-
-        // For vocal-only directives, skip vocal HQ text when instrumental
-        const effectiveDirectives = instrumental
-            ? profileDirectives.filter(d => !/vocal/i.test(d))
-            : profileDirectives;
-
-        const baseNegative = negativeTags?.trim() || inferred.avoid;
-        const finalNegativeTags = [baseNegative, ...profileAvoidTags]
-            .filter(Boolean)
-            .join(', ');
-        const finalWeirdness = clampNumber(
-            weirdnessConstraint ?? weirdness,
-            0,
-            100,
-            inferred.weirdness
-        );
-        const finalStyleWeight = clampNumber(
-            styleWeight ?? styleInfluence,
-            0,
-            100,
-            inferred.styleWeight
-        );
-
-        // Auto-select model: V5_5 by default, V5_0 for traditional/classical styles
-        const finalModel = autoSelectModel(model, style, prompt);
-
-        // Build API payload based on mode
-        let resolvedPersonaId = personaId;
-
-        if (selectedPersonaId) {
-            const selectedPersona = await base44.entities.Persona.get(selectedPersonaId);
-            if (!selectedPersona) {
-                return Response.json({ error: 'Selected persona not found' }, { status: 404, headers: corsHeaders });
-            }
-            if (selectedPersona.status !== 'ready') {
-                return Response.json({ error: 'Selected persona is not ready yet' }, { status: 400, headers: corsHeaders });
-            }
-            if (!selectedPersona.persona_id) {
-                return Response.json({ error: 'Selected persona has no external voice ID' }, { status: 400, headers: corsHeaders });
-            }
-            resolvedPersonaId = selectedPersona.persona_id;
-        }
-
-        const functionBase = Deno.env.get('BASE44_FUNCTION_URL')
-            || `https://base44.app/api/apps/${Deno.env.get('BASE44_APP_ID')}/functions`;
-        const payload = {
-            customMode: resolvedCustomMode,
-            instrumental: instrumental,
-            model: finalModel,
-            callBackUrl: `${functionBase}/sunoCallback`,
-        };
-
-        if (!resolvedCustomMode) {
-            // Simple mode: only prompt required
-            if (!prompt || !prompt.trim()) {
-                return Response.json({ error: 'Prompt is required' }, { status: 400, headers: corsHeaders });
-            }
-            payload.prompt = appendDirectives(prompt, effectiveDirectives);
-            if (resolvedPersonaId) payload.personaId = resolvedPersonaId;
-        } else {
-            // Custom mode per Kie/Suno: style is required, title can be synthesized by the app.
-            if (!style || !style.trim()) {
-                return Response.json({ error: 'Style is required for advanced/custom generation' }, { status: 400, headers: corsHeaders });
-            }
-            if (!instrumental && (!prompt || !prompt.trim())) {
-                return Response.json({ error: 'Lyrics/prompt are required when vocals are enabled' }, { status: 400, headers: corsHeaders });
-            }
-            if (prompt?.trim()) payload.prompt = prompt;
-            payload.style = appendDirectives(style, effectiveDirectives);
-            payload.title = finalTitle;
-            payload.negativeTags = finalNegativeTags;
-            payload.weirdnessConstraint = toApiWeight(finalWeirdness);
-            payload.styleWeight = toApiWeight(finalStyleWeight);
-            
-            // Add optional parameters
-            const apiVocalGender = normalizeVocalGender(vocalGender);
-            if (apiVocalGender) payload.vocalGender = apiVocalGender;
-            if (resolvedPersonaId) payload.personaId = resolvedPersonaId;
-        }
-
-        // Call Suno API to generate music
-        const data = await postWithFallback(apiKey, [
-            '/generate-music',
-            '/generate',
-        ], payload);
-
-        if (data.code !== 200) {
-            console.error('Suno API error:', data);
-            return Response.json({ 
-                error: data.msg || 'Music generation failed',
-                details: data
-            }, { status: 400, headers: corsHeaders });
-        }
-
-        // Create Track records (Suno generates 2 by default)
-        const trackPromises = [];
-
-        for (let i = 0; i < 2; i++) {
-            trackPromises.push(
-                base44.entities.Track.create({
-                    title: `${finalTitle}`,
-                    prompt: prompt || '',
-                    style: resolvedCustomMode ? style : '',
-                    task_id: data.data.taskId,
-                    status: 'queued',
-                    is_instrumental: instrumental,
-                    model_version: finalModel,
-                    generation_settings: JSON.stringify({
-                        customMode: resolvedCustomMode,
-                        negativeTags: resolvedCustomMode ? finalNegativeTags : undefined,
-                        weirdnessConstraint: resolvedCustomMode ? finalWeirdness : undefined,
-                        styleWeight: resolvedCustomMode ? finalStyleWeight : undefined,
-                    }),
-                    persona_id: resolvedPersonaId || undefined,
-                })
-            );
-        }
-
-        const tracks = await Promise.all(trackPromises);
-
-        return Response.json({
-            success: true,
-            taskId: data.data.taskId,
-            trackIds: tracks.map(t => t.id),
-            track_count: tracks.length,
-            appliedDefaults: resolvedCustomMode ? {
-                title: finalTitle,
-                negativeTags: finalNegativeTags,
-                weirdnessConstraint: finalWeirdness,
-                styleWeight: finalStyleWeight,
-            } : undefined,
-        }, { headers: corsHeaders });
-
-    } catch (error) {
-        console.error('Error in generateMusic:', error);
-        return Response.json({ 
-            error: error.message || 'Failed to generate music'
-        }, { status: 500, headers: corsHeaders });
+    let finalNegativeTags = '';
+    if (!customMode) {
+      payload.prompt = appendDirectives(prompt, profile.directives);
+    } else {
+      finalNegativeTags = [String(body.negativeTags || inferred.avoid), ...profile.avoidTags].filter(Boolean).join(', ');
+      if (prompt.trim()) payload.prompt = prompt;
+      payload.style = appendDirectives(style, profile.directives);
+      payload.title = finalTitle;
+      payload.negativeTags = finalNegativeTags;
+      payload.weirdnessConstraint = toApiWeight(body.weirdnessConstraint ?? body.weirdness ?? inferred.weirdness);
+      payload.styleWeight = toApiWeight(body.styleWeight ?? body.styleInfluence ?? inferred.styleWeight);
+      const apiVocalGender = normalizeVocalGender(body.vocalGender);
+      if (apiVocalGender) payload.vocalGender = apiVocalGender;
+      if (body.personaId) payload.personaId = body.personaId;
     }
+
+    const data = await postWithFallback(apiKey, ['/generate-music', '/generate'], payload);
+    if (data.code !== 200) {
+      console.error('Suno API error:', data);
+      return jsonResponse({ error: data.msg || 'Music generation failed', details: data }, { status: 400 });
+    }
+
+    const taskId = data?.data?.taskId || data?.data?.task_id;
+    if (!taskId) return jsonResponse({ error: 'Provider did not return taskId', details: data }, { status: 502 });
+
+    const trackPayload = {
+      title: finalTitle,
+      prompt,
+      style: customMode ? style : '',
+      task_id: taskId,
+      status: 'queued',
+      is_instrumental: instrumental,
+      model_version: finalModel,
+      generation_settings: JSON.stringify({ customMode, negativeTags: finalNegativeTags || undefined, styleWeight: payload.styleWeight, weirdnessConstraint: payload.weirdnessConstraint }),
+      persona_id: body.personaId || undefined,
+    };
+
+    const tracks = await Promise.all([0, 1].map(() => base44.entities.Track.create(trackPayload)));
+    await createGenerationJob(base44, { task_id: taskId, track_ids: tracks.map((track: any) => track.id), provider: 'kie_suno', status: 'queued', model: finalModel });
+    await incrementGenerationUsage(base44, user, tracks.length);
+
+    return jsonResponse({ success: true, taskId, task_id: taskId, trackIds: tracks.map((track: any) => track.id), track_count: tracks.length });
+  } catch (error) {
+    console.error('Error in generateMusic:', error);
+    return jsonResponse({ error: error.message || 'Failed to generate music' }, { status: error.status || 500 });
+  }
 });
