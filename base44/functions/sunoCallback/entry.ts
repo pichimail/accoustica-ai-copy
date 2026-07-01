@@ -1,93 +1,83 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.32';
+import { getTaskId, verifyCallbackRequest, jsonResponse } from '../_shared/security.ts';
+
+function normalizeAudioData(item: any) {
+  return {
+    audio_url: item?.audio_url || item?.audioUrl || '',
+    stream_audio_url: item?.stream_audio_url || item?.streamAudioUrl || '',
+    cover_image_url: item?.image_url || item?.imageUrl || '',
+    lyrics: item?.prompt || item?.lyrics || '',
+    tags: item?.tags || '',
+    duration: item?.duration || 0,
+    model_version: item?.model_name || item?.modelName || '',
+    external_audio_id: item?.id || '',
+    title: item?.title || '',
+  };
+}
+
+async function markJob(base44: any, taskId: string, status: string, message = '') {
+  try {
+    const entity = base44.asServiceRole?.entities?.GenerationJob;
+    if (!entity?.filter) return;
+    const job = (await entity.filter({ task_id: taskId }))?.[0];
+    if (job?.id) await entity.update(job.id, { status, last_callback_message: message, updated_date: new Date().toISOString() });
+  } catch (error) {
+    console.warn('GenerationJob update skipped:', error?.message || error);
+  }
+}
 
 Deno.serve(async (req) => {
-    try {
-        // Extract request details
-        const base44 = createClientFromRequest(req);
-        const { code, msg, data } = await req.json();
+  if (req.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, { status: 405 });
 
-        console.log('Received Suno callback:', { code, msg, taskId: data?.task_id, callbackType: data?.callbackType });
+  const rawBody = await req.text();
+  try {
+    await verifyCallbackRequest(req, rawBody);
+    const base44 = createClientFromRequest(req);
+    const payload = rawBody ? JSON.parse(rawBody) : {};
+    const { code, msg, data } = payload;
+    const taskId = getTaskId(payload);
+    const callbackType = data?.callbackType || data?.callback_type || payload?.callbackType;
 
-        if (code === 200 && data?.task_id) {
-            const taskId = data.task_id;
-            const callbackType = data.callbackType;
+    if (!taskId) return jsonResponse({ status: 'received', ignored: 'missing_task_id' }, { status: 200 });
 
-            // Handle different callback types
-            if (callbackType === 'complete' && data.data && Array.isArray(data.data)) {
-                // Update tracks for completed generation
-                const tracks = await base44.asServiceRole.entities.Track.filter({ task_id: taskId });
-                
-                // Update each track with the corresponding audio data
-                for (let i = 0; i < Math.min(tracks.length, data.data.length); i++) {
-                    const audioData = data.data[i];
-                    const track = tracks[i];
-                    
-                    await base44.asServiceRole.entities.Track.update(track.id, {
-                        status: 'ready',
-                        audio_url: audioData.audio_url,
-                        stream_audio_url: audioData.stream_audio_url,
-                        cover_image_url: audioData.image_url,
-                        lyrics: audioData.prompt,
-                        tags: audioData.tags,
-                        duration: audioData.duration,
-                        model_version: audioData.model_name,
-                        external_audio_id: audioData.id,
-                    });
-                }
-            } else if (callbackType === 'first' && data.data && data.data.length > 0) {
-                // First track completed
-                const tracks = await base44.asServiceRole.entities.Track.filter({ task_id: taskId });
-                if (tracks.length > 0) {
-                    const audioData = data.data[0];
-                    await base44.asServiceRole.entities.Track.update(tracks[0].id, {
-                        status: 'ready',
-                        audio_url: audioData.audio_url,
-                        stream_audio_url: audioData.stream_audio_url,
-                        cover_image_url: audioData.image_url,
-                        lyrics: audioData.prompt,
-                        tags: audioData.tags,
-                        duration: audioData.duration,
-                        model_version: audioData.model_name,
-                        external_audio_id: audioData.id,
-                    });
-                }
-            } else if (callbackType === 'text') {
-                // Text generation completed - update status
-                const tracks = await base44.asServiceRole.entities.Track.filter({ task_id: taskId });
-                for (const track of tracks) {
-                    await base44.asServiceRole.entities.Track.update(track.id, {
-                        status: 'generating',
-                    });
-                }
-            } else if (callbackType === 'error') {
-                // Handle errors
-                const tracks = await base44.asServiceRole.entities.Track.filter({ task_id: taskId });
-                for (const track of tracks) {
-                    await base44.asServiceRole.entities.Track.update(track.id, {
-                        status: 'failed',
-                        error_message: msg || 'Generation failed',
-                    });
-                }
-            }
-        } else if (code !== 200) {
-            // Handle failure callbacks
-            if (data?.task_id) {
-                const tracks = await base44.asServiceRole.entities.Track.filter({ task_id: data.task_id });
-                for (const track of tracks) {
-                    await base44.asServiceRole.entities.Track.update(track.id, {
-                        status: 'failed',
-                        error_message: msg || 'Generation failed',
-                    });
-                }
-            }
-        }
+    const tracks = await base44.asServiceRole.entities.Track.filter({ task_id: taskId });
+    if (!tracks?.length) return jsonResponse({ status: 'received', ignored: 'tracks_not_found' }, { status: 200 });
 
-        // Always return success to acknowledge callback
-        return Response.json({ status: 'received' }, { status: 200 });
+    const isSuccess = code === 200 || code === '200';
+    const audioRows = Array.isArray(data?.data) ? data.data : Array.isArray(data?.response?.sunoData) ? data.response.sunoData : [];
 
-    } catch (error) {
-        console.error('Error in sunoCallback:', error);
-        // Still return success to avoid retries
-        return Response.json({ status: 'received', error: error.message }, { status: 200 });
+    if (isSuccess && (callbackType === 'complete' || callbackType === 'first') && audioRows.length > 0) {
+      const max = callbackType === 'first' ? 1 : Math.min(tracks.length, audioRows.length);
+      for (let i = 0; i < max; i += 1) {
+        const audio = normalizeAudioData(audioRows[i]);
+        const track = tracks[i];
+        await base44.asServiceRole.entities.Track.update(track.id, {
+          status: 'ready',
+          audio_url: audio.audio_url || track.audio_url,
+          stream_audio_url: audio.stream_audio_url || track.stream_audio_url,
+          cover_image_url: audio.cover_image_url || track.cover_image_url,
+          lyrics: audio.lyrics || track.lyrics,
+          tags: audio.tags || track.tags,
+          duration: audio.duration || track.duration,
+          model_version: audio.model_version || track.model_version,
+          external_audio_id: audio.external_audio_id || track.external_audio_id,
+          title: audio.title || track.title,
+        });
+      }
+      await markJob(base44, taskId, callbackType === 'first' ? 'partial_ready' : 'ready');
+    } else if (isSuccess && callbackType === 'text') {
+      for (const track of tracks) await base44.asServiceRole.entities.Track.update(track.id, { status: 'generating' });
+      await markJob(base44, taskId, 'generating');
+    } else if (!isSuccess || callbackType === 'error') {
+      for (const track of tracks) {
+        await base44.asServiceRole.entities.Track.update(track.id, { status: 'failed', error_message: msg || data?.errorMessage || 'Generation failed' });
+      }
+      await markJob(base44, taskId, 'failed', msg || data?.errorMessage || 'Generation failed');
     }
+
+    return jsonResponse({ status: 'received' }, { status: 200 });
+  } catch (error) {
+    console.error('sunoCallback rejected:', error);
+    return jsonResponse({ status: 'rejected', error: error.message }, { status: error.message === 'Invalid callback signature' ? 401 : 200 });
+  }
 });
