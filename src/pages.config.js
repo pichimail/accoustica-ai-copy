@@ -27,6 +27,7 @@ const VoiceStudio = lazy(() => import('./pages/VoiceStudio'));
 
 export const PAGES = {
   Create,
+  Audio: Create,
   Library,
   Discover,
   TrackView,
@@ -46,7 +47,7 @@ export const PAGES = {
   ArtistInfo,
   SocialFeed,
   SongEditor,
-  RemixStudio: StemStudio, // redirects to merged StemStudio page
+  RemixStudio: StemStudio,
   MasteringProStudio,
   AdminFeatureFlags: lazy(() => import('./pages/AdminFeatureFlags')),
   Insights,
