@@ -12,6 +12,8 @@ import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'r
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import { AudioPlayerProvider } from '@/components/audio/AudioPlayerContext';
+import GlobalAudioPlayer from '@/components/audio/GlobalAudioPlayer';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -102,9 +104,12 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
-          <GenerationClickGuard />
-          <NavigationTracker />
-          <AuthenticatedApp />
+          <AudioPlayerProvider>
+            <GenerationClickGuard />
+            <NavigationTracker />
+            <AuthenticatedApp />
+            <GlobalAudioPlayer />
+          </AudioPlayerProvider>
         </Router>
         <Toaster />
         <SonnerToaster position="bottom-right" richColors />

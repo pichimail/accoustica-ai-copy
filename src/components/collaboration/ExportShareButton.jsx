@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState, useCallback } from 'react';
-import { Share2, Loader2 } from 'lucide-react';
+import { Share2, Loader2, Instagram } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/components/utils/haptics';
@@ -46,6 +46,55 @@ export default function ExportShareButton({
     a.click();
     document.body.removeChild(a);
   }, []);
+
+  const handleInstagramShare = useCallback(async (e) => {
+    e?.stopPropagation?.();
+    if (busy) return;
+    if (!coverUrl) { toast.error('No cover art available to share to Instagram'); return; }
+    haptics.medium();
+    setBusy(true);
+
+    const caption = `🎵 "${track?.title || 'My track'}" — made with Accoustica AI`;
+    try {
+      // Instagram only accepts images/videos, not audio — share the cover art as a file
+      let imageFile = null;
+      try {
+        imageFile = await fetchAsFile(coverUrl, `${slug}.jpg`, 'image/jpeg');
+      } catch { /* fetch blocked — fall through to URL approach */ }
+
+      // 1) Best: native share with the cover image file — Instagram appears in the sheet on mobile
+      if (imageFile && navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+        try {
+          await navigator.share({ text: caption, files: [imageFile] });
+          haptics.success();
+          return;
+        } catch (err) {
+          if (err?.name === 'AbortError') return;
+        }
+      }
+
+      // 2) Try opening the Instagram app directly (mobile)
+      const igAppUrl = `instagram://app`;
+      const igWebUrl = `https://www.instagram.com/`;
+      try {
+        window.open(igAppUrl, '_blank');
+        setTimeout(() => {
+          downloadLocally(coverUrl, `${slug}.jpg`);
+          toast.success('Cover art saved — paste it into Instagram!');
+        }, 1500);
+      } catch {
+        window.open(igWebUrl, '_blank');
+        downloadLocally(coverUrl, `${slug}.jpg`);
+        toast.success('Cover art saved — upload it to Instagram!');
+      }
+      haptics.success();
+    } catch (err) {
+      haptics.error();
+      toast.error('Could not share to Instagram');
+    } finally {
+      setBusy(false);
+    }
+  }, [coverUrl, slug, track, busy, fetchAsFile, downloadLocally]);
 
   const handleClick = useCallback(async (e) => {
     e?.stopPropagation?.();
@@ -107,36 +156,60 @@ export default function ExportShareButton({
 
   if (variant === 'pill') {
     return (
+      <div className={cn('flex items-center gap-2', className)}>
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={!ready || busy}
+          aria-label="Export and share track"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-rose-400/50"
+          style={{ background: '#e11d48', color: '#fff' }}
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+          {label}
+        </button>
+        {coverUrl && (
+          <button
+            type="button"
+            onClick={handleInstagramShare}
+            disabled={!ready || busy}
+            aria-label="Share cover art to Instagram"
+            title="Share to Instagram"
+            className="flex items-center justify-center w-10 h-10 rounded-xl transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-pink-400/50"
+            style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)', color: '#fff' }}
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Instagram className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn('flex items-center gap-1', className)}>
       <button
         type="button"
         onClick={handleClick}
         disabled={!ready || busy}
         aria-label="Export and share track"
-        className={cn(
-          'flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-rose-400/50',
-          className
-        )}
-        style={{ background: '#e11d48', color: '#fff' }}
+        title="Export & Share"
+        className="w-8 h-8 flex items-center justify-center rounded-full text-white/45 hover:text-white hover:bg-white/8 transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-        {label}
       </button>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={!ready || busy}
-      aria-label="Export and share track"
-      title="Export & Share"
-      className={cn(
-        'w-8 h-8 flex items-center justify-center rounded-full text-white/45 hover:text-white hover:bg-white/8 transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed',
-        className
+      {coverUrl && (
+        <button
+          type="button"
+          onClick={handleInstagramShare}
+          disabled={!ready || busy}
+          aria-label="Share cover art to Instagram"
+          title="Share to Instagram"
+          className="w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ color: '#dc2743' }}
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Instagram className="h-4 w-4" />}
+        </button>
       )}
-    >
-      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-    </button>
+    </div>
   );
 }
