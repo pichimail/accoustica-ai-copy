@@ -18,6 +18,7 @@ const LYRICS_MAX = 4995;
 
 async function postWithFallback(apiKey: string, paths: string[], body: Record<string, unknown>) {
   let lastError: unknown = null;
+  let lastErrorMsg = '';
   for (const base of KIE_API_BASES) {
     for (const rawPath of paths) {
       const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
@@ -28,14 +29,18 @@ async function postWithFallback(apiKey: string, paths: string[], body: Record<st
           body: JSON.stringify(body),
         });
         const data = await response.json().catch(() => ({}));
-        if (response.ok && data?.code === 200) return data;
+        // Accept success if: HTTP ok AND (code===200 OR a taskId is present in any common location)
+        const taskId = data?.data?.taskId || data?.data?.task_id || data?.taskId || data?.task_id;
+        if (response.ok && (data?.code === 200 || taskId)) return data;
+        lastErrorMsg = data?.msg || data?.message || `HTTP ${response.status}`;
         lastError = data;
       } catch (error) {
+        lastErrorMsg = error?.message || String(error);
         lastError = error;
       }
     }
   }
-  return lastError || { code: 500, msg: 'All KIE/Suno endpoints failed' };
+  return lastError || { code: 500, msg: lastErrorMsg || 'All KIE/Suno endpoints failed' };
 }
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number) {
@@ -131,8 +136,8 @@ Deno.serve(async (req) => {
     const finalModel = autoSelectModel(String(body.model || 'V5_5'), style, prompt);
     await enforceGenerationPolicy(base44, user, { model: finalModel, feature: customMode ? 'advanced_generation' : 'generation' });
 
-    const apiKey = Deno.env.get('SUNO_API_KEY') || Deno.env.get('KIE_API_KEY');
-    if (!apiKey) return jsonResponse({ error: 'SUNO_API_KEY is not configured' }, { status: 500 });
+    const apiKey = Deno.env.get('KIE_API_KEY') || Deno.env.get('SUNO_API_KEY');
+    if (!apiKey) return jsonResponse({ error: 'KIE_API_KEY / SUNO_API_KEY is not configured' }, { status: 500 });
 
     const inferred = inferDefaults(style, prompt);
     const finalTitle = title.trim() || makeTitle(prompt || style || 'Untitled Track');
@@ -164,13 +169,12 @@ Deno.serve(async (req) => {
     }
 
     const data = await postWithFallback(apiKey, ['/generate-music', '/generate'], payload);
-    if (data.code !== 200) {
-      console.error('Suno API error:', data);
-      return jsonResponse({ error: data.msg || 'Music generation failed', details: data }, { status: 400 });
+    const taskId = data?.data?.taskId || data?.data?.task_id || data?.taskId || data?.task_id;
+    if (!taskId) {
+      console.error('Suno API error:', JSON.stringify(data));
+      const errMsg = data?.msg || data?.message || 'Music generation failed — provider did not return a task ID';
+      return jsonResponse({ error: errMsg, details: data }, { status: 400 });
     }
-
-    const taskId = data?.data?.taskId || data?.data?.task_id;
-    if (!taskId) return jsonResponse({ error: 'Provider did not return taskId', details: data }, { status: 502 });
 
     const trackPayload = {
       title: finalTitle,
