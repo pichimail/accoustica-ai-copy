@@ -112,8 +112,8 @@ async function getUserPlan(base44: any, user: any) {
 }
 
 export async function enforceGenerationPolicy(base44: any, user: any, options: { model?: string; feature?: string } = {}) {
-  if (!user) throw new Error('Unauthorized');
-  if (user.account_status === 'suspended' || user.status === 'suspended') throw new Error('Account is suspended');
+  if (!user) throw { status: 401, message: 'Unauthorized' };
+  if (user.account_status === 'suspended' || user.status === 'suspended') throw { status: 403, message: 'Account is suspended' };
 
   const plan = await getUserPlan(base44, user);
   const dailyLimit = Number(plan?.daily_limit ?? user.daily_limit ?? 3);
@@ -124,20 +124,20 @@ export async function enforceGenerationPolicy(base44: any, user: any, options: {
   const dailyUsage = user.last_usage_reset === day ? Number(user.daily_usage || 0) : 0;
   const monthlyUsage = Number(user.monthly_usage || 0);
 
-  if (dailyLimit >= 0 && dailyUsage >= dailyLimit) throw new Error('Daily generation limit reached');
-  if (monthlyLimit >= 0 && monthlyUsage >= monthlyLimit) throw new Error('Monthly generation limit reached');
+  if (dailyLimit >= 0 && dailyUsage >= dailyLimit) throw { status: 429, message: 'Daily generation limit reached' };
+  if (monthlyLimit >= 0 && monthlyUsage >= monthlyLimit) throw { status: 429, message: 'Monthly generation limit reached' };
 
   try {
     const active = await base44.entities.Track.filter({ created_by: user.email }, '-created_date', 100);
     const activeCount = (active || []).filter((track: any) => ['queued', 'generating'].includes(track.status)).length;
-    if (concurrentLimit >= 0 && activeCount >= concurrentLimit) throw new Error('Concurrent generation limit reached');
+    if (concurrentLimit >= 0 && activeCount >= concurrentLimit) throw { status: 429, message: 'Concurrent generation limit reached' };
   } catch (error) {
     console.warn('Concurrent generation check skipped:', error?.message || error);
   }
 
   const modelAccess = Array.isArray(plan?.model_access) ? plan.model_access : Array.isArray(user.model_access) ? user.model_access : null;
   if (modelAccess && options.model && !modelAccess.includes(options.model) && !modelAccess.includes('all')) {
-    throw new Error(`Your plan does not include ${options.model}`);
+    throw { status: 403, message: `Your plan does not include ${options.model}` };
   }
 
   return { plan, dailyUsage, monthlyUsage };
