@@ -42,6 +42,10 @@ function todayKey(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function monthKey(): string {
+  return new Date().toISOString().slice(0, 7);
+}
+
 async function getUserPlan(base44: any, user: any) {
   if (!user?.plan_id) return null;
   try {
@@ -55,12 +59,13 @@ async function enforceGenerationPolicy(base44: any, user: any, options: { model?
   if (!user) throw { status: 401, message: 'Unauthorized' };
   if (user.account_status === 'suspended' || user.status === 'suspended') throw { status: 403, message: 'Account is suspended' };
   const plan = await getUserPlan(base44, user);
-  const dailyLimit = Number(plan?.daily_limit ?? user.daily_limit ?? 3);
-  const monthlyLimit = Number(plan?.monthly_limit ?? user.monthly_limit ?? 30);
-  const concurrentLimit = Number(plan?.concurrent_jobs ?? user.concurrent_jobs ?? 1);
+  const dailyLimit = Number(plan?.daily_limit ?? user.daily_limit ?? 100);
+  const monthlyLimit = Number(plan?.monthly_limit ?? user.monthly_limit ?? 10000);
+  const concurrentLimit = Number(plan?.concurrent_jobs ?? user.concurrent_jobs ?? 5);
   const day = todayKey();
+  const month = monthKey();
   const dailyUsage = user.last_usage_reset === day ? Number(user.daily_usage || 0) : 0;
-  const monthlyUsage = Number(user.monthly_usage || 0);
+  const monthlyUsage = user.last_monthly_reset === month ? Number(user.monthly_usage || 0) : 0;
   if (dailyLimit >= 0 && dailyUsage >= dailyLimit) throw { status: 429, message: 'Daily generation limit reached' };
   if (monthlyLimit >= 0 && monthlyUsage >= monthlyLimit) throw { status: 429, message: 'Monthly generation limit reached' };
   try {
@@ -79,12 +84,15 @@ async function enforceGenerationPolicy(base44: any, user: any, options: { model?
 
 async function incrementGenerationUsage(base44: any, user: any, trackCount = 1) {
   const day = todayKey();
+  const month = monthKey();
   const dailyUsage = user.last_usage_reset === day ? Number(user.daily_usage || 0) : 0;
+  const monthlyUsage = user.last_monthly_reset === month ? Number(user.monthly_usage || 0) : 0;
   try {
     await base44.auth.updateMe({
       daily_usage: dailyUsage + 1,
       last_usage_reset: day,
-      monthly_usage: Number(user.monthly_usage || 0) + 1,
+      monthly_usage: monthlyUsage + 1,
+      last_monthly_reset: month,
       total_tracks: Number(user.total_tracks || 0) + trackCount,
       last_active: new Date().toISOString(),
     });

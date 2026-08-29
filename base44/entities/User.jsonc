@@ -62,7 +62,11 @@
     },
     "last_usage_reset": {
       "type": "string",
-      "description": "Date of last daily usage reset"
+      "description": "Date of last daily usage reset (YYYY-MM-DD)"
+    },
+    "last_monthly_reset": {
+      "type": "string",
+      "description": "Month of last monthly usage reset (YYYY-MM)"
     }
   }
 }
