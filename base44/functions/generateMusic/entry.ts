@@ -309,6 +309,8 @@ Deno.serve(async (req) => {
     return jsonResponse({ success: true, taskId, task_id: taskId, trackIds: tracks.map((track: any) => track.id), track_count: tracks.length });
   } catch (error) {
     console.error('Error in generateMusic:', error);
-    return jsonResponse({ error: error.message || 'Failed to generate music' }, { status: error.status || 500 });
+    const status = error?.status || error?.statusCode || 500;
+    const message = error?.message || error?.msg || (typeof error === 'string' ? error : 'Failed to generate music');
+    return jsonResponse({ error: message }, { status });
   }
 });
