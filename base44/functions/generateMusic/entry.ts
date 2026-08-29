@@ -120,28 +120,42 @@ const LYRICS_MAX = 4995;
 async function postWithFallback(apiKey: string, paths: string[], body: Record<string, unknown>) {
   let lastError: unknown = null;
   let lastErrorMsg = '';
-  for (const base of KIE_API_BASES) {
-    for (const rawPath of paths) {
-      const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
-      try {
-        const response = await fetch(`${base}${path}`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const data = await response.json().catch(() => ({}));
-        // Accept success if: HTTP ok AND (code===200 OR a taskId is present in any common location)
-        const taskId = data?.data?.taskId || data?.data?.task_id || data?.taskId || data?.task_id;
-        if (response.ok && (data?.code === 200 || taskId)) return data;
-        lastErrorMsg = data?.msg || data?.message || `HTTP ${response.status}`;
-        lastError = data;
-      } catch (error) {
-        lastErrorMsg = error?.message || String(error);
-        lastError = error;
+  let lastStatus = 500;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    for (const base of KIE_API_BASES) {
+      for (const rawPath of paths) {
+        const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+        try {
+          const response = await fetch(`${base}${path}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          const rawText = await response.text();
+          let data: any = {};
+          try { data = rawText ? JSON.parse(rawText) : {}; } catch { data = { rawText: rawText.slice(0, 500) }; }
+          const taskId = data?.data?.taskId || data?.data?.task_id || data?.taskId || data?.task_id;
+          if (response.ok && (data?.code === 200 || taskId)) return data;
+          lastStatus = response.status;
+          lastErrorMsg = data?.msg || data?.message || data?.rawText || `HTTP ${response.status}`;
+          lastError = data;
+          console.warn(`KIE attempt failed: ${base}${path} → HTTP ${response.status}: ${lastErrorMsg}`);
+          // Only stop early on payload/auth errors (400/401/403/422) — 404 means the endpoint
+          // path is wrong, so the next base/path combination may still work.
+          if ([400, 401, 403, 422].includes(response.status)) {
+            return lastError || { code: lastStatus, msg: lastErrorMsg };
+          }
+        } catch (error) {
+          lastErrorMsg = error?.message || String(error);
+          lastError = error;
+          console.warn(`KIE fetch error: ${base}${path} → ${lastErrorMsg}`);
+        }
       }
     }
+    // Brief pause before retry loop (helps with transient 429/5xx from KIE)
+    if (attempt === 0) await new Promise((r) => setTimeout(r, 1500));
   }
-  return lastError || { code: 500, msg: lastErrorMsg || 'All KIE/Suno endpoints failed' };
+  return lastError || { code: lastStatus, msg: lastErrorMsg || 'All KIE/Suno endpoints failed' };
 }
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number) {
