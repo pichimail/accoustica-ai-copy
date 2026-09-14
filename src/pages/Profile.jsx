@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { base44 } from '@/api/exportClient';
-import * as trackClient from '@/api/trackClient';
+import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';
@@ -97,7 +96,7 @@ export default function ProfilePage() {
 
   const { data: tracks = [] } = useQuery({
     queryKey: ['userTracks', user?.email],
-    queryFn: () => trackClient.listTracks({ created_by: user.email }, '-created_date', 100),
+    queryFn: () => base44.entities.Track.filter({ created_by: user.email }, '-created_date', 100),
     enabled: !!user?.email,
   });
 
@@ -182,8 +181,9 @@ export default function ProfilePage() {
   const handleDeleteAccount = async () => {
     if (deleteInput !== 'DELETE') return;
     try {
-      const userTracks = await trackClient.listTracks({ created_by: user.email }, '-created_date', 200);
-      for (const t of userTracks) await trackClient.deleteTrack(t.id);
+      await base44.entities.Track.filter({ created_by: user.email }).then(async (tracks) => {
+        for (const t of tracks) await base44.entities.Track.delete(t.id);
+      });
       await base44.auth.logout(createPageUrl('Home'));
     } catch (error) {
       toast.error('Could not delete account. Please contact support.');

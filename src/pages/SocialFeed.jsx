@@ -1,8 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useMemo, useState } from 'react';
-// TODO_EXPORT_REPLACE_WITH_GOOGLE_AUTH: base44.auth.me() → NextAuth session
-import { base44 } from '@/api/exportClient';
-import * as trackClient from '@/api/trackClient';
+import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Heart, Loader2, MessageCircle, Pause, Play, Search, Send, Share2, TrendingUp } from 'lucide-react';
@@ -27,19 +25,19 @@ export default function SocialFeedPage() {
 
   const { data: tracks = [], isLoading } = useQuery({
     queryKey: ['socialPublicTracks', sort],
-    queryFn: () => trackClient.listPublicTracks(sort, 80),
+    queryFn: () => base44.entities.Track.filter({ is_public: true, status: 'ready' }, sort, 80),
     refetchInterval: 20000
   });
 
   const { data: comments = [] } = useQuery({
     queryKey: ['feedComments'],
-    queryFn: () => trackClient.listAllComments(500),
+    queryFn: () => base44.entities.TrackComment.list('-created_date', 500),
     refetchInterval: 12000
   });
 
   const { data: likes = [] } = useQuery({
     queryKey: ['trackLikes'],
-    queryFn: () => trackClient.listAllLikes(1000),
+    queryFn: () => base44.entities.TrackLike.list('-created_date', 1000),
     refetchInterval: 15000
   });
 
@@ -58,8 +56,8 @@ export default function SocialFeedPage() {
     haptics.medium();
     playTrack(track, filtered);
     await Promise.allSettled([
-    trackClient.updateTrack(track.id, { plays: (track.plays || 0) + 1 }),
-    trackClient.createTrackPlay({
+    base44.entities.Track.update(track.id, { plays: (track.plays || 0) + 1 }),
+    base44.entities.TrackPlay.create({
       track_id: track.id,
       user_email: user?.email || '',
       played_at: new Date().toISOString(),
@@ -76,8 +74,8 @@ export default function SocialFeedPage() {
     }
     haptics.light();
     const existing = likes.find((like) => like.track_id === track.id && like.user_email === user.email);
-    if (existing) await trackClient.deleteTrackLike(existing.id);else
-    await trackClient.createTrackLike({ track_id: track.id, user_email: user.email, type: 'like' });
+    if (existing) await base44.entities.TrackLike.delete(existing.id);else
+    await base44.entities.TrackLike.create({ track_id: track.id, user_email: user.email, type: 'like' });
     queryClient.invalidateQueries({ queryKey: ['trackLikes'] });
   };
 
@@ -89,7 +87,7 @@ export default function SocialFeedPage() {
       return;
     }
     haptics.medium();
-    await trackClient.createTrackComment({
+    await base44.entities.TrackComment.create({
       track_id: track.id,
       user_email: user.email,
       user_name: user.full_name || user.email.split('@')[0],

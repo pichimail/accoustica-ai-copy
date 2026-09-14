@@ -1,9 +1,6 @@
 // @ts-nocheck
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-// TODO_EXPORT_REPLACE_WITH_GOOGLE_AUTH: base44.auth.me() / updateMe() → NextAuth / custom API
-import { base44 } from '@/api/exportClient';
-import * as trackClient from '@/api/trackClient';
-import * as musicClient from '@/api/musicClient';
+import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
@@ -14,7 +11,6 @@ import StudioGeneratePanel from '@/components/create/StudioGeneratePanel';
 import SubtleSplitter from '@/components/ui/SubtleSplitter';
 import { haptics } from '@/components/utils/haptics';
 import { getTrackAudioSource } from '@/components/audio/AudioPlayerContext';
-import ThemeToggle from '@/components/ui/ThemeToggle';
 
 // ── Auto-fill helpers ──
 function computeAutoNegativeTag(styles) {
@@ -204,7 +200,7 @@ export default function CreatePage() {
     queryKey: ['studioTracks', user?.email],
     queryFn: async () => {
       if (!user?.email) return [];
-      return trackClient.listTracks({ created_by: user.email }, '-created_date', 50);
+      return base44.entities.Track.filter({ created_by: user.email }, '-created_date', 50);
     },
     enabled: !!user?.email,
     refetchInterval: (data) => {
@@ -273,7 +269,7 @@ export default function CreatePage() {
 
       if (isMashup) {
         const selected = allTracks.filter((track) => mashupTrackIds.includes(track.id));
-        response = await musicClient.generateMashup({
+        response = await base44.functions.invoke('generateMashup', {
           trackIds: mashupTrackIds,
           prompt: remixPrompt || `Blend ${selected.map((track) => track.title).join(' and ')} into a coherent mashup`,
           style: styles,
@@ -302,7 +298,7 @@ export default function CreatePage() {
 
         if (!sourceUrl) throw new Error('Selected source track has no playable audio URL yet');
         const strictVoiceDirective = selectedPersonaId && strictVoiceClone ? ' strict voice clone, preserve identity timbre and articulation' : '';
-        response = await musicClient.uploadAndCover({
+        response = await base44.functions.invoke('uploadAndCoverAudio', {
           uploadUrl: sourceUrl,
           prompt: remixPrompt || styles || `Remix ${sourceTitle}`,
           customMode: true,
@@ -342,7 +338,7 @@ export default function CreatePage() {
           hq: hqMode
         };
 
-        response = await musicClient.generate(payload);
+        response = await base44.functions.invoke('generateMusic', payload);
       }
       if (!response.data.success) throw new Error(response.data.error || 'Generation failed');
 
@@ -373,7 +369,7 @@ export default function CreatePage() {
     const poll = async () => {
       attempts++;
       try {
-        const res = await musicClient.checkStatus(taskId);
+        const res = await base44.functions.invoke('checkMusicStatus', { taskId });
         if (res.data.success) {
           const tracks = res.data.tracks || [];
           if (tracks.length > 0 && tracks.every((t) => t.status === 'ready')) {
@@ -407,7 +403,7 @@ export default function CreatePage() {
   return (
     <>
       {/* ════ DESKTOP: 3-panel Studio Layout ════ */}
-      <div ref={desktopStudioRef} className="hidden md:flex overflow-hidden" style={{ background: 'var(--studio-bg)', height: 'var(--content-available-height, 100vh)' }}>
+      <div ref={desktopStudioRef} className="hidden md:flex overflow-hidden" style={{ background: '#0a0a0f', height: 'var(--content-available-height, 100vh)' }}>
 
         {/* LEFT — Library */}
         <div className="flex-shrink-0 h-full overflow-hidden" style={{ width: libraryWidth }}>
@@ -433,12 +429,11 @@ export default function CreatePage() {
         {/* CENTER — Split track detail + generations */}
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
           {/* Studio header bar */}
-          <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b" style={{ borderColor: 'var(--studio-border)', background: 'var(--studio-bg)' }}>
+          <div className="flex-shrink-0 flex items-center justify-between px-5 py-2.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)', background: '#0a0a0f' }}>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold tracking-widest uppercase" style={{ color: 'var(--studio-text-muted)' }}>⚙</span>
-              <span className="text-sm font-bold" style={{ color: 'var(--studio-text)' }}>Studio Center</span>
+              <span className="text-[10px] font-extrabold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.35)' }}>⚙</span>
+              <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.75)' }}>Studio Center</span>
             </div>
-            <ThemeToggle />
             
 
 
@@ -507,7 +502,7 @@ export default function CreatePage() {
       {/* ════ MOBILE: single column — always shows generate panel ════ */}
       <div
         className="md:hidden flex flex-col overflow-y-auto smooth-scroll-y"
-        style={{ background: 'var(--studio-bg)', height: 'var(--content-available-height, calc(100vh - 128px))' }}
+        style={{ background: '#0a0a0f', height: 'var(--content-available-height, calc(100vh - 128px))' }}
       >
         <StudioGeneratePanel
           tab={tab} onTabChange={setTab}

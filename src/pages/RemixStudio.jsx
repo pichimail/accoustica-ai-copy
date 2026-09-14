@@ -1,7 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { base44 } from '@/api/exportClient';
-import * as trackClient from '@/api/trackClient';
-import * as musicClient from '@/api/musicClient';
+import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -133,13 +131,12 @@ export default function RemixStudioPage() {
 
   const { data: tracks = [] } = useQuery({
     queryKey: ['remix-tracks'],
-    queryFn: () => trackClient.listTracks({ status: 'ready' }, '-created_date', 30),
+    queryFn: () => base44.entities.Track.filter({ status: 'ready' }, '-created_date', 30),
     enabled: !!user,
   });
 
   const { data: separations = [] } = useQuery({
     queryKey: ['stem-separations'],
-    // TODO_EXPORT_REPLACE_WITH_NEON_DB: StemSeparation entity → NeonDB table
     queryFn: () => base44.entities.StemSeparation.list('-created_date'),
     refetchInterval: (data) => {
       const arr = Array.isArray(data) ? data : [];
@@ -162,7 +159,7 @@ export default function RemixStudioPage() {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setUploadedUrl(file_url);
-      const uploadedTrack = await trackClient.createTrack({
+      const uploadedTrack = await base44.entities.Track.create({
         title: file.name.replace(/\.[^/.]+$/, ''),
         audio_url: file_url,
         stream_audio_url: file_url,
@@ -186,7 +183,7 @@ export default function RemixStudioPage() {
     setIsSeparating(true);
     haptics.medium();
     try {
-      const res = await musicClient.separateVocals({
+      const res = await base44.functions.invoke('separateVocals', {
         taskId: selectedTrack.task_id,
         audioId: selectedTrack.external_audio_id,
         audioUrl: selectedTrack.audio_url || uploadedUrl,
@@ -212,8 +209,7 @@ export default function RemixStudioPage() {
     haptics.medium();
     try {
       const stemUrl = separation[`${stemKey}_url`];
-      // TODO_EXPORT_REPLACE_WITH_NEXT_API: remixStem → custom API route
-      const res = await musicClient.remixStem({
+      const res = await base44.functions.invoke('remixStem', {
         stem_url: stemUrl,
         stemUrl,
         style: restyleStyle,

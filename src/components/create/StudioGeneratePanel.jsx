@@ -4,8 +4,7 @@ import { Sparkles, Wand2, ChevronDown, ChevronUp, Loader2, Mic2, Music, Plus, Bo
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import * as trackClient from '@/api/trackClient';
-import * as llmClient from '@/api/llmClient';
+import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import BottomSheet from '@/components/mobile/BottomSheet';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -642,7 +641,7 @@ export default function StudioGeneratePanel({
 
   const { data: personas = [] } = useQuery({
     queryKey: ['personas'],
-    queryFn: () => trackClient.listPersonas(),
+    queryFn: () => base44.entities.Persona.list('-created_date', 100),
   });
 
   // Refs for drag state
@@ -710,7 +709,8 @@ export default function StudioGeneratePanel({
     const shouldEnhance = currentPrompt.length > 0;
     setGeneratingSimplePrompt(true);
     try {
-      const response = await llmClient.invoke({
+      const { llmService } = await import('@/services/llmService');
+      const response = await llmService.invoke({
         prompt: shouldEnhance
           ? `Enhance this music-generation prompt while preserving the user's intent. Make it more specific with mood, arrangement, instrumentation, and sonic texture. Keep it under ${SIMPLE_PROMPT_MAX} characters. Return plain text only.\n\nPrompt: ${currentPrompt}`
           : `Create one vivid music-generation prompt under ${SIMPLE_PROMPT_MAX} characters. Blend one unexpected hook, clear mood, instrumentation, and section flow cues. No markdown.`,
@@ -739,7 +739,8 @@ export default function StudioGeneratePanel({
         return;
       }
 
-      const response = await llmClient.invoke({
+      const { llmService } = await import('@/services/llmService');
+      const response = await llmService.invoke({
         prompt: `Enhance these music generation inputs with stronger clarity and detail. Return JSON with keys styles and lyrics only.\nstyles: ${styles || 'none'}\nlyrics: ${lyrics || 'none'}\nLimit styles to ${STYLE_MAX} chars and lyrics to ${LYRICS_MAX} chars.`,
         add_context_from_internet: false,
         response_json_schema: {

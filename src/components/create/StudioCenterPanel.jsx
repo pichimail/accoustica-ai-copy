@@ -2,7 +2,11 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Music, Play, Pause, Loader2, Search, SkipForward, Video, Layers, Info, MoreHorizontal } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { getTrackStatusLabel } from '@/utils';
+import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
 import SubtleSplitter from '@/components/ui/SubtleSplitter';
+import ViewToggle from '@/components/ui/ViewToggle';
 import StudioCenterVisualizer from './StudioCenterVisualizer';
 import ExportShareButton from '@/components/collaboration/ExportShareButton';
 import {
@@ -11,6 +15,48 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+const normalizeWord = (item, index, fallbackDuration, totalWords) => {
+  if (typeof item === 'string') {
+    const slot = fallbackDuration / Math.max(1, totalWords);
+    return { word: item, start: index * slot, end: (index + 1) * slot };
+  }
+  const word = item.word || item.text || item.value || '';
+  const start = Number(item.start ?? item.startTime ?? item.time ?? item.offset ?? 0);
+  const end = Number(item.end ?? item.endTime ?? item.finish ?? (start + 0.35));
+  return {
+    word: String(word),
+    start: Number.isFinite(start) ? start : 0,
+    end: Number.isFinite(end) && end > start ? end : start + 0.35,
+  };
+};
+
+const buildFallbackWords = (lyrics = '', duration = 0) => {
+  const words = String(lyrics || '')
+    .replace(/\[[^\]]+\]/g, ' ')
+    .split(/\s+/)
+    .map((word) => word.trim())
+    .filter(Boolean);
+  const fallbackDuration = Math.max(Number(duration) || 0, words.length * 0.42, 1);
+  return words.map((word, index) => normalizeWord(word, index, fallbackDuration, words.length));
+};
+
+const extractTimedWords = (payload, track) => {
+  const raw = payload?.words
+    || payload?.timedWords
+    || payload?.lyrics?.words
+    || payload?.data?.words
+    || payload?.data?.timedWords
+    || [];
+
+  if (Array.isArray(raw) && raw.length > 0) {
+    return raw
+      .map((item, index) => normalizeWord(item, index, Number(track?.duration) || 0, raw.length))
+      .filter((item) => item.word);
+  }
+
+  return buildFallbackWords(track?.lyrics || track?.prompt || '', track?.duration);
+};
 
 export default function StudioCenterPanel({ selectedTrack, tracks, currentTrack, isPlaying, onPlay, onSelect, isGenerating }) {
   const [topH, setTopH] = useState(220);
@@ -119,7 +165,7 @@ export default function StudioCenterPanel({ selectedTrack, tracks, currentTrack,
                 <Loader2 className="h-5 w-5 animate-spin" style={{ color: '#a78bfa' }} />
               </div>
               <div>
-                <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.7)' }}>Generating…</p>
+                <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.7)' }}>{getTrackStatusLabel('generating')}</p>
                 <p className="text-xs" style={{ color: '#a78bfa' }}>Processing your request</p>
               </div>
             </div>
@@ -148,76 +194,157 @@ export default function StudioCenterPanel({ selectedTrack, tracks, currentTrack,
 }
 
 function TrackDetailView({ track, currentTrack, isPlaying, onPlay }) {
+  const { currentTime } = useAudioPlayer();
+  const [showLyrics, setShowLyrics] = useState(false);
+  const [lyricsWords, setLyricsWords] = useState([]);
+  const [lyricsLoading, setLyricsLoading] = useState(false);
   const isActive = currentTrack?.id === track.id;
   const artist = track.created_by?.split('@')[0] || 'You';
+  const hasLyrics = !!(track.lyrics || track.prompt);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLyricsWords([]);
+    if (!track?.id || !hasLyrics) return () => { cancelled = true; };
+
+    setLyricsLoading(true);
+    base44.functions.invoke('getTimestampedLyrics', { trackId: track.id })
+      .then((res) => {
+        if (!cancelled) setLyricsWords(extractTimedWords(res?.data, track));
+      })
+      .catch(() => {
+        if (!cancelled) setLyricsWords(buildFallbackWords(track.lyrics || track.prompt || '', track.duration));
+      })
+      .finally(() => {
+        if (!cancelled) setLyricsLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [track?.id, hasLyrics]);
+
+  const activeLyricsWordIndex = React.useMemo(() => {
+    if (!lyricsWords.length) return -1;
+    const direct = lyricsWords.findIndex((item) => currentTime >= item.start && currentTime <= item.end);
+    if (direct >= 0) return direct;
+    let closest = -1;
+    for (let i = 0; i < lyricsWords.length; i += 1) {
+      if (currentTime >= lyricsWords[i].start) closest = i;
+    }
+    return closest;
+  }, [currentTime, lyricsWords]);
+
+  const visibleWords = React.useMemo(() => {
+    if (!lyricsWords.length) return [];
+    const center = Math.max(0, activeLyricsWordIndex);
+    const start = Math.max(0, center - 18);
+    return lyricsWords.slice(start, start + 42).map((item, index) => ({ ...item, originalIndex: start + index }));
+  }, [activeLyricsWordIndex, lyricsWords]);
 
   return (
-    <div className="flex flex-col gap-4 h-full">
-      <div className="flex gap-4">
-        {/* Album Art */}
-        <div className="relative w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 shadow-2xl"
-          style={{ background: 'rgba(255,255,255,0.07)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-          {track.cover_image_url
-            ? <img src={track.cover_image_url} alt={track.title} className="w-full h-full object-cover" />
-            : <Music className="h-7 w-7 absolute inset-0 m-auto" style={{ color: 'rgba(255,255,255,0.12)' }} />
-          }
-          {isActive && isPlaying && (
-            <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)' }}>
-              <div className="flex items-end gap-[2px]">
-                {[0.6, 1, 0.5, 0.8].map((h, i) => (
-                  <span key={i} className="w-[2.5px] rounded-full"
-                    style={{ height: `${h * 14}px`, background: '#e11d48', animation: `beat-bar ${0.4 + i * 0.13}s ease-in-out infinite alternate` }} />
-                ))}
-              </div>
+    <div className="relative flex flex-col gap-4 h-full">
+      {hasLyrics && (
+        <div className="absolute top-0 right-0 z-10">
+          <ViewToggle view={showLyrics ? 'grid' : 'list'} onViewChange={(next) => setShowLyrics(next === 'grid')} />
+        </div>
+      )}
+
+      {showLyrics && hasLyrics ? (
+        <div className="flex flex-col items-center justify-center h-full text-center p-8 overflow-hidden">
+          <p className="mb-4 text-[10px] font-extrabold uppercase tracking-[0.24em] text-white/35">
+            {lyricsLoading ? 'Syncing lyrics' : getTrackStatusLabel(track.status || 'ready')}
+          </p>
+          <div className="max-w-4xl text-3xl font-bold text-white/95 leading-relaxed">
+            {(visibleWords.length ? visibleWords : buildFallbackWords(track.lyrics || track.prompt || '', track.duration).slice(0, 42)).map((item, index) => {
+              const active = item.originalIndex === activeLyricsWordIndex || (!visibleWords.length && index === 0 && isActive && isPlaying);
+              return (
+                <span
+                  key={`${item.word}-${index}-${item.start}`}
+                  className="inline-block mx-1.5 transition-all duration-200"
+                  style={active ? {
+                    background: 'linear-gradient(90deg, #ec4899, #f97316)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    transform: 'translateY(-1px) scale(1.04)',
+                  } : { color: 'rgba(255,255,255,0.48)' }}
+                >
+                  {item.word}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-4 pr-24">
+            {/* Album Art */}
+            <div className="relative w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 shadow-2xl"
+              style={{ background: 'rgba(255,255,255,0.07)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+              {track.cover_image_url
+                ? <img src={track.cover_image_url} alt={track.title} className="w-full h-full object-cover" />
+                : <Music className="h-7 w-7 absolute inset-0 m-auto" style={{ color: 'rgba(255,255,255,0.12)' }} />
+              }
+              {isActive && isPlaying && (
+                <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)' }}>
+                  <div className="flex items-end gap-[2px]">
+                    {[0.6, 1, 0.5, 0.8].map((h, i) => (
+                      <span key={i} className="w-[2.5px] rounded-full"
+                        style={{ height: `${h * 14}px`, background: '#e11d48', animation: `beat-bar ${0.4 + i * 0.13}s ease-in-out infinite alternate` }} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <Link to={`/TrackInfo?id=${track.id}`}
+                className="block text-lg font-extrabold leading-tight truncate transition-colors hover:text-[#e11d48]"
+                style={{ color: '#fff' }}>
+                {track.title}
+              </Link>
+              <Link to={`/Profile`}
+                className="text-sm font-medium transition-colors hover:text-[#e11d48] block mt-0.5"
+                style={{ color: 'rgba(255,255,255,0.45)' }}>
+                {artist}
+              </Link>
+              {track.status && track.status !== 'ready' && (
+                <p className="text-[11px] mt-1 font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>{getTrackStatusLabel(track.status)}</p>
+              )}
+              {track.style && (
+                <p className="text-[11px] mt-1 line-clamp-1" style={{ color: 'rgba(255,255,255,0.28)' }}>{track.style}</p>
+              )}
+              {track.duration && (
+                <p className="text-[11px] mt-0.5 tabular-nums" style={{ color: 'rgba(255,255,255,0.22)' }}>
+                  {Math.floor(track.duration / 60)}:{String(Math.floor(track.duration % 60)).padStart(2, '0')}
+                </p>
+              )}
+            </div>
+
+            {/* Quick actions */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <button
+                onClick={onPlay}
+                aria-label={isActive && isPlaying ? 'Pause' : 'Play'}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
+                style={{ background: 'linear-gradient(135deg, #22c55e 0%, #a855f7 55%, #ec4899 100%)' }}
+              >
+                {isActive && isPlaying
+                  ? <Pause className="h-4 w-4 fill-black text-black" />
+                  : <Play className="h-4 w-4 fill-black text-black ml-[1px]" />}
+              </button>
+              <ExportShareButton track={track} />
+            </div>
+          </div>
+
+          {/* Lyrics snippet */}
+          {track.lyrics && (
+            <div className="rounded-xl px-3 py-2 flex-shrink-0" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <p className="text-[11px] font-mono leading-relaxed line-clamp-4 whitespace-pre-line" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                {track.lyrics}
+              </p>
             </div>
           )}
-        </div>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <Link to={`/TrackInfo?id=${track.id}`}
-            className="block text-lg font-extrabold leading-tight truncate transition-colors hover:text-[#e11d48]"
-            style={{ color: '#fff' }}>
-            {track.title}
-          </Link>
-          <Link to={`/Profile`}
-            className="text-sm font-medium transition-colors hover:text-[#e11d48] block mt-0.5"
-            style={{ color: 'rgba(255,255,255,0.45)' }}>
-            {artist}
-          </Link>
-          {track.style && (
-            <p className="text-[11px] mt-1 line-clamp-1" style={{ color: 'rgba(255,255,255,0.28)' }}>{track.style}</p>
-          )}
-          {track.duration && (
-            <p className="text-[11px] mt-0.5 tabular-nums" style={{ color: 'rgba(255,255,255,0.22)' }}>
-              {Math.floor(track.duration / 60)}:{String(Math.floor(track.duration % 60)).padStart(2, '0')}
-            </p>
-          )}
-        </div>
-
-        {/* Quick actions */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <button
-            onClick={onPlay}
-            aria-label={isActive && isPlaying ? 'Pause' : 'Play'}
-            className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
-            style={{ background: 'linear-gradient(135deg, #22c55e 0%, #a855f7 55%, #ec4899 100%)' }}
-          >
-            {isActive && isPlaying
-              ? <Pause className="h-4 w-4 fill-black text-black" />
-              : <Play className="h-4 w-4 fill-black text-black ml-[1px]" />}
-          </button>
-          <ExportShareButton track={track} />
-        </div>
-      </div>
-
-      {/* Lyrics snippet */}
-      {track.lyrics && (
-        <div className="rounded-xl px-3 py-2 flex-shrink-0" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <p className="text-[11px] font-mono leading-relaxed line-clamp-4 whitespace-pre-line" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            {track.lyrics}
-          </p>
-        </div>
+        </>
       )}
 
       {/* Waveform — now provided by the full-panel StudioCenterVisualizer */}
@@ -323,6 +450,11 @@ function CenterTrackRow({ track, index, isCurrent, isPlaying, onPlay, onSelect }
               />
             ))}
           </div>
+        )}
+        {track.status !== 'ready' && (
+          <span className="hidden lg:inline text-[10px] font-semibold whitespace-nowrap" style={{ color: statusColor[track.status] || 'rgba(255,255,255,0.28)' }}>
+            {getTrackStatusLabel(track.status)}
+          </span>
         )}
         <span className="text-[11px] tabular-nums w-10 text-right" style={{ color: 'rgba(255,255,255,0.28)' }}>{dur}</span>
         <DropdownMenu>

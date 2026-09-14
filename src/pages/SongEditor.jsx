@@ -1,14 +1,10 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// TODO_EXPORT_REPLACE_WITH_GOOGLE_AUTH: base44.auth.me() → NextAuth session
-import { base44 } from '@/api/exportClient';
-import * as trackClient from '@/api/trackClient';
-import * as musicClient from '@/api/musicClient';
+import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/components/utils/haptics';
-import { getTrackStatusLabel } from '@/utils/status';
 import { ensureAudioContext, resumeAudioContext } from '@/lib/audioContext';
 import { getTrackAudioSource } from '@/components/audio/AudioPlayerContext';
 import SubtleSplitter from '@/components/ui/SubtleSplitter';
@@ -133,13 +129,13 @@ export default function SongEditorPage() {
 
   const { data: tracks = [] } = useQuery({
     queryKey: ['editor-tracks', user?.email],
-    queryFn: () => trackClient.listTracks({ created_by: user?.email, status: 'ready' }, '-created_date', 50),
+    queryFn: () => base44.entities.Track.filter({ created_by: user?.email, status: 'ready' }, '-created_date', 50),
     enabled: !!user?.email,
   });
 
   const { data: versions = [] } = useQuery({
     queryKey: ['editor-versions', selectedTrack?.id],
-    queryFn: () => trackClient.listTrackVersions(selectedTrack?.id, 15),
+    queryFn: () => base44.entities.TrackVersion.filter({ parent_track_id: selectedTrack?.id }, '-created_date', 15),
     enabled: !!selectedTrack?.id,
   });
 
@@ -268,7 +264,7 @@ export default function SongEditorPage() {
     let attempts = 0;
     while (attempts < 60) {
       attempts += 1;
-      const res = await musicClient.checkStatus(taskId);
+      const res = await base44.functions.invoke('checkMusicStatus', { taskId });
       if (res.data?.success) {
         const generated = res.data.tracks || [];
         if (generated.length > 0 && generated.every((t) => t.status === 'ready')) {
@@ -287,7 +283,7 @@ export default function SongEditorPage() {
 
   const createVersionEntry = async (description, metadata = {}) => {
     if (!selectedTrack) return;
-    await trackClient.createTrackVersion({
+    await base44.entities.TrackVersion.create({
       track_id: selectedTrack.id,
       parent_track_id: selectedTrack.parent_track_id || selectedTrack.id,
       changes_description: description,
@@ -309,7 +305,7 @@ export default function SongEditorPage() {
       if (action === 'replace') {
         if (!selectedTrack.task_id || !selectedTrack.external_audio_id) throw new Error('Track is missing Suno IDs for replacement.');
         if (!lyrics.trim()) throw new Error('Add lyrics for the selected section.');
-        const res = await musicClient.replaceSection({
+        const res = await base44.functions.invoke('replaceSection', {
           taskId: selectedTrack.task_id,
           audioId: selectedTrack.external_audio_id,
           prompt: lyrics,
@@ -326,7 +322,7 @@ export default function SongEditorPage() {
         await pollTaskStatus(res.data.taskId, 'Section replacement');
       } else if (action === 'extend') {
         if (!selectedTrack.external_audio_id) throw new Error('Track is missing external audio ID for extension.');
-        const res = await musicClient.extendMusic({
+        const res = await base44.functions.invoke('extendMusic', {
           audioId: selectedTrack.external_audio_id,
           prompt: lyrics || selectedTrack.prompt || 'Continue with dynamic energy',
           style: styles || selectedTrack.style || 'Pop',
@@ -344,7 +340,7 @@ export default function SongEditorPage() {
           return `[${sectionName}]\n${lyrics.trim()}`;
         }) || lyrics;
 
-        const res = await musicClient.generate({
+        const res = await base44.functions.invoke('generateMusic', {
           mode: 'custom',
           model: 'V5',
           customMode: true,
@@ -359,7 +355,7 @@ export default function SongEditorPage() {
         await createVersionEntry('Regenerated full song with edited lyrics', { action, style: styles, taskId: res.data.taskId });
         await pollTaskStatus(res.data.taskId, 'Full song regeneration');
       } else if (action === 'mastering') {
-        const res = await musicClient.master({
+        const res = await base44.functions.invoke('masterAudio', {
           trackId: selectedTrack.id,
           audioUrl: selectedTrack.audio_url || selectedTrack.stream_audio_url,
           targetLufs: masterLoudness,
@@ -493,7 +489,7 @@ export default function SongEditorPage() {
   const saveAsNewSong = async () => {
     if (!selectedTrack) { toast.error('Select a track first'); return; }
     try {
-      const created = await trackClient.createTrack({
+      const created = await base44.entities.Track.create({
         title: `${selectedTrack.title} - Edit`,
         prompt: selectedTrack.prompt || lyrics || 'Edited song',
         style: styles || selectedTrack.style || '',
@@ -520,7 +516,7 @@ export default function SongEditorPage() {
     try {
       const url = selectedTrack.audio_url || selectedTrack.stream_audio_url;
       if (!url) throw new Error('Track has no audio URL.');
-      const res = await musicClient.separateVocals({ trackId: selectedTrack.id, audioUrl: url });
+      const res = await base44.functions.invoke('separateVocals', { trackId: selectedTrack.id, audioUrl: url });
       if (!res.data?.success) throw new Error(res.data?.error || 'Stem separation failed');
       toast.success('Stem separation started');
     } catch (error) {

@@ -1,8 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-// TODO_EXPORT_REPLACE_WITH_GOOGLE_AUTH: base44.auth.me() → NextAuth session
-import { base44 } from '@/api/exportClient';
-import * as trackClient from '@/api/trackClient';
+import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,9 +27,7 @@ import {
 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
-import { getTrackStatusLabel } from '@/utils/status';
-import * as musicClient from '@/api/musicClient';
+import { createPageUrl, getTrackStatusLabel } from '@/utils';
 
 const FILTERS = ['All', 'Ready', 'Favorites', 'Public', 'Instrumental'];
 
@@ -59,7 +55,7 @@ export default function LibraryPage() {
     queryKey: ['myTracks', user?.email, sort],
     queryFn: async () => {
       if (!user?.email) return [];
-      return await trackClient.listTracks({ created_by: user.email }, sort, 100);
+      return await base44.entities.Track.filter({ created_by: user.email }, sort, 100);
     },
     enabled: !!user?.email,
     refetchInterval: (data) => {
@@ -89,7 +85,7 @@ export default function LibraryPage() {
 
   const handleDelete = async (track) => {
     haptics.heavy();
-    await trackClient.deleteTrack(track.id);
+    await base44.entities.Track.delete(track.id);
     queryClient.invalidateQueries({ queryKey: ['myTracks'] });
     toast.success('Deleted');
     setBottomSheetTrack(null);
@@ -97,13 +93,13 @@ export default function LibraryPage() {
 
   const handleToggleFavorite = async (track) => {
     haptics.light();
-    await trackClient.updateTrack(track.id, { is_favorite: !track.is_favorite });
+    await base44.entities.Track.update(track.id, { is_favorite: !track.is_favorite });
     queryClient.invalidateQueries({ queryKey: ['myTracks'] });
   };
 
   const handleTogglePublic = async (track) => {
     haptics.light();
-    await trackClient.updateTrack(track.id, { is_public: !track.is_public });
+    await base44.entities.Track.update(track.id, { is_public: !track.is_public });
     queryClient.invalidateQueries({ queryKey: ['myTracks'] });
     toast.success(track.is_public ? 'Track set to private' : 'Track is now public');
     setBottomSheetTrack(null);
@@ -112,6 +108,33 @@ export default function LibraryPage() {
   const handleRefresh = async () => {
     haptics.selection();
     await queryClient.invalidateQueries({ queryKey: ['myTracks'] });
+  };
+
+  const handleRetry = async (track) => {
+    haptics.medium();
+    try {
+      const hasCustomSource = Boolean(track.lyrics || track.style || track.tags);
+      const prompt = hasCustomSource
+        ? (track.lyrics || track.prompt || track.title || '')
+        : (track.prompt || track.title || 'Retry this generation');
+      const style = track.style || track.tags || 'Pop';
+
+      const res = await base44.functions.invoke('generateMusic', {
+        mode: hasCustomSource ? 'custom' : 'simple',
+        model: track.model_version || 'V5_5',
+        prompt,
+        style,
+        title: track.title,
+        customMode: hasCustomSource,
+        instrumental: !!track.is_instrumental,
+      });
+
+      if (!res.data?.success) throw new Error(res.data?.error || 'Retry failed');
+      toast.success('Retry queued');
+      await queryClient.invalidateQueries({ queryKey: ['myTracks'] });
+    } catch (error) {
+      toast.error(error.message || 'Retry failed');
+    }
   };
 
   return (
@@ -216,6 +239,7 @@ export default function LibraryPage() {
                 onVideo={() => {setVideoTrack(track);setBottomSheetTrack(null);}}
                 onExportVideo={() => {setExportVideoTrack(track);setBottomSheetTrack(null);}}
                 onTogglePublic={() => handleTogglePublic(track)}
+                onRetry={() => handleRetry(track)}
                 onDelete={() => handleDelete(track)} />
 
               )}
@@ -273,23 +297,11 @@ function LibraryTrackRow({
   onVideo,
   onExportVideo,
   onTogglePublic,
+  onRetry,
   onDelete
 }) {
   const statusColors = { ready: '#22c55e', generating: '#c084fc', queued: '#facc15', failed: '#f87171' };
   const isReady = track.status === 'ready';
-  const handleRetry = async (e, t) => {
-    e.stopPropagation();
-    try {
-      const res = await musicClient.retry(t);
-      if (res.data?.success) {
-        toast.success('Retry started — track is regenerating');
-      } else {
-        toast.error(res.data?.error || 'Retry failed');
-      }
-    } catch (err) {
-      toast.error(err.message || 'Failed to retry generation');
-    }
-  };
   const isActiveGeneration = track.status === 'generating' || track.status === 'queued';
   const creatorName = getCreatorName(track, user);
 
@@ -349,20 +361,12 @@ function LibraryTrackRow({
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-xs text-white/45 truncate">{creatorName}</span>
           {!isReady &&
-          <span className="text-[10px] font-medium" style={{ color: statusColors[track.status] }}>{getTrackStatusLabel(track.status)}</span>
+          <span className="text-[10px] font-medium" style={{ color: statusColors[track.status] || 'rgba(255,255,255,0.35)' }}>{getTrackStatusLabel(track.status)}</span>
           }
           {track.is_instrumental &&
           <span className="text-[10px] text-purple-400 bg-purple-400/10 px-1.5 rounded-full">Inst.</span>
           }
         </div>
-        {track.status === 'failed' && (
-          <div className="mt-1 flex flex-col gap-1">
-            {track.error_message && <p className="text-[10px] text-red-400/80 line-clamp-2">{track.error_message}</p>}
-            <button onClick={(e) => handleRetry(e, track)} className="text-[10px] font-bold text-white bg-red-500/20 hover:bg-red-500/30 px-2 py-0.5 rounded transition-colors self-start">
-              Retry Generation
-            </button>
-          </div>
-        )}
         {isActiveGeneration &&
         <div className="mt-2" aria-label={`${track.status} progress`}>
             <div className="h-7 rounded-lg px-2 flex items-center gap-[2px] overflow-hidden"
@@ -383,6 +387,17 @@ function LibraryTrackRow({
             </div>
           </div>
         }
+        {track.status === 'failed' && (
+          <div className="mt-2 flex flex-col items-start gap-1">
+            <p className="text-[10px] text-red-400">{track.error_message || 'Generation failed'}</p>
+            <button
+              onClick={(e) => { e.stopPropagation(); onRetry?.(); }}
+              className="text-xs font-bold text-white bg-red-500/20 px-2 py-1 rounded hover:bg-red-500/30 transition-colors"
+            >
+              Retry Generation
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Actions */}
@@ -411,6 +426,11 @@ function LibraryTrackRow({
               <DropdownMenuItem onClick={onStems}><Mic2 className="h-4 w-4 mr-2" />Stems</DropdownMenuItem>
               <DropdownMenuItem onClick={onVideo}><Video className="h-4 w-4 mr-2" />Video</DropdownMenuItem>
               <DropdownMenuItem onClick={onExportVideo}><Film className="h-4 w-4 mr-2" />Export MP4</DropdownMenuItem>
+              {track.status === 'failed' && (
+                <DropdownMenuItem onClick={onRetry} className="text-red-300 focus:text-red-200">
+                  <Wand2 className="h-4 w-4 mr-2" />Retry Generation
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={onTogglePublic}>
                 {track.is_public ? <Lock className="h-4 w-4 mr-2" /> : <Globe className="h-4 w-4 mr-2" />}
                 {track.is_public ? 'Make Private' : 'Make Public'}

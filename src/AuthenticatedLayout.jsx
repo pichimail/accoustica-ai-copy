@@ -176,7 +176,7 @@ function ReservedMain({ children, currentPageName, showSidebar, sidebarOpen }) {
 
 export default function AuthenticatedLayout({ children, currentPageName }) {
   const { user, logout } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 1024 : true));
 
   if (currentPageName === 'PublicTrack') {
     return <>{children}</>;

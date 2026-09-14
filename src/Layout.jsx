@@ -1,7 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-// TODO_EXPORT_REPLACE_WITH_GOOGLE_AUTH: All auth.* calls → NextAuth
-import { base44 } from '@/api/exportClient';
+import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { haptics } from '@/components/utils/haptics';
@@ -19,7 +18,8 @@ import {
 'lucide-react';
 
 import { cn } from "@/lib/utils";
-import { useAudioPlayer } from '@/components/audio/AudioPlayerContext';
+import { AudioPlayerProvider, useAudioPlayer } from '@/components/audio/AudioPlayerContext';
+import GlobalAudioPlayer from '@/components/audio/GlobalAudioPlayer';
 import MobileNav from '@/components/mobile/MobileNav';
 
 const publicPages = ['Home', 'PublicTrack', 'Discover'];
@@ -76,6 +76,7 @@ export default function Layout({ children, currentPageName }) {
   const avatarUrl = user?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.full_name || 'User'}`;
 
   return (
+    <AudioPlayerProvider>
     <div className="h-screen overflow-hidden flex flex-col" style={{ background: '#0a0a0f' }}>
       {/* Ambient gradient — static, no performance cost */}
       {/* Mobile Top Bar */}
@@ -253,12 +254,15 @@ export default function Layout({ children, currentPageName }) {
         {children}
       </ReservedMain>
 
+      {/* Global Audio Player — always rendered so audioRef stays mounted */}
+      <GlobalAudioPlayer currentPageName={currentPageName} />
+
       {/* Mobile Bottom Navigation — hidden on Home only */}
       {currentPageName !== 'Home' &&
         <MobileNav currentPageName={currentPageName} user={user} />
       }
     </div>
-  );
+    </AudioPlayerProvider>);
 
 }
 

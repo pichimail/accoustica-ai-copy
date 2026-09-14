@@ -2,9 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/exportClient';
-import * as musicClient from '@/api/musicClient';
-import * as trackClient from '@/api/trackClient';
+import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { haptics } from '@/components/utils/haptics';
 import PullToRefresh from '@/components/mobile/PullToRefresh';
@@ -73,7 +71,7 @@ export default function VoiceStudioPage() {
 
   const { data: personas = [], isLoading } = useQuery({
     queryKey: ['voice-personas'],
-    queryFn: () => trackClient.listPersonas(),
+    queryFn: () => base44.entities.Persona.list('-created_date', 100),
   });
 
   const readyPersonas = useMemo(
@@ -110,7 +108,9 @@ export default function VoiceStudioPage() {
     const timer = setInterval(async () => {
       await Promise.allSettled(
         pending.map((persona) =>
-          musicClient.checkPersonaStatus(persona.id)
+          base44.functions.invoke('checkPersonaStatus', {
+            personaId: persona.id,
+          })
         )
       );
       queryClient.invalidateQueries({ queryKey: ['voice-personas'] });
@@ -309,7 +309,7 @@ export default function VoiceStudioPage() {
       let result;
 
       try {
-        result = await musicClient.initiateVoiceProcess({
+        result = await base44.functions.invoke('initiateVoiceProcess', {
           file: sourceFile,
           personaName: personaName.trim(),
           language: selectedLanguage,
@@ -317,7 +317,7 @@ export default function VoiceStudioPage() {
       } catch {
         const uploaded = await base44.integrations.Core.UploadFile({ file: sourceFile });
         const audioUrl = uploaded?.file_url || uploaded?.file_uri;
-        result = await musicClient.initiateVoiceProcess({
+        result = await base44.functions.invoke('initiateVoiceProcess', {
           audioUrl,
           personaName: personaName.trim(),
           language: selectedLanguage,
@@ -359,14 +359,14 @@ export default function VoiceStudioPage() {
       let result;
 
       try {
-        result = await musicClient.submitPersonaVerification({
+        result = await base44.functions.invoke('submitPersonaVerification', {
           personaId: activeVerificationPersona.id,
           file: verificationFile,
         });
       } catch {
         const uploaded = await base44.integrations.Core.UploadFile({ file: verificationFile });
         const audioUrl = uploaded?.file_url || uploaded?.file_uri;
-        result = await musicClient.submitPersonaVerification({
+        result = await base44.functions.invoke('submitPersonaVerification', {
           personaId: activeVerificationPersona.id,
           audioUrl,
         });
@@ -391,7 +391,7 @@ export default function VoiceStudioPage() {
   const handleDeletePersona = async (personaId) => {
     try {
       haptics.medium();
-      await musicClient.deletePersona(personaId);
+      await base44.functions.invoke('deletePersona', { personaId });
       queryClient.invalidateQueries({ queryKey: ['voice-personas'] });
       toast.success('Persona deleted');
     } catch (error) {
@@ -603,7 +603,7 @@ export default function VoiceStudioPage() {
                       type="button"
                       onClick={async () => {
                         if (!activeVerificationPersona?.id) return;
-                        await musicClient.checkPersonaStatus(activeVerificationPersona.id);
+                        await base44.functions.invoke('checkPersonaStatus', { personaId: activeVerificationPersona.id });
                         queryClient.invalidateQueries({ queryKey: ['voice-personas'] });
                         haptics.light();
                       }}
@@ -768,7 +768,7 @@ export default function VoiceStudioPage() {
                           <button
                             type="button"
                             onClick={async () => {
-                              await musicClient.checkPersonaStatus(persona.id);
+                              await base44.functions.invoke('checkPersonaStatus', { personaId: persona.id });
                               queryClient.invalidateQueries({ queryKey: ['voice-personas'] });
                             }}
                             disabled={persona.status === 'ready' || persona.status === 'failed'}
